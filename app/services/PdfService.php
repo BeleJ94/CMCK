@@ -18,7 +18,7 @@ class PdfService
         $options->set('tempDir', $paths['temp']);
         $options->set('fontDir', $paths['fonts']);
         $options->set('fontCache', $paths['cache']);
-        $options->set('chroot', dirname(__DIR__, 2));
+        $options->set('chroot', [dirname(__DIR__, 2), sys_get_temp_dir()]);
         $options->set('defaultFont', 'DejaVu Sans');
 
         $dompdf = new Dompdf($options);
@@ -30,7 +30,26 @@ class PdfService
 
     private function runtimePaths()
     {
-        $base = dirname(__DIR__, 2) . '/storage/dompdf';
+        $candidates = [
+            dirname(__DIR__, 2) . '/storage/dompdf',
+            rtrim(sys_get_temp_dir(), '/') . '/cmck-milltrack-dompdf',
+        ];
+
+        $lastError = null;
+
+        foreach ($candidates as $base) {
+            try {
+                return $this->prepareRuntimePaths($base);
+            } catch (RuntimeException $exception) {
+                $lastError = $exception->getMessage();
+            }
+        }
+
+        throw new RuntimeException('Aucun dossier PDF accessible en ecriture. Derniere erreur: ' . $lastError);
+    }
+
+    private function prepareRuntimePaths($base)
+    {
         $paths = [
             'base' => $base,
             'temp' => $base . '/temp',
