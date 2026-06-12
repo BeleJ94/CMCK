@@ -1,0 +1,15 @@
+{
+    "name": "cmck/milltrack",
+    "description": "CMCK MillTrack industrial operations tracking",
+    "type": "project",
+    "require": {
+        "dompdf/dompdf": "^2.0"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "platform": {
+            "php": "7.4.29"
+        },
+        "sort-packages": true
+    }
+}
