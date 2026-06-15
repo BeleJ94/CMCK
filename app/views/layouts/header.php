@@ -7,7 +7,7 @@
     <div class="page-title">
         <span class="page-title-icon"><i class="bi bi-shield-check"></i></span>
         <p class="page-kicker"><?= e($user['role_name'] ?? 'Utilisateur') ?></p>
-        <h1><?= e($title ?? 'CMCK MillTrack') ?></h1>
+        <h1><?= e($title ?? 'DAGRIL ERP') ?></h1>
     </div>
 
     <div class="user-menu">

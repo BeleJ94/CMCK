@@ -56,13 +56,13 @@ INSERT INTO roles (id, name, slug, status) VALUES
 (7, 'Agent distribution', 'agent-distribution', 'active');
 
 INSERT INTO users (id, role_id, name, email, password, phone, status) VALUES
-(1, 1, 'Admin CMCK', 'admin@cmck-milltrack.test', '$2y$10$0lMoZoXifCnicmd8f0cE7ORUFQBq.rPwdVYZp1CpOecCsnGEXz75q', '+243 990 000 001', 'active'),
-(2, 2, 'Grace Mbuyi', 'direction@cmck-milltrack.test', '$2y$10$lwfTRKddRR1fUHyCXoaVX.iAsoI0ovLJsu6pKUHiDEkV3dHYggq.q', '+243 990 000 002', 'active'),
-(3, 3, 'Joel Kabeya', 'pont@cmck-milltrack.test', '$2y$10$lwfTRKddRR1fUHyCXoaVX.iAsoI0ovLJsu6pKUHiDEkV3dHYggq.q', '+243 990 000 003', 'active'),
-(4, 4, 'Sarah Ilunga', 'silo@cmck-milltrack.test', '$2y$10$lwfTRKddRR1fUHyCXoaVX.iAsoI0ovLJsu6pKUHiDEkV3dHYggq.q', '+243 990 000 004', 'active'),
-(5, 5, 'Patrick Tshimanga', 'production@cmck-milltrack.test', '$2y$10$lwfTRKddRR1fUHyCXoaVX.iAsoI0ovLJsu6pKUHiDEkV3dHYggq.q', '+243 990 000 005', 'active'),
-(6, 6, 'Mireille Kalala', 'emballage@cmck-milltrack.test', '$2y$10$lwfTRKddRR1fUHyCXoaVX.iAsoI0ovLJsu6pKUHiDEkV3dHYggq.q', '+243 990 000 006', 'active'),
-(7, 7, 'David Kanku', 'distribution@cmck-milltrack.test', '$2y$10$lwfTRKddRR1fUHyCXoaVX.iAsoI0ovLJsu6pKUHiDEkV3dHYggq.q', '+243 990 000 007', 'active'),
+(1, 1, 'Admin DAGRIL', 'admin@dagril-erp.test', '$2y$10$0lMoZoXifCnicmd8f0cE7ORUFQBq.rPwdVYZp1CpOecCsnGEXz75q', '+243 990 000 001', 'active'),
+(2, 2, 'Grace Mbuyi', 'direction@dagril-erp.test', '$2y$10$lwfTRKddRR1fUHyCXoaVX.iAsoI0ovLJsu6pKUHiDEkV3dHYggq.q', '+243 990 000 002', 'active'),
+(3, 3, 'Joel Kabeya', 'pont@dagril-erp.test', '$2y$10$lwfTRKddRR1fUHyCXoaVX.iAsoI0ovLJsu6pKUHiDEkV3dHYggq.q', '+243 990 000 003', 'active'),
+(4, 4, 'Sarah Ilunga', 'silo@dagril-erp.test', '$2y$10$lwfTRKddRR1fUHyCXoaVX.iAsoI0ovLJsu6pKUHiDEkV3dHYggq.q', '+243 990 000 004', 'active'),
+(5, 5, 'Patrick Tshimanga', 'production@dagril-erp.test', '$2y$10$lwfTRKddRR1fUHyCXoaVX.iAsoI0ovLJsu6pKUHiDEkV3dHYggq.q', '+243 990 000 005', 'active'),
+(6, 6, 'Mireille Kalala', 'emballage@dagril-erp.test', '$2y$10$lwfTRKddRR1fUHyCXoaVX.iAsoI0ovLJsu6pKUHiDEkV3dHYggq.q', '+243 990 000 006', 'active'),
+(7, 7, 'David Kanku', 'distribution@dagril-erp.test', '$2y$10$lwfTRKddRR1fUHyCXoaVX.iAsoI0ovLJsu6pKUHiDEkV3dHYggq.q', '+243 990 000 007', 'active'),
 (8, 1, 'Jeremy BELE BELE', 'jeremy@belej-consulting.com', '$2y$10$xSjHxYSXvLcaD4akvRfcX.1HlOuD.ZydCURMtl/yTnEcOoSDM1GCW', NULL, 'active');
 
 INSERT INTO suppliers (id, name, contact_name, phone, email, address, status) VALUES
@@ -149,7 +149,7 @@ INSERT INTO finished_stocks (id, product_id, bag_format_id, packaging_id, quanti
 (5, 4, 3, 5, 32, 800.000, 'active');
 
 INSERT INTO distributions (id, finished_stock_id, product_id, bag_format_id, recipient_name, transporter, exit_voucher, quantity_bags, total_weight_kg, distributed_at, status, created_by, validated_by) VALUES
-(1, 1, 2, 4, 'Depot CMCK Lubumbashi Centre', 'Camion CMCK 01', 'BS-2026-0001', 40, 2000.000, '2026-06-08 11:30:00', 'validated', 7, 2),
+(1, 1, 2, 4, 'Depot DAGRIL Lubumbashi Centre', 'Camion DAGRIL 01', 'BS-2026-0001', 40, 2000.000, '2026-06-08 11:30:00', 'validated', 7, 2),
 (2, 2, 2, 3, 'Client Grossiste Kafubu', 'Transport Kafubu', 'BS-2026-0002', 18, 450.000, '2026-06-08 14:15:00', 'validated', 7, 2),
 (3, 5, 4, 3, 'Ferme Partenaire Kipushi', 'Pickup ferme Kipushi', 'BS-2026-0003', 8, 200.000, '2026-06-09 09:40:00', 'validated', 7, 2);
 
@@ -169,7 +169,7 @@ INSERT INTO alerts (id, user_id, title, message, severity, status) VALUES
 (3, 7, 'Distribution planifiee', 'Preparation d une sortie farine 50kg pour le depot centre.', 'info', 'active');
 
 INSERT INTO activity_logs (id, user_id, action, entity_type, entity_id, description, ip_address, user_agent) VALUES
-(1, 1, 'seed.imported', 'database', 1, 'Donnees initiales CMCK MillTrack importees.', '127.0.0.1', 'CMCK MillTrack Seeder'),
-(2, 3, 'weighing.created', 'weighings', 1, 'Creation de la pesee PB-2026-0001.', '127.0.0.1', 'CMCK MillTrack Seeder'),
-(3, 5, 'production.validated', 'production_batches', 1, 'Validation du lot PROD-2026-0001.', '127.0.0.1', 'CMCK MillTrack Seeder'),
-(4, 7, 'distribution.validated', 'distributions', 1, 'Validation distribution Depot CMCK Lubumbashi Centre.', '127.0.0.1', 'CMCK MillTrack Seeder');
+(1, 1, 'seed.imported', 'database', 1, 'Donnees initiales DAGRIL ERP importees.', '127.0.0.1', 'DAGRIL ERP Seeder'),
+(2, 3, 'weighing.created', 'weighings', 1, 'Creation de la pesee PB-2026-0001.', '127.0.0.1', 'DAGRIL ERP Seeder'),
+(3, 5, 'production.validated', 'production_batches', 1, 'Validation du lot PROD-2026-0001.', '127.0.0.1', 'DAGRIL ERP Seeder'),
+(4, 7, 'distribution.validated', 'distributions', 1, 'Validation distribution Depot DAGRIL Lubumbashi Centre.', '127.0.0.1', 'DAGRIL ERP Seeder');

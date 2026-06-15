@@ -29,7 +29,7 @@
     <main class="sheet">
         <div class="top">
             <div>
-                <h1>CMCK MillTrack</h1>
+                <h1>DAGRIL ERP</h1>
                 <strong>Bon de sortie produits finis</strong>
             </div>
             <div class="meta">

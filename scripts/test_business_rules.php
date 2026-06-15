@@ -22,7 +22,7 @@ $db = Database::getInstance()->connection();
 $user = [
     'id' => 1,
     'name' => 'Business Rule Test',
-    'email' => 'test@cmck.local',
+    'email' => 'test@dagril-erp.local',
     'role_slug' => 'administrateur',
 ];
 $ids = [

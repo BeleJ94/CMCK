@@ -12,7 +12,7 @@
 <section class="ticket-card">
     <div class="ticket-header">
         <div>
-            <p>CMCK MillTrack</p>
+            <p>DAGRIL ERP</p>
             <h2>Ticket de pesee</h2>
         </div>
         <strong><?= e($weighing['reference']) ?></strong>

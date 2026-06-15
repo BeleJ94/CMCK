@@ -136,7 +136,7 @@ class ReportController extends Controller
             $data['pdfMode'] = true;
             $data['exportMode'] = 'pdf';
             $html = $this->renderViewToString($view, $data);
-            (new PdfService())->stream($data['title'] ?? 'Rapport CMCK', $html, $this->slug($filename) . '.pdf');
+            (new PdfService())->stream($data['title'] ?? 'Rapport DAGRIL', $html, $this->slug($filename) . '.pdf');
             return;
         }
 
@@ -197,6 +197,6 @@ class ReportController extends Controller
     private function slug($value)
     {
         $slug = strtolower(preg_replace('/[^A-Za-z0-9]+/', '-', $value));
-        return trim($slug, '-') ?: 'rapport-cmck';
+        return trim($slug, '-') ?: 'rapport-dagril';
     }
 }

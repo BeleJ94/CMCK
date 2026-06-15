@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'name' => 'CMCK MillTrack',
+    'name' => 'DAGRIL ERP',
     'env' => 'development',
     'debug' => true,
     'base_url' => '',

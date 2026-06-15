@@ -10,8 +10,8 @@ $canSearch = in_array($user['role_slug'] ?? '', ['administrateur', 'direction'],
         <a class="sidebar-brand" href="<?= e(base_url(Auth::homePathFor($user))) ?>">
             <span class="brand-mark small"><i class="bi bi-buildings"></i></span>
             <span class="sidebar-text">
-                <strong>CMCK</strong>
-                <small>MillTrack</small>
+                <strong>DAGRIL</strong>
+                <small>ERP</small>
             </span>
         </a>
         <button type="button" class="sidebar-compact-toggle" data-sidebar-compact aria-label="Reduire le menu" aria-pressed="false">

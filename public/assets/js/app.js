@@ -5,7 +5,7 @@
     var closeTargets = document.querySelectorAll('[data-sidebar-close], .sidebar-nav a');
     var activeDetail = null;
 
-    if (window.localStorage && window.localStorage.getItem('cmckSidebarCompact') === '1') {
+    if (window.localStorage && window.localStorage.getItem('dagrilSidebarCompact') === '1') {
         document.body.classList.add('sidebar-compact');
     }
 
@@ -29,7 +29,7 @@
             syncCompactToggle();
 
             if (window.localStorage) {
-                window.localStorage.setItem('cmckSidebarCompact', document.body.classList.contains('sidebar-compact') ? '1' : '0');
+                window.localStorage.setItem('dagrilSidebarCompact', document.body.classList.contains('sidebar-compact') ? '1' : '0');
             }
         });
     }
@@ -319,7 +319,7 @@
     document.querySelectorAll('[data-notification-open]').forEach(function (trigger) {
         trigger.addEventListener('click', function () {
             var index = Number(trigger.getAttribute('data-notification-index'));
-            var notification = (window.cmckNotifications || [])[index];
+            var notification = (window.dagrilNotifications || [])[index];
 
             if (notification) {
                 openDetailModal(notificationDetail(notification));
@@ -330,7 +330,7 @@
     document.querySelectorAll('[data-kpi-open]').forEach(function (trigger) {
         trigger.addEventListener('click', function () {
             var index = Number(trigger.getAttribute('data-kpi-index'));
-            var kpi = (window.cmckKpis || [])[index];
+            var kpi = (window.dagrilKpis || [])[index];
 
             if (kpi) {
                 openDetailModal(kpiDetail(kpi));
@@ -407,8 +407,8 @@
             return;
         }
 
-        popup.document.write('<!doctype html><html><head><title>Export CMCK</title><style>body{font-family:Arial,sans-serif;color:#162033;padding:32px} .card{border:1px solid #d9e1ea;border-radius:8px;padding:24px} h1{margin:0 0 6px;color:#0b1f35} .meta{color:#667085;margin-bottom:22px} table{width:100%;border-collapse:collapse} th,td{border-top:1px solid #d9e1ea;padding:12px;text-align:left} th{background:#0b1f35;color:#fff} td:first-child{font-weight:700;background:#f6f8fb}</style></head><body>');
-        popup.document.write('<div class="card"><h1>CMCK MillTrack</h1><div class="meta">' + escapeHtml(activeDetail.title) + '</div>' + detailTable(activeDetail) + '</div>');
+        popup.document.write('<!doctype html><html><head><title>Export DAGRIL</title><style>body{font-family:Arial,sans-serif;color:#162033;padding:32px} .card{border:1px solid #d9e1ea;border-radius:8px;padding:24px} h1{margin:0 0 6px;color:#0b1f35} .meta{color:#667085;margin-bottom:22px} table{width:100%;border-collapse:collapse} th,td{border-top:1px solid #d9e1ea;padding:12px;text-align:left} th{background:#0b1f35;color:#fff} td:first-child{font-weight:700;background:#f6f8fb}</style></head><body>');
+        popup.document.write('<div class="card"><h1>DAGRIL ERP</h1><div class="meta">' + escapeHtml(activeDetail.title) + '</div>' + detailTable(activeDetail) + '</div>');
         popup.document.write('</body></html>');
         popup.document.close();
         popup.focus();
@@ -424,7 +424,7 @@
         var blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
         var link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = slug(activeDetail.title || 'export-cmck') + '.xls';
+        link.download = slug(activeDetail.title || 'export-dagril') + '.xls';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -487,7 +487,7 @@
                     value: new Date().toLocaleString('fr-FR'),
                     unit: 'Date',
                     status: 'Actualise',
-                    source: 'Interface CMCK'
+                    source: 'Interface DAGRIL'
                 }
             ]
         };
@@ -495,7 +495,7 @@
 
     function chartDetail(key) {
         var chart = chartMeta(key);
-        var dataset = (window.cmckDashboard || {})[key] || { labels: [], values: [] };
+        var dataset = (window.dagrilDashboard || {})[key] || { labels: [], values: [] };
         var rows = [];
 
         (dataset.labels || []).forEach(function (label, index) {
@@ -676,6 +676,6 @@
         return String(value)
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-+|-+$/g, '') || 'export-cmck';
+            .replace(/^-+|-+$/g, '') || 'export-dagril';
     }
 })();

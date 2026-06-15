@@ -1,4 +1,4 @@
-<?php $appName = config('app.name', 'CMCK MillTrack'); ?>
+<?php $appName = config('app.name', 'DAGRIL ERP'); ?>
 <!doctype html>
 <html lang="fr">
 <head>
@@ -21,7 +21,7 @@
 
             <div class="auth-copy">
                 <h2>Connexion</h2>
-                <p>Accedez au suivi des pesees, silos, productions et distributions.</p>
+                <p>Accedez a votre espace de pilotage DAGRIL.</p>
             </div>
 
             <?php if (!empty($error)): ?>
@@ -51,10 +51,16 @@
         </section>
 
         <aside class="auth-aside">
-            <div>
-                <span class="status-pill"><i class="bi bi-shield-check"></i> Exploitation CMCK</span>
-                <h2>Controle fiable des flux du moulin</h2>
-                <p>Une interface sobre pour les equipes pont-bascule, silo, production, emballage et distribution.</p>
+            <div class="auth-aside-content">
+                <span class="status-pill"><i class="bi bi-shield-check"></i> Acces securise</span>
+                <h2>DAGRIL ERP</h2>
+                <p>Operations, stocks, production et distribution dans un meme environnement de travail.</p>
+                <div class="auth-highlights" aria-label="Modules principaux">
+                    <span><i class="bi bi-truck"></i> Pont-bascule</span>
+                    <span><i class="bi bi-database"></i> Silos</span>
+                    <span><i class="bi bi-gear-wide-connected"></i> Production</span>
+                    <span><i class="bi bi-send-check"></i> Distribution</span>
+                </div>
             </div>
         </aside>
     </main>

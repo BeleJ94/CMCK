@@ -32,7 +32,7 @@ class PdfService
     {
         $candidates = [
             dirname(__DIR__, 2) . '/storage/dompdf',
-            rtrim(sys_get_temp_dir(), '/') . '/cmck-milltrack-dompdf',
+            rtrim(sys_get_temp_dir(), '/') . '/dagril-erp-dompdf',
         ];
 
         $lastError = null;
@@ -91,14 +91,14 @@ class PdfService
 <body>
     <header class="pdf-header">
         <div>
-            <p>CMCK MillTrack</p>
+            <p>DAGRIL ERP</p>
             <h1>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</h1>
         </div>
         <span>Document professionnel</span>
     </header>
     <main>' . $bodyHtml . '</main>
     <footer class="pdf-footer">
-        <span>Genere par CMCK MillTrack</span>
+        <span>Genere par DAGRIL ERP</span>
         <span>' . date('d/m/Y H:i') . '</span>
     </footer>
 </body>

@@ -176,13 +176,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
-    window.cmckDashboard = <?= json_encode($charts ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
-    window.cmckKpis = <?= json_encode(array_values($cards ?? []), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
-    window.cmckNotifications = <?= json_encode(array_values($alerts ?? []), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+    window.dagrilDashboard = <?= json_encode($charts ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+    window.dagrilKpis = <?= json_encode(array_values($cards ?? []), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+    window.dagrilNotifications = <?= json_encode(array_values($alerts ?? []), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
 </script>
 <script>
     (function () {
-        if (!window.Chart || !window.cmckDashboard || !window.cmckDashboard.productionSevenDays) {
+        if (!window.Chart || !window.dagrilDashboard || !window.dagrilDashboard.productionSevenDays) {
             return;
         }
 
@@ -205,10 +205,10 @@
         new Chart(document.getElementById('productionSevenDaysChart'), {
             type: 'line',
             data: {
-                labels: labels(window.cmckDashboard.productionSevenDays.labels, 'Aucune donnee'),
+                labels: labels(window.dagrilDashboard.productionSevenDays.labels, 'Aucune donnee'),
                 datasets: [{
                     label: 'Production kg',
-                    data: emptyAware(window.cmckDashboard.productionSevenDays.values),
+                    data: emptyAware(window.dagrilDashboard.productionSevenDays.values),
                     borderColor: colors.green,
                     backgroundColor: 'rgba(21, 128, 61, 0.12)',
                     fill: true,
@@ -222,10 +222,10 @@
         new Chart(document.getElementById('distributionSevenDaysChart'), {
             type: 'line',
             data: {
-                labels: labels(window.cmckDashboard.distributionSevenDays.labels, 'Aucune sortie'),
+                labels: labels(window.dagrilDashboard.distributionSevenDays.labels, 'Aucune sortie'),
                 datasets: [{
                     label: 'Distribution kg',
-                    data: emptyAware(window.cmckDashboard.distributionSevenDays.values),
+                    data: emptyAware(window.dagrilDashboard.distributionSevenDays.values),
                     borderColor: colors.blue,
                     backgroundColor: 'rgba(23, 64, 100, 0.12)',
                     fill: true,
@@ -239,10 +239,10 @@
         new Chart(document.getElementById('yieldByMachineChart'), {
             type: 'bar',
             data: {
-                labels: labels(window.cmckDashboard.yieldByMachine.labels, 'Aucune machine'),
+                labels: labels(window.dagrilDashboard.yieldByMachine.labels, 'Aucune machine'),
                 datasets: [{
                     label: 'Rendement %',
-                    data: emptyAware(window.cmckDashboard.yieldByMachine.values),
+                    data: emptyAware(window.dagrilDashboard.yieldByMachine.values),
                     backgroundColor: colors.blue,
                     borderRadius: 6
                 }]
@@ -253,10 +253,10 @@
         new Chart(document.getElementById('receptionBySupplierChart'), {
             type: 'doughnut',
             data: {
-                labels: labels(window.cmckDashboard.receptionBySupplier.labels, 'Aucun fournisseur'),
+                labels: labels(window.dagrilDashboard.receptionBySupplier.labels, 'Aucun fournisseur'),
                 datasets: [{
                     label: 'Reception kg',
-                    data: emptyAware(window.cmckDashboard.receptionBySupplier.values),
+                    data: emptyAware(window.dagrilDashboard.receptionBySupplier.values),
                     backgroundColor: [colors.green, colors.blue, colors.orange, colors.red, '#64748b', '#0f766e'],
                     borderWidth: 0
                 }]

@@ -1,6 +1,6 @@
 {
-    "name": "cmck/milltrack",
-    "description": "CMCK MillTrack industrial operations tracking",
+    "name": "dagril/erp",
+    "description": "DAGRIL ERP industrial operations tracking",
     "type": "project",
     "require": {
         "dompdf/dompdf": "^2.0"
