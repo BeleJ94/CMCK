@@ -34,7 +34,7 @@ abstract class Model
         return $statement;
     }
 
-    protected function logActivity($action, $module, $entityType = null, $entityId = null, $description = null, array $oldValues = null, array $newValues = null, array $user = null)
+    protected function logActivity($action, $module, $entityType = null, $entityId = null, $description = null, ?array $oldValues = null, ?array $newValues = null, ?array $user = null)
     {
         $user = $user ?: (class_exists('Auth') ? Auth::user() : null);
 

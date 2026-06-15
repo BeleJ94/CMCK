@@ -85,7 +85,7 @@ class ActivityLog extends Model
         ];
     }
 
-    public function record($action, $module, $entityType = null, $entityId = null, $description = null, array $oldValues = null, array $newValues = null, array $user = null)
+    public function record($action, $module, $entityType = null, $entityId = null, $description = null, ?array $oldValues = null, ?array $newValues = null, ?array $user = null)
     {
         $this->logActivity($action, $module, $entityType, $entityId, $description, $oldValues, $newValues, $user);
     }

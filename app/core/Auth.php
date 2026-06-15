@@ -31,6 +31,10 @@ class Auth
     {
         self::start();
 
+        if (isset($_SESSION['user']) && empty($_SESSION['user']['role_slug'])) {
+            self::refreshSessionUser();
+        }
+
         return $_SESSION['user'] ?? null;
     }
 
@@ -43,8 +47,8 @@ class Auth
             'name' => $user['name'],
             'email' => $user['email'],
             'role_id' => $user['role_id'],
-            'role_name' => $user['role_name'],
-            'role_slug' => $user['role_slug'],
+            'role_name' => $user['role_name'] ?? '',
+            'role_slug' => $user['role_slug'] ?? '',
         ];
     }
 
@@ -83,7 +87,7 @@ class Auth
         $user = self::user();
         $roles = (array) $roles;
 
-        return $user && in_array($user['role_slug'], $roles, true);
+        return $user && in_array(self::roleSlug($user), $roles, true);
     }
 
     public static function homePathFor(array $user)
@@ -98,7 +102,7 @@ class Auth
             'agent-distribution' => 'terrain/distribution',
         ];
 
-        return $paths[$user['role_slug']] ?? 'dashboard';
+        return $paths[self::roleSlug($user)] ?? 'dashboard';
     }
 
     public static function menu()
@@ -121,6 +125,8 @@ class Auth
         if (!$user) {
             return [];
         }
+
+        $roleSlug = self::roleSlug($user);
 
         $groups = [
             ['label' => 'Accueil', 'items' => [
@@ -170,8 +176,8 @@ class Auth
         $filteredGroups = [];
 
         foreach ($groups as $group) {
-            $items = array_values(array_filter($group['items'], function ($item) use ($user) {
-                return in_array($user['role_slug'], $item['roles'], true);
+            $items = array_values(array_filter($group['items'], function ($item) use ($roleSlug) {
+                return in_array($roleSlug, $item['roles'], true);
             }));
 
             foreach ($items as &$item) {
@@ -209,6 +215,51 @@ class Auth
             return $count > 0 ? $count : null;
         } catch (Exception $exception) {
             return null;
+        }
+    }
+
+    private static function roleSlug(array $user)
+    {
+        return $user['role_slug'] ?? '';
+    }
+
+    private static function refreshSessionUser()
+    {
+        $userId = $_SESSION['user']['id'] ?? null;
+
+        if (!$userId) {
+            return;
+        }
+
+        try {
+            $db = Database::getInstance()->connection();
+            $statement = $db->prepare(
+                'SELECT users.id, users.name, users.email, users.role_id, roles.name AS role_name, roles.slug AS role_slug
+                 FROM users
+                 INNER JOIN roles ON roles.id = users.role_id
+                 WHERE users.id = :id
+                   AND users.deleted_at IS NULL
+                   AND users.status = :status
+                 LIMIT 1'
+            );
+            $statement->execute([
+                'id' => $userId,
+                'status' => 'active',
+            ]);
+            $user = $statement->fetch();
+
+            if ($user) {
+                $_SESSION['user'] = array_merge($_SESSION['user'], [
+                    'id' => $user['id'],
+                    'name' => $user['name'],
+                    'email' => $user['email'],
+                    'role_id' => $user['role_id'],
+                    'role_name' => $user['role_name'],
+                    'role_slug' => $user['role_slug'],
+                ]);
+            }
+        } catch (Exception $exception) {
+            return;
         }
     }
 }

@@ -6,7 +6,7 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        if ($user && !in_array($user['role_slug'], ['administrateur', 'direction'], true)) {
+        if ($user && !in_array($user['role_slug'] ?? '', ['administrateur', 'direction'], true)) {
             redirect(Auth::homePathFor($user));
         }
 
