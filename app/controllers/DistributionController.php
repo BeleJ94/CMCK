@@ -84,7 +84,7 @@ class DistributionController extends Controller
                 'distribution' => $distribution,
                 'pdfMode' => true,
             ]);
-            (new PdfService())->stream('Bon de sortie produits finis', $html, 'bon-sortie-' . $this->slug($distribution['exit_voucher']) . '.pdf', 'portrait');
+            (new PdfService())->stream('Bon de sortie produits finis', $html, 'bon-sortie-' . $this->slug($distribution['official_document_number'] ?: $distribution['exit_voucher']) . '.pdf', 'portrait');
             return;
         }
 

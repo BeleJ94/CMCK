@@ -1,0 +1,21 @@
+<?php
+return [
+ 1=>['Récolte MUTALA jusqu’à entrée silo',['test_agriculture_to_silo_integration.php']],
+ 2=>['Fournisseur externe jusqu’à entrée silo',['test_weighbridge_transport.php']],
+ 3=>['Silo vers machine ROOF puis production',['test_roof_production.php']],
+ 4=>['Production vers emballage farine',['test_roof_production.php','test_empty_packaging.php']],
+ 5=>['Distribution depuis DEVCO',['test_business_rules.php']],
+ 6=>['Déchets vers pelletisation',['test_pelletization.php']],
+ 7=>['Transfert inter-sites accepté',['test_inter_site_transfers.php']],
+ 8=>['Transfert partiellement reçu',['test_inter_site_transfers.php']],
+ 9=>['Transfert refusé',['test_inter_site_transfers.php']],
+ 10=>['Élevage vers boucherie',['test_livestock.php','test_butchery.php']],
+ 11=>['Achat externe vers boucherie',['test_butchery.php']],
+ 12=>['Dépense dans le budget',['test_budget.php']],
+ 13=>['Dépense dépassant le seuil',['test_budget.php']],
+ 14=>['Distribution de carburant',['test_fuel_logistics.php','test_fuel_distribution_integration.php']],
+ 15=>['Annulation opération validée',['test_cancellation_integration.php']],
+ 16=>['Tentative de double validation',['test_agriculture.php','test_roof_production.php','test_inter_site_transfers.php']],
+ 17=>['Tentative de stock négatif',['test_inter_site_transfers.php','test_fuel_logistics.php']],
+ 18=>['Accès à un site non autorisé',['guardrails.php']],
+];

@@ -28,6 +28,8 @@ $averageYield = $totalTreated > 0 ? ($totalGood / $totalTreated) * 100 : 0;
 
 <?php if (!empty($success)): ?><div class="app-alert app-alert-success"><i class="bi bi-check2-circle"></i><?= e($success) ?></div><?php endif; ?>
 <?php if (!empty($error)): ?><div class="app-alert app-alert-error"><i class="bi bi-exclamation-triangle"></i><?= e($error) ?></div><?php endif; ?>
+<?php if(Auth::currentSiteId() === null): ?><div class="app-alert alert-info"><i class="bi bi-buildings"></i><span>Vue consolidée en lecture. Sélectionnez un site pour créer une production ou modifier sa tolérance.</span></div><?php endif; ?>
+<?php if(Auth::can('production','administer') && Auth::currentSiteId() !== null):?><section class="form-panel"><form method="post" action="<?=e(base_url('production/tolerance'))?>" class="enterprise-form"><?=csrf_field()?><div class="form-grid"><label><span>Tolérance maximale d’écart (%)</span><input type="number" min="0" max="100" step="0.001" name="tolerance_percent" value="<?=e($tolerance??2)?>" required></label></div><div class="form-actions"><button class="btn-primary">Enregistrer la tolérance</button></div></form></section><?php endif;?>
 
 <section class="metric-grid">
     <article class="metric-card"><div class="metric-card-top"><span>Lots en attente</span><span class="metric-icon tone-orange"><i class="bi bi-hourglass-split"></i></span></div><strong><?= e(number_format($pendingCount, 0, ',', ' ')) ?></strong></article>
@@ -76,24 +78,3 @@ $averageYield = $totalTreated > 0 ? ($totalGood / $totalTreated) * 100 : 0;
         </table>
     </div>
 </section>
-
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    if (window.jQuery && jQuery.fn.DataTable) {
-        jQuery('#productionTable').DataTable({
-            pageLength: 10,
-            order: [[6, 'desc']],
-            language: {
-                search: 'Recherche',
-                lengthMenu: 'Afficher _MENU_ lignes',
-                info: 'Affichage _START_ a _END_ sur _TOTAL_ productions',
-                paginate: { previous: 'Precedent', next: 'Suivant' },
-                zeroRecords: 'Aucune production trouvee'
-            }
-        });
-    }
-});
-</script>

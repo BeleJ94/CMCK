@@ -124,6 +124,13 @@ if (!function_exists('flash')) {
         $message = $_SESSION['flash'][$key] ?? null;
         unset($_SESSION['flash'][$key]);
 
+        if ($message !== null) {
+            if (!isset($GLOBALS['dagril_consumed_flashes']) || !is_array($GLOBALS['dagril_consumed_flashes'])) {
+                $GLOBALS['dagril_consumed_flashes'] = [];
+            }
+            $GLOBALS['dagril_consumed_flashes'][$key] = $message;
+        }
+
         return $message;
     }
 }

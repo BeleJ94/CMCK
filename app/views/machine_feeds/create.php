@@ -37,8 +37,9 @@
                 </select>
                 <?php if (!empty($errors['machine_id'])): ?><small><?= e($errors['machine_id']) ?></small><?php endif; ?>
             </label>
+            <label><span>Maïs autorisé sur BSS (kg)</span><input type="number" name="authorized_quantity_kg" min="0.001" step="0.001" value="<?=e($feed['authorized_quantity_kg'])?>" required><?php if (!empty($errors['authorized_quantity_kg'])): ?><small><?=e($errors['authorized_quantity_kg'])?></small><?php endif;?></label>
             <label>
-                <span>Quantite envoyee kg</span>
+                <span>Maïs réellement chargé (kg)</span>
                 <input type="number" name="quantity_kg" min="0.001" step="0.001" value="<?= e($feed['quantity_kg']) ?>" required>
                 <?php if (!empty($errors['quantity_kg'])): ?><small><?= e($errors['quantity_kg']) ?></small><?php endif; ?>
             </label>
@@ -63,7 +64,7 @@
         </div>
         <div class="form-actions">
             <a href="<?= e(base_url('machine-feeds')) ?>" class="btn-secondary"><i class="bi bi-arrow-left"></i><span>Retour</span></a>
-            <button type="submit" class="btn-primary"><i class="bi bi-check2-circle"></i><span>Creer alimentation et lot</span></button>
+            <button type="submit" class="btn-primary"><i class="bi bi-check2-circle"></i><span>Valider BSS, alimenter et démarrer</span></button>
         </div>
     </form>
 </section>

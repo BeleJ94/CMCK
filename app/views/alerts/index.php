@@ -58,6 +58,8 @@ $severityLabels = [
     </div>
     <form method="get" action="<?= e(base_url('alerts')) ?>" class="enterprise-form">
         <div class="form-grid">
+            <label><span>Date début</span><input type="date" name="start_date" value="<?=e($filters['start_date'])?>"></label>
+            <label><span>Date fin</span><input type="date" name="end_date" value="<?=e($filters['end_date'])?>"></label>
             <label>
                 <span>Type</span>
                 <select name="type">
@@ -136,6 +138,7 @@ $severityLabels = [
                         <button class="icon-button" type="submit" title="Marquer comme lue"><i class="bi bi-check2"></i></button>
                     </form>
                 <?php endif; ?>
+                <?php if(Auth::can('alerts','validate',$alert['site_id']??null)):?><form method="post" action="<?=e(base_url('alerts/'.$alert['id'].'/resolve'))?>"><?=csrf_field()?><button class="icon-button" title="Résoudre"><i class="bi bi-check-circle"></i></button></form><?php endif;?>
             </article>
         <?php endforeach; ?>
     </div>

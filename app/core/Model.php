@@ -40,14 +40,15 @@ abstract class Model
 
         $this->query(
             "INSERT INTO activity_logs (
-                user_id, action, module, entity_type, entity_id, description,
+                user_id, site_id, action, module, entity_type, entity_id, description,
                 old_values, new_values, ip_address, user_agent
              ) VALUES (
-                :user_id, :action, :module, :entity_type, :entity_id, :description,
+                :user_id, :site_id, :action, :module, :entity_type, :entity_id, :description,
                 :old_values, :new_values, :ip_address, :user_agent
              )",
             [
                 'user_id' => $user['id'] ?? null,
+                'site_id' => class_exists('Auth') ? Auth::currentSiteId() : null,
                 'action' => $action,
                 'module' => $module,
                 'entity_type' => $entityType,

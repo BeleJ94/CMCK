@@ -64,6 +64,13 @@
                     <span>Poids brut kg</span>
                     <input type="number" value="<?= e($weighing['poids_brut']) ?>" data-poids-brut disabled>
                 </label>
+                <label><span>Humidité %</span><input type="number" step="0.001" min="0" name="humidity_percent" value="<?=e($exit['humidity_percent'])?>" required></label>
+                <label><span>Impuretés %</span><input type="number" step="0.001" min="0" name="impurities_percent" value="<?=e($exit['impurities_percent'])?>" required></label>
+                <label><span>Tolérance poids %</span><input type="number" step="0.001" min="0" name="weight_tolerance_percent" value="<?=e($exit['weight_tolerance_percent'])?>" required></label>
+                <label><span>Humidité maximale %</span><input type="number" step="0.001" min="0" name="max_humidity_percent" value="<?=e($exit['max_humidity_percent'])?>" required></label>
+                <label><span>Impuretés maximales %</span><input type="number" step="0.001" min="0" name="max_impurities_percent" value="<?=e($exit['max_impurities_percent'])?>" required></label>
+                <label><span>Décision</span><select name="decision" required><option value="accept" <?=$exit['decision']==='accept'?'selected':''?>>Accepter</option><option value="reject" <?=$exit['decision']==='reject'?'selected':''?>>Refuser</option></select></label>
+                <label><span>Observations / motif</span><textarea name="quality_notes"><?=e($exit['quality_notes'])?></textarea><?php if(isset($errors['quality_notes'])):?><small><?=e($errors['quality_notes'])?></small><?php endif;?></label>
                 <label>
                     <span>Poids tare kg</span>
                     <input type="number" step="0.001" min="0" max="<?= e($weighing['poids_brut']) ?>" name="poids_tare" value="<?= e($exit['poids_tare']) ?>" data-poids-tare required>
@@ -93,23 +100,3 @@
         </form>
     </section>
 <?php endif; ?>
-
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        if (window.jQuery && jQuery.fn.DataTable) {
-            jQuery('#pendingWeighingsTable').DataTable({
-                pageLength: 10,
-                language: {
-                    search: 'Recherche camion',
-                    lengthMenu: 'Afficher _MENU_ lignes',
-                    info: 'Affichage _START_ a _END_ sur _TOTAL_ camions',
-                    paginate: { previous: 'Precedent', next: 'Suivant' },
-                    zeroRecords: 'Aucun camion en attente'
-                }
-            });
-        }
-    });
-</script>

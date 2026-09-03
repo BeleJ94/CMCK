@@ -120,7 +120,7 @@
             </div>
         <?php endif; ?>
 
-        <?php foreach ($alerts as $index => $alert): ?>
+        <?php foreach (($alerts ?? []) as $index => $alert): ?>
             <button type="button" class="alert-row alert-row-button severity-<?= e($alert['severity']) ?>" data-notification-open data-notification-index="<?= e($index) ?>">
                 <i class="bi <?= $alert['severity'] === 'danger' ? 'bi-x-octagon' : ($alert['severity'] === 'warning' ? 'bi-exclamation-triangle' : 'bi-info-circle') ?>"></i>
                 <div>

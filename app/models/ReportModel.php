@@ -31,6 +31,7 @@ class ReportModel extends Model
             $supplierClause = ' AND weighings.supplier_id = :supplier_id';
             $params['supplier_id'] = $filters['supplier_id'];
         }
+        $supplierClause .= Auth::siteClause('weighings.site_id', $params);
 
         return $this->query(
             "SELECT weighings.reference,
@@ -44,7 +45,7 @@ class ReportModel extends Model
                     weighings.poids_net,
                     weighings.status
              FROM weighings
-             INNER JOIN suppliers ON suppliers.id = weighings.supplier_id
+             LEFT JOIN suppliers ON suppliers.id = weighings.supplier_id
              INNER JOIN trucks ON trucks.id = weighings.truck_id
              INNER JOIN products ON products.id = weighings.product_id
              WHERE weighings.deleted_at IS NULL
@@ -63,6 +64,7 @@ class ReportModel extends Model
             $supplierClause = ' AND suppliers.id = :supplier_id';
             $params['supplier_id'] = $filters['supplier_id'];
         }
+        $supplierClause .= Auth::siteClause('weighings.site_id', $params);
 
         return $this->query(
             "SELECT suppliers.name AS supplier_name,
@@ -89,6 +91,7 @@ class ReportModel extends Model
             $machineClause = ' AND machines.id = :machine_id';
             $params['machine_id'] = $filters['machine_id'];
         }
+        $machineClause .= Auth::siteClause('production_batches.site_id', $params);
 
         return $this->query(
             "SELECT production_batches.batch_number,
@@ -125,6 +128,7 @@ class ReportModel extends Model
             $machineClause = ' AND machines.id = :machine_id';
             $params['machine_id'] = $filters['machine_id'];
         }
+        $machineClause .= Auth::siteClause('production_batches.site_id', $params);
 
         return $this->query(
             "SELECT machines.name AS machine_name,
@@ -160,6 +164,7 @@ class ReportModel extends Model
             $machineClause = ' AND machines.id = :machine_id';
             $params['machine_id'] = $filters['machine_id'];
         }
+        $machineClause .= Auth::siteClause('waste_processings.site_id', $params);
 
         return $this->query(
             "SELECT waste_processings.processed_at,
@@ -188,6 +193,7 @@ class ReportModel extends Model
     public function packaging(array $filters)
     {
         $params = $this->dateParams($filters);
+        $siteClause = Auth::siteClause('packaging.site_id', $params);
 
         return $this->query(
             "SELECT packaging.packaged_at,
@@ -204,7 +210,7 @@ class ReportModel extends Model
              INNER JOIN bag_formats ON bag_formats.id = packaging.bag_format_id
              LEFT JOIN users ON users.id = packaging.created_by
              WHERE packaging.deleted_at IS NULL
-               AND DATE(packaging.packaged_at) BETWEEN :start_date AND :end_date
+               AND DATE(packaging.packaged_at) BETWEEN :start_date AND :end_date{$siteClause}
              ORDER BY packaging.packaged_at DESC",
             $params
         )->fetchAll();
@@ -213,6 +219,7 @@ class ReportModel extends Model
     public function distribution(array $filters)
     {
         $params = $this->dateParams($filters);
+        $siteClause = Auth::siteClause('distributions.site_id', $params);
 
         return $this->query(
             "SELECT distributions.distributed_at,
@@ -230,7 +237,7 @@ class ReportModel extends Model
              INNER JOIN bag_formats ON bag_formats.id = distributions.bag_format_id
              LEFT JOIN users ON users.id = distributions.created_by
              WHERE distributions.deleted_at IS NULL
-               AND DATE(distributions.distributed_at) BETWEEN :start_date AND :end_date
+               AND DATE(distributions.distributed_at) BETWEEN :start_date AND :end_date{$siteClause}
              ORDER BY distributions.distributed_at DESC",
             $params
         )->fetchAll();
@@ -238,6 +245,8 @@ class ReportModel extends Model
 
     public function siloStocks()
     {
+        $params = [];
+        $siteClause = Auth::siteClause('silos.site_id', $params);
         return $this->query(
             "SELECT silos.name,
                     silos.code,
@@ -253,13 +262,15 @@ class ReportModel extends Model
                     silos.status
              FROM silos
              LEFT JOIN products ON products.id = silos.product_id
-             WHERE silos.deleted_at IS NULL
-             ORDER BY silos.name ASC"
+             WHERE silos.deleted_at IS NULL{$siteClause}
+             ORDER BY silos.name ASC", $params
         )->fetchAll();
     }
 
     public function finishedStocks()
     {
+        $params = [];
+        $siteClause = Auth::siteClause('finished_stocks.site_id', $params);
         return $this->query(
             "SELECT products.name AS product_name,
                     bag_formats.name AS format_name,
@@ -269,9 +280,9 @@ class ReportModel extends Model
              INNER JOIN products ON products.id = finished_stocks.product_id
              INNER JOIN bag_formats ON bag_formats.id = finished_stocks.bag_format_id
              WHERE finished_stocks.deleted_at IS NULL
-               AND finished_stocks.status IN ('active', 'validated')
+               AND finished_stocks.status IN ('active', 'validated'){$siteClause}
              GROUP BY products.id, bag_formats.id
-             ORDER BY products.name ASC, bag_formats.weight_kg ASC"
+             ORDER BY products.name ASC, bag_formats.weight_kg ASC", $params
         )->fetchAll();
     }
 

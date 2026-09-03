@@ -16,43 +16,14 @@
         <?= csrf_field() ?>
         <div class="form-grid">
             <label>
-                <span>Fournisseur</span>
-                <select name="supplier_id" required>
-                    <option value="">Selectionner</option>
-                    <?php foreach ($suppliers as $supplier): ?>
-                        <option value="<?= e($supplier['id']) ?>" <?= (string) $entry['supplier_id'] === (string) $supplier['id'] ? 'selected' : '' ?>><?= e($supplier['name']) ?></option>
+                <span>BT en transit</span>
+                <select name="transport_id" required>
+                    <option value="">Selectionner un BT</option>
+                    <?php foreach ($transports as $transport): ?>
+                        <option value="<?= e($transport['id']) ?>" <?= (string) $entry['transport_id'] === (string) $transport['id'] ? 'selected' : '' ?>><?= e(($transport['bt_number']?:$transport['transport_reference']).' — '.$transport['plate_number'].' — '.$transport['product_name'].' — '.number_format((float)$transport['shipped_quantity_kg'],0,',',' ').' kg') ?></option>
                     <?php endforeach; ?>
                 </select>
-                <?php if (!empty($errors['supplier_id'])): ?><small><?= e($errors['supplier_id']) ?></small><?php endif; ?>
-            </label>
-
-            <label>
-                <span>Plaque camion</span>
-                <input type="text" name="truck_plate_number" value="<?= e($entry['truck_plate_number']) ?>" placeholder="Ex: 1234 AB 07" data-uppercase required>
-                <?php if (!empty($errors['truck_plate_number'])): ?><small><?= e($errors['truck_plate_number']) ?></small><?php endif; ?>
-            </label>
-
-            <label>
-                <span>Chauffeur</span>
-                <input type="text" name="driver_name" value="<?= e($entry['driver_name']) ?>" placeholder="Nom du chauffeur">
-                <?php if (!empty($errors['driver_name'])): ?><small><?= e($errors['driver_name']) ?></small><?php endif; ?>
-            </label>
-
-            <label>
-                <span>Telephone chauffeur</span>
-                <input type="text" name="driver_phone" value="<?= e($entry['driver_phone']) ?>" placeholder="+243 ...">
-                <?php if (!empty($errors['driver_phone'])): ?><small><?= e($errors['driver_phone']) ?></small><?php endif; ?>
-            </label>
-
-            <label>
-                <span>Produit</span>
-                <select name="product_id" required>
-                    <option value="">Selectionner</option>
-                    <?php foreach ($products as $product): ?>
-                        <option value="<?= e($product['id']) ?>" <?= (string) $entry['product_id'] === (string) $product['id'] ? 'selected' : '' ?>><?= e($product['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <?php if (!empty($errors['product_id'])): ?><small><?= e($errors['product_id']) ?></small><?php endif; ?>
+                <?php if (!empty($errors['transport_id'])): ?><small><?= e($errors['transport_id']) ?></small><?php endif; ?>
             </label>
 
             <label>
@@ -78,6 +49,7 @@
         </div>
 
         <div class="form-actions">
+            <a href="<?=e(base_url('weighbridge-transports'))?>" class="btn-secondary"><i class="bi bi-truck"></i><span>Nouveau BT</span></a>
             <a href="<?= e(base_url('weighings')) ?>" class="btn-secondary"><i class="bi bi-arrow-left"></i><span>Retour</span></a>
             <button type="submit" class="btn-primary"><i class="bi bi-save2"></i><span>Enregistrer entree</span></button>
         </div>

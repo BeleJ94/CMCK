@@ -23,6 +23,7 @@ class WeighingController extends Controller
             'title' => 'Pesee entree',
             'suppliers' => $model->suppliers(),
             'products' => $model->products(),
+            'transports' => $model->availableTransports(),
             'entry' => $this->oldEntry(),
             'errors' => flash('errors') ?: [],
         ], 'layouts.main');
@@ -32,11 +33,7 @@ class WeighingController extends Controller
     {
         $this->ensureCsrf('weighings/entry');
         $data = [
-            'supplier_id' => trim($_POST['supplier_id'] ?? ''),
-            'truck_plate_number' => strtoupper(trim($_POST['truck_plate_number'] ?? '')),
-            'driver_name' => trim($_POST['driver_name'] ?? ''),
-            'driver_phone' => trim($_POST['driver_phone'] ?? ''),
-            'product_id' => trim($_POST['product_id'] ?? ''),
+            'transport_id' => trim($_POST['transport_id'] ?? ''),
             'poids_brut' => trim($_POST['poids_brut'] ?? ''),
         ];
         $errors = $this->validateEntry($data);
@@ -47,8 +44,8 @@ class WeighingController extends Controller
             redirect('weighings/entry');
         }
 
-        $this->model('Weighing')->createEntry($data, Auth::user());
-        flash('success', 'Pesee entree enregistree. Camion en attente de dechargement.');
+        try{$this->model('Weighing')->createEntry($data, Auth::user());flash('success', 'Pesée brute enregistrée. Aucun stock silo n’a été modifié.');}
+        catch(Exception $exception){flash('error',$exception->getMessage());redirect('weighings/entry');}
         redirect('weighings');
     }
 
@@ -110,6 +107,9 @@ class WeighingController extends Controller
         $data = [
             'poids_tare' => trim($_POST['poids_tare'] ?? ''),
             'silo_id' => trim($_POST['silo_id'] ?? ''),
+            'humidity_percent'=>trim($_POST['humidity_percent']??''),'impurities_percent'=>trim($_POST['impurities_percent']??''),
+            'weight_tolerance_percent'=>trim($_POST['weight_tolerance_percent']??'2'),'max_humidity_percent'=>trim($_POST['max_humidity_percent']??'14'),
+            'max_impurities_percent'=>trim($_POST['max_impurities_percent']??'2'),'quality_notes'=>trim($_POST['quality_notes']??''),'decision'=>trim($_POST['decision']??'accept'),
         ];
         $errors = $this->validateExitData($data, $weighing);
 
@@ -144,7 +144,7 @@ class WeighingController extends Controller
                 'weighing' => $weighing,
                 'pdfMode' => true,
             ]);
-            (new PdfService())->stream('Ticket de pesee', $html, 'ticket-pesee-' . $this->slug($weighing['reference']) . '.pdf', 'portrait');
+            (new PdfService())->stream('Ticket de pesee', $html, 'ticket-pesee-' . $this->slug($weighing['official_document_number'] ?: $weighing['reference']) . '.pdf', 'portrait');
             return;
         }
 
@@ -152,6 +152,14 @@ class WeighingController extends Controller
             'title' => 'Ticket de pesee',
             'weighing' => $weighing,
         ], 'layouts.main');
+    }
+
+    public function progressReturn($id)
+    {
+        $this->ensureCsrf('weighings/'.$id.'/ticket');
+        try{$this->model('Weighing')->progressReturn((int)$id,trim($_POST['return_action']??''),Auth::user());flash('success','Étape du retour enregistrée.');}
+        catch(Exception$e){flash('error',$e->getMessage());}
+        redirect('weighings/'.$id.'/ticket');
     }
 
     private function slug($value)
@@ -164,25 +172,7 @@ class WeighingController extends Controller
     {
         $errors = [];
 
-        foreach (['supplier_id' => 'fournisseur', 'product_id' => 'produit'] as $field => $label) {
-            if ($data[$field] === '' || !ctype_digit((string) $data[$field])) {
-                $errors[$field] = 'Le champ ' . $label . ' est obligatoire.';
-            }
-        }
-
-        if ($data['truck_plate_number'] === '') {
-            $errors['truck_plate_number'] = 'La plaque du camion est obligatoire.';
-        } elseif (strlen($data['truck_plate_number']) > 50) {
-            $errors['truck_plate_number'] = 'La plaque du camion ne doit pas depasser 50 caracteres.';
-        }
-
-        if ($data['driver_name'] !== '' && strlen($data['driver_name']) > 150) {
-            $errors['driver_name'] = 'Le nom du chauffeur ne doit pas depasser 150 caracteres.';
-        }
-
-        if ($data['driver_phone'] !== '' && strlen($data['driver_phone']) > 50) {
-            $errors['driver_phone'] = 'Le telephone du chauffeur ne doit pas depasser 50 caracteres.';
-        }
+        if ($data['transport_id'] === '' || !ctype_digit((string)$data['transport_id'])) {$errors['transport_id']='Un BT en transit est obligatoire.';}
 
         if ($data['poids_brut'] === '' || !is_numeric($data['poids_brut']) || (float) $data['poids_brut'] <= 0) {
             $errors['poids_brut'] = 'Le poids brut doit etre superieur a zero.';
@@ -204,6 +194,9 @@ class WeighingController extends Controller
         if ($data['silo_id'] === '' || !ctype_digit((string) $data['silo_id'])) {
             $errors['silo_id'] = 'Le silo destination est obligatoire.';
         }
+        foreach(['humidity_percent'=>'humidite','impurities_percent'=>'impuretes','weight_tolerance_percent'=>'tolerance','max_humidity_percent'=>'limite humidite','max_impurities_percent'=>'limite impuretes'] as $field=>$label){if($data[$field]===''||!is_numeric($data[$field])||(float)$data[$field]<0){$errors[$field]='La valeur '.$label.' est invalide.';}}
+        if(!in_array($data['decision'],['accept','reject'],true)){$errors['decision']='Décision invalide.';}
+        if($data['decision']==='reject'&&$data['quality_notes']===''){$errors['quality_notes']='Le motif du refus est obligatoire.';}
 
         return $errors;
     }
@@ -215,11 +208,7 @@ class WeighingController extends Controller
         unset($_SESSION['old_weighing_entry']);
 
         return $old ?: [
-            'supplier_id' => '',
-            'truck_plate_number' => '',
-            'driver_name' => '',
-            'driver_phone' => '',
-            'product_id' => '',
+            'transport_id' => '',
             'poids_brut' => '',
         ];
     }
@@ -230,7 +219,7 @@ class WeighingController extends Controller
         $old = $_SESSION['old_weighing_exit'] ?? null;
         unset($_SESSION['old_weighing_exit']);
 
-        return $old ?: ['poids_tare' => '', 'silo_id' => ''];
+        return $old ?: ['poids_tare'=>'','silo_id'=>'','humidity_percent'=>'','impurities_percent'=>'','weight_tolerance_percent'=>'2','max_humidity_percent'=>'14','max_impurities_percent'=>'2','quality_notes'=>'','decision'=>'accept'];
     }
 
     private function ensureCsrf($redirect)

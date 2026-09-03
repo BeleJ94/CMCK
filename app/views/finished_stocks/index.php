@@ -154,25 +154,3 @@ $outputsKg = array_sum(array_map(function ($row) {
         </table>
     </div>
 </section>
-
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    if (window.jQuery && jQuery.fn.DataTable) {
-        ['#finishedProductTable', '#finishedFormatTable', '#finishedEntriesTable', '#finishedOutputsTable'].forEach(function (selector) {
-            jQuery(selector).DataTable({
-                pageLength: 8,
-                language: {
-                    search: 'Recherche',
-                    lengthMenu: 'Afficher _MENU_ lignes',
-                    info: 'Affichage _START_ a _END_ sur _TOTAL_ lignes',
-                    paginate: { previous: 'Precedent', next: 'Suivant' },
-                    zeroRecords: 'Aucune donnee trouvee'
-                }
-            });
-        });
-    }
-});
-</script>

@@ -7,6 +7,7 @@
     </div>
     <div class="hero-actions">
         <a href="<?= e(base_url('weighings/entry')) ?>" class="page-action"><i class="bi bi-box-arrow-in-down"></i><span>Pesee entree</span></a>
+        <a href="<?= e(base_url('weighbridge-transports')) ?>" class="page-action"><i class="bi bi-truck"></i><span>BT / transport</span></a>
         <a href="<?= e(base_url('weighings/exit')) ?>" class="page-action"><i class="bi bi-box-arrow-up-right"></i><span>Pesee sortie</span></a>
     </div>
 </section>
@@ -81,24 +82,3 @@
         </table>
     </div>
 </section>
-
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        if (window.jQuery && jQuery.fn.DataTable) {
-            jQuery('#weighingsTable').DataTable({
-                pageLength: 10,
-                order: [[1, 'desc']],
-                language: {
-                    search: 'Recherche',
-                    lengthMenu: 'Afficher _MENU_ lignes',
-                    info: 'Affichage _START_ a _END_ sur _TOTAL_ pesees',
-                    paginate: { previous: 'Precedent', next: 'Suivant' },
-                    zeroRecords: 'Aucune pesee trouvee'
-                }
-            });
-        }
-    });
-</script>

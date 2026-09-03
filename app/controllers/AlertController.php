@@ -36,6 +36,8 @@ class AlertController extends Controller
         redirect($this->returnPath());
     }
 
+    public function resolve($id){$this->ensureCsrf();try{$this->model('Alert')->resolve($id,Auth::user());flash('success','Alerte résolue et journalisée.');}catch(Exception$e){flash('error',$e->getMessage());}redirect($this->returnPath());}
+
     private function filters(Alert $model)
     {
         $type = $_GET['type'] ?? '';
@@ -44,6 +46,8 @@ class AlertController extends Controller
         return [
             'type' => isset($model->types()[$type]) ? $type : '',
             'level' => in_array($level, $model->levels(), true) ? $level : '',
+            'start_date' => preg_match('/^\d{4}-\d{2}-\d{2}$/',$_GET['start_date']??'')?$_GET['start_date']:date('Y-m-01'),
+            'end_date' => preg_match('/^\d{4}-\d{2}-\d{2}$/',$_GET['end_date']??'')?$_GET['end_date']:date('Y-m-d'),
         ];
     }
 
@@ -51,7 +55,7 @@ class AlertController extends Controller
     {
         $query = [];
 
-        foreach (['type', 'level'] as $key) {
+        foreach (['type', 'level','start_date','end_date'] as $key) {
             if (!empty($_POST[$key])) {
                 $query[$key] = $_POST[$key];
             }

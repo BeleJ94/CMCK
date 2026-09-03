@@ -39,9 +39,11 @@ $yield = $processedTotal > 0 ? ($feedTotal / $processedTotal) * 100 : 0;
                 <tr>
                     <th>Origine</th>
                     <th>Produit</th>
+                    <th>Type / qualité / site</th>
                     <th>Quantite disponible</th>
                     <th>Statut</th>
                     <th>Date creation</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -49,33 +51,15 @@ $yield = $processedTotal > 0 ? ($feedTotal / $processedTotal) * 100 : 0;
                     <tr>
                         <td><strong><?= e($line['batch_number'] ?: 'Stock dechets') ?></strong></td>
                         <td><?= e($line['product_name']) ?></td>
+                        <td><?=e(($line['waste_type_name']?:'-').' / '.$line['quality_grade'].' / '.$line['site_code'])?></td>
                         <td><?= e(number_format((float) $line['quantity_kg'], 0, ',', ' ')) ?> kg</td>
                         <td><span class="status-badge status-<?= e($line['status']) ?>"><?= e($line['status']) ?></span></td>
                         <td><?= e($line['created_at']) ?></td>
+                        <td><form method="post" action="<?=e(base_url('waste/'.$line['id'].'/buffer'))?>"><?=csrf_field()?><button>Stock tampon</button></form></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
     </div>
 </section>
-
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    if (window.jQuery && jQuery.fn.DataTable) {
-        jQuery('#wasteStockTable').DataTable({
-            pageLength: 10,
-            order: [[4, 'asc']],
-            language: {
-                search: 'Recherche',
-                lengthMenu: 'Afficher _MENU_ lignes',
-                info: 'Affichage _START_ a _END_ sur _TOTAL_ stocks',
-                paginate: { previous: 'Precedent', next: 'Suivant' },
-                zeroRecords: 'Aucun stock dechets trouve'
-            }
-        });
-    }
-});
-</script>
+<section class="form-panel"><h3>Vente brute</h3><form method="post" action="<?=e(base_url('waste/sell'))?>" class="enterprise-form"><?=csrf_field()?><div class="form-grid"><label><span>Stock</span><select name="waste_stock_id"><?php foreach($stockLines as$l):if($l['quantity_kg']<=0)continue;?><option value="<?=$l['id']?>"><?=e(($l['waste_type_name']?:'Déchet').' — '.($l['batch_number']?:'-').' — '.$l['quantity_kg'].' kg')?></option><?php endforeach;?></select></label><label><span>Quantité kg</span><input type="number" step="0.001" min="0.001" name="quantity_kg"></label><label><span>Client</span><input name="customer_name" required></label><label><span>Prix unitaire</span><input type="number" step="0.0001" min="0" name="unit_price"></label></div><button class="btn-primary">Enregistrer vente</button></form></section>

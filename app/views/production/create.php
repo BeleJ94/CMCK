@@ -2,15 +2,19 @@
     <span class="hero-icon"><i class="bi bi-plus-circle"></i></span>
     <div>
         <p class="section-label">Nouvelle operation</p>
-        <h2>Valider une production farine</h2>
-        <p>Selectionnez un lot alimente, encodez le bon produit, les dechets et le rendement sera calcule automatiquement.</p>
+        <h2>Saisir les résultats de production</h2>
+        <p>La farine, chaque type de déchet et la perte sont saisis ou calculés séparément.</p>
     </div>
     <a href="<?= e(base_url('production')) ?>" class="page-action"><i class="bi bi-arrow-left"></i><span>Retour</span></a>
 </section>
 
 <?php if (!empty($errors)): ?><div class="app-alert app-alert-error"><i class="bi bi-exclamation-triangle"></i><span>Veuillez corriger les champs indiques.</span></div><?php endif; ?>
 
-<?php if (empty($pendingBatches)): ?>
+<?php if (!empty($siteRequired)): ?>
+    <div class="app-alert alert-info"><i class="bi bi-geo-alt"></i><span>Sélectionnez un site dans le menu avant de saisir une production.</span></div>
+<?php endif; ?>
+
+<?php if (empty($pendingBatches) && empty($siteRequired)): ?>
     <div class="app-alert app-alert-error"><i class="bi bi-info-circle"></i><span>Aucun lot en attente production. Creez d'abord une alimentation machine.</span></div>
 <?php endif; ?>
 
@@ -40,23 +44,22 @@
                 <input type="text" value="" disabled data-machine-name>
             </label>
             <label>
-                <span>Quantite traitee</span>
+                <span>Maïs réellement chargé</span>
                 <input type="text" value="" disabled data-treated-quantity>
             </label>
             <label>
-                <span>Quantite bon produit kg</span>
+                <span>Farine produite (kg)</span>
                 <input type="number" name="output_quantity_kg" min="0" step="0.001" value="<?= e($production['output_quantity_kg']) ?>" required data-good-quantity>
                 <?php if (!empty($errors['output_quantity_kg'])): ?><small><?= e($errors['output_quantity_kg']) ?></small><?php endif; ?>
             </label>
-            <label>
-                <span>Quantite dechets kg</span>
-                <input type="number" name="waste_quantity_kg" min="0" step="0.001" value="<?= e($production['waste_quantity_kg']) ?>" readonly required data-waste-quantity>
-                <?php if (!empty($errors['waste_quantity_kg'])): ?><small><?= e($errors['waste_quantity_kg']) ?></small><?php endif; ?>
-            </label>
+            <?php foreach($wasteTypes as $type):?><label><span><?=e($type['name'])?> (kg)</span><input type="number" name="waste_lines[<?=e($type['id'])?>]" min="0" step="0.001" value="<?=e($production['waste_lines'][$type['id']]??'0')?>" data-waste-line></label><?php endforeach;?>
             <label>
                 <span>Rendement</span>
                 <input type="text" value="0 %" disabled data-yield-rate>
             </label>
+            <label><span>Tolérance d’écart configurée</span><input type="text" value="<?=e(number_format($tolerance,3,',',' '))?> %" disabled></label>
+            <label><span>Écart calculé</span><input type="text" value="0 kg / 0 %" disabled data-variance></label>
+            <label class="form-wide"><span>Justification si hors tolérance</span><textarea name="variance_justification"><?=e($production['variance_justification'])?></textarea></label>
             <label>
                 <span>Date production</span>
                 <input type="datetime-local" name="ended_at" value="<?= e($production['ended_at']) ?>" required>
@@ -69,7 +72,7 @@
         </div>
         <div class="form-actions">
             <a href="<?= e(base_url('production')) ?>" class="btn-secondary"><i class="bi bi-arrow-left"></i><span>Annuler</span></a>
-            <button type="submit" class="btn-primary" <?= empty($pendingBatches) ? 'disabled' : '' ?>><i class="bi bi-check2-circle"></i><span>Valider production</span></button>
+            <button type="submit" class="btn-primary" <?= empty($pendingBatches) ? 'disabled' : '' ?>><i class="bi bi-save"></i><span>Soumettre les résultats</span></button>
         </div>
     </form>
 </section>

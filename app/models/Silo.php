@@ -6,6 +6,8 @@ class Silo extends Model
 
     public function allWithStats()
     {
+        $params = [];
+        $siteClause = Auth::siteClause('silos.site_id', $params);
         return $this->query(
             "SELECT silos.*,
                     products.name AS product_name,
@@ -15,13 +17,15 @@ class Silo extends Model
                     END AS fill_rate
              FROM silos
              LEFT JOIN products ON products.id = silos.product_id
-             WHERE silos.deleted_at IS NULL
-             ORDER BY silos.name ASC"
+             WHERE silos.deleted_at IS NULL{$siteClause}
+             ORDER BY silos.name ASC", $params
         )->fetchAll();
     }
 
     public function findDetailed($id)
     {
+        $params = ['id' => $id];
+        $siteClause = Auth::siteClause('silos.site_id', $params);
         return $this->query(
             "SELECT silos.*,
                     products.name AS product_name,
@@ -32,9 +36,9 @@ class Silo extends Model
              FROM silos
              LEFT JOIN products ON products.id = silos.product_id
              WHERE silos.id = :id
-               AND silos.deleted_at IS NULL
+               AND silos.deleted_at IS NULL{$siteClause}
              LIMIT 1",
-            ['id' => $id]
+            $params
         )->fetch();
     }
 
@@ -42,6 +46,7 @@ class Silo extends Model
     {
         $params = [];
         $where = "WHERE silo_movements.deleted_at IS NULL";
+        $where .= Auth::siteClause('silo_movements.site_id', $params);
 
         if ($siloId !== null) {
             $where .= " AND silo_movements.silo_id = :silo_id";
@@ -72,6 +77,7 @@ class Silo extends Model
         $where = "WHERE silo_movements.deleted_at IS NULL
                     AND silo_movements.movement_type = 'in'
                     AND silo_movements.weighing_id IS NOT NULL";
+        $where .= Auth::siteClause('silo_movements.site_id', $params);
 
         if ($siloId !== null) {
             $where .= " AND silo_movements.silo_id = :silo_id";
@@ -87,7 +93,7 @@ class Silo extends Model
              FROM silo_movements
              INNER JOIN silos ON silos.id = silo_movements.silo_id
              INNER JOIN weighings ON weighings.id = silo_movements.weighing_id
-             INNER JOIN suppliers ON suppliers.id = weighings.supplier_id
+             LEFT JOIN suppliers ON suppliers.id = weighings.supplier_id
              INNER JOIN trucks ON trucks.id = weighings.truck_id
              {$where}
              ORDER BY silo_movements.movement_at DESC",
@@ -99,6 +105,7 @@ class Silo extends Model
     {
         $params = [];
         $where = "WHERE machine_feeds.deleted_at IS NULL";
+        $where .= Auth::siteClause('machine_feeds.site_id', $params);
 
         if ($siloId !== null) {
             $where .= " AND machine_feeds.silo_id = :silo_id";

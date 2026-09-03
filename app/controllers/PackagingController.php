@@ -71,6 +71,7 @@ class PackagingController extends Controller
         return [
             'production_batch_id' => trim($_POST['production_batch_id'] ?? ''),
             'bag_format_id' => trim($_POST['bag_format_id'] ?? ''),
+            'packaging_item_id'=>trim($_POST['packaging_item_id']??''),
             'bags_count' => trim($_POST['bags_count'] ?? ''),
             'packaged_at' => trim($_POST['packaged_at'] ?? ''),
         ];
@@ -84,8 +85,8 @@ class PackagingController extends Controller
             $errors['production_batch_id'] = 'Le lot production est obligatoire.';
         }
 
-        if ($data['bag_format_id'] === '' || !ctype_digit((string) $data['bag_format_id'])) {
-            $errors['bag_format_id'] = 'Le format sac est obligatoire.';
+        if ($data['packaging_item_id'] === '' || !ctype_digit((string) $data['packaging_item_id'])) {
+            $errors['packaging_item_id'] = 'Le format de sac vide est obligatoire.';
         }
 
         if ($data['bags_count'] === '' || !ctype_digit((string) $data['bags_count']) || (int) $data['bags_count'] <= 0) {
@@ -96,9 +97,9 @@ class PackagingController extends Controller
             $errors['packaged_at'] = 'La date emballage est obligatoire.';
         }
 
-        if (empty($errors['production_batch_id']) && empty($errors['bag_format_id']) && empty($errors['bags_count'])) {
+        if (empty($errors['production_batch_id']) && empty($errors['packaging_item_id']) && empty($errors['bags_count'])) {
             $batch = $model->findBatch($data['production_batch_id']);
-            $format = $model->findBagFormat($data['bag_format_id']);
+            $formats=$model->bagFormats();$format=null;foreach($formats as$f){if((string)$f['packaging_item_id']===(string)$data['packaging_item_id']){$format=$f;break;}}
 
             if (!$batch) {
                 $errors['production_batch_id'] = 'Lot production introuvable ou sans quantite disponible.';
@@ -128,6 +129,7 @@ class PackagingController extends Controller
         return $old ?: [
             'production_batch_id' => '',
             'bag_format_id' => '',
+            'packaging_item_id'=>'',
             'bags_count' => '',
             'packaged_at' => date('Y-m-d\TH:i'),
         ];

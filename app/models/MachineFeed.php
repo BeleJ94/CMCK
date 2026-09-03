@@ -6,6 +6,8 @@ class MachineFeed extends Model
 
     public function allDetailed()
     {
+        $params = [];
+        $siteClause = Auth::siteClause('machine_feeds.site_id', $params);
         return $this->query(
             "SELECT machine_feeds.*,
                     silos.name AS silo_name,
@@ -15,7 +17,8 @@ class MachineFeed extends Model
                     users.name AS agent_name,
                     production_batches.id AS batch_id,
                     production_batches.batch_number,
-                    production_batches.status AS batch_status
+                    production_batches.status AS batch_status,
+                    bss.document_number AS bss_number
              FROM machine_feeds
              INNER JOIN silos ON silos.id = machine_feeds.silo_id
              INNER JOIN machines ON machines.id = machine_feeds.machine_id
@@ -23,13 +26,16 @@ class MachineFeed extends Model
              LEFT JOIN users ON users.id = machine_feeds.created_by
              LEFT JOIN production_batches ON production_batches.machine_feed_id = machine_feeds.id
                 AND production_batches.deleted_at IS NULL
-             WHERE machine_feeds.deleted_at IS NULL
-             ORDER BY machine_feeds.fed_at DESC"
+             LEFT JOIN documents bss ON bss.id=machine_feeds.bss_document_id AND bss.deleted_at IS NULL
+             WHERE machine_feeds.deleted_at IS NULL{$siteClause}
+             ORDER BY machine_feeds.fed_at DESC", $params
         )->fetchAll();
     }
 
     public function findDetailed($id)
     {
+        $params = ['id' => $id];
+        $siteClause = Auth::siteClause('machine_feeds.site_id', $params);
         return $this->query(
             "SELECT machine_feeds.*,
                     silos.name AS silo_name,
@@ -41,7 +47,8 @@ class MachineFeed extends Model
                     production_batches.input_quantity_kg,
                     production_batches.output_quantity_kg,
                     production_batches.waste_quantity_kg,
-                    production_batches.status AS batch_status
+                    production_batches.status AS batch_status,
+                    bss.document_number AS bss_number
              FROM machine_feeds
              INNER JOIN silos ON silos.id = machine_feeds.silo_id
              INNER JOIN machines ON machines.id = machine_feeds.machine_id
@@ -49,39 +56,47 @@ class MachineFeed extends Model
              LEFT JOIN users ON users.id = machine_feeds.created_by
              LEFT JOIN production_batches ON production_batches.machine_feed_id = machine_feeds.id
                 AND production_batches.deleted_at IS NULL
+             LEFT JOIN documents bss ON bss.id=machine_feeds.bss_document_id AND bss.deleted_at IS NULL
              WHERE machine_feeds.id = :id
-               AND machine_feeds.deleted_at IS NULL
+               AND machine_feeds.deleted_at IS NULL{$siteClause}
              LIMIT 1",
-            ['id' => $id]
+            $params
         )->fetch();
     }
 
     public function silosForSelect()
     {
+        $userId = Auth::user()['id'] ?? 0;
+        $accessClause = Auth::canViewConsolidated() ? '' : " AND EXISTS (SELECT 1 FROM user_sites us WHERE us.site_id = silos.site_id AND us.user_id = :user_id AND us.status = 'active' AND us.deleted_at IS NULL)";
+        $params = Auth::canViewConsolidated() ? [] : ['user_id' => $userId];
         return $this->query(
             "SELECT silos.id, silos.name, silos.code, silos.current_stock_kg, silos.product_id, products.name AS product_name
              FROM silos
              LEFT JOIN products ON products.id = silos.product_id
              WHERE silos.deleted_at IS NULL
-               AND silos.status IN ('active', 'validated')
-             ORDER BY silos.name ASC"
+               AND silos.status IN ('active', 'validated'){$accessClause}
+             ORDER BY silos.name ASC", $params
         )->fetchAll();
     }
 
     public function machinesForSelect()
     {
+        $params = [];
+        $siteClause = Auth::siteClause('site_id', $params);
         return $this->query(
-            "SELECT id, name, machine_type, capacity_kg_hour
+            "SELECT id, name, code, machine_type, capacity_kg_hour
              FROM machines
              WHERE deleted_at IS NULL
                AND status IN ('active', 'validated')
-               AND machine_type = 'main'
-             ORDER BY name ASC"
+               AND machine_type = 'main'{$siteClause}
+               AND (site_id<>(SELECT id FROM sites WHERE code='MINO' LIMIT 1) OR code IN('ROOF-1','ROOF-2','ROOF-3'))
+             ORDER BY name ASC", $params
         )->fetchAll();
     }
 
     public function createFeed(array $data, array $user)
     {
+        $operationSiteId = Auth::requireCurrentSite();
         $this->db->beginTransaction();
 
         try {
@@ -97,8 +112,20 @@ class MachineFeed extends Model
             if (!$silo) {
                 throw new RuntimeException('Silo source introuvable.');
             }
+            Auth::requireSiteAccess($silo['site_id']);
 
+            $machine = $this->query(
+                "SELECT * FROM machines WHERE id = :id AND site_id = :site_id AND machine_type = 'main'
+                 AND status IN ('active', 'validated') AND deleted_at IS NULL FOR UPDATE",
+                ['id' => $data['machine_id'], 'site_id' => $operationSiteId]
+            )->fetch();
+            if (!$machine) {
+                throw new RuntimeException('Machine principale introuvable sur le site courant.');
+            }
+
+            $authorized = (float) ($data['authorized_quantity_kg'] ?? $data['quantity_kg']);
             $quantity = (float) $data['quantity_kg'];
+            if ($authorized <= 0 || $quantity <= 0) { throw new RuntimeException('Les quantités autorisée et chargée doivent être positives.'); }
             $stockBefore = (float) $silo['current_stock_kg'];
 
             if ($quantity > $stockBefore) {
@@ -109,14 +136,14 @@ class MachineFeed extends Model
 
             $this->query(
                 "INSERT INTO silo_movements (
-                    silo_id, product_id, weighing_id, movement_type, quantity_kg,
+                    site_id, silo_id, product_id, weighing_id, movement_type, quantity_kg,
                     stock_before_kg, stock_after_kg, movement_at, status, created_by
                  ) VALUES (
-                    :silo_id, :product_id, NULL, 'out', :quantity_kg,
+                    :site_id, :silo_id, :product_id, NULL, 'out', :quantity_kg,
                     :stock_before_kg, :stock_after_kg, :movement_at, 'validated', :created_by
                  )",
                 [
-                    'silo_id' => $data['silo_id'],
+                    'site_id' => $silo['site_id'], 'silo_id' => $data['silo_id'],
                     'product_id' => $silo['product_id'],
                     'quantity_kg' => $quantity,
                     'stock_before_kg' => $stockBefore,
@@ -128,6 +155,9 @@ class MachineFeed extends Model
 
             $movementId = $this->db->lastInsertId();
 
+            require_once dirname(__DIR__) . '/services/DocumentService.php';
+            $bss = (new DocumentService($this->db))->register('BSS', $silo['site_id'], 'silo_movements', $movementId, 'validated', $data['fed_at'], $user);
+
             $this->query(
                 "UPDATE silos
                  SET current_stock_kg = :stock
@@ -137,18 +167,20 @@ class MachineFeed extends Model
 
             $this->query(
                 "INSERT INTO machine_feeds (
-                    machine_id, silo_id, product_id, silo_movement_id, quantity_kg,
+                    site_id, machine_id, silo_id, product_id, silo_movement_id, bss_document_id, quantity_kg, authorized_quantity_kg,
                     fed_at, ended_at, observation, status, created_by
                  ) VALUES (
-                    :machine_id, :silo_id, :product_id, :silo_movement_id, :quantity_kg,
+                    :site_id, :machine_id, :silo_id, :product_id, :silo_movement_id, :bss_document_id, :quantity_kg, :authorized_quantity_kg,
                     :fed_at, :ended_at, :observation, 'pending', :created_by
                  )",
                 [
-                    'machine_id' => $data['machine_id'],
+                    'site_id' => $operationSiteId, 'machine_id' => $data['machine_id'],
                     'silo_id' => $data['silo_id'],
                     'product_id' => $silo['product_id'],
                     'silo_movement_id' => $movementId,
+                    'bss_document_id' => $bss['id'],
                     'quantity_kg' => $quantity,
+                    'authorized_quantity_kg' => $authorized,
                     'fed_at' => $data['fed_at'],
                     'ended_at' => $data['ended_at'] ?: null,
                     'observation' => $data['observation'] ?: null,
@@ -160,18 +192,19 @@ class MachineFeed extends Model
 
             $this->query(
                 "INSERT INTO production_batches (
-                    machine_feed_id, product_id, batch_number, input_quantity_kg,
+                    site_id, machine_feed_id, product_id, batch_number, input_quantity_kg, actual_input_quantity_kg,
                     output_quantity_kg, waste_quantity_kg, started_at, ended_at,
                     status, created_by
                  ) VALUES (
-                    :machine_feed_id, :product_id, :batch_number, :input_quantity_kg,
-                    0, 0, :started_at, :ended_at, 'pending', :created_by
+                    :site_id, :machine_feed_id, :product_id, :batch_number, :input_quantity_kg, :actual_input_quantity_kg,
+                    0, 0, :started_at, :ended_at, 'in_progress', :created_by
                  )",
                 [
-                    'machine_feed_id' => $feedId,
+                    'site_id' => $operationSiteId, 'machine_feed_id' => $feedId,
                     'product_id' => $silo['product_id'],
                     'batch_number' => $this->batchNumber(),
                     'input_quantity_kg' => $quantity,
+                    'actual_input_quantity_kg' => $quantity,
                     'started_at' => $data['fed_at'],
                     'ended_at' => $data['ended_at'] ?: null,
                     'created_by' => $user['id'] ?? null,
@@ -196,7 +229,7 @@ class MachineFeed extends Model
                 $batchId,
                 'Creation lot de production depuis alimentation machine.',
                 null,
-                ['machine_feed_id' => $feedId, 'input_quantity_kg' => $quantity, 'status' => 'pending'],
+                ['machine_feed_id' => $feedId, 'input_quantity_kg' => $quantity, 'status' => 'in_progress'],
                 $user
             );
 

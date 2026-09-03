@@ -6,12 +6,14 @@ class Distribution extends Model
 
     public function availableStocks()
     {
+        $params = [];
+        $siteClause = Auth::siteClause('finished_stocks.site_id', $params);
         return $this->query(
             "SELECT finished_stocks.id,
                     finished_stocks.product_id,
                     finished_stocks.bag_format_id,
-                    finished_stocks.quantity_bags,
-                    finished_stocks.total_weight_kg,
+                    finished_stocks.quantity_bags - finished_stocks.reserved_bags AS quantity_bags,
+                    finished_stocks.total_weight_kg - finished_stocks.reserved_weight_kg AS total_weight_kg,
                     products.name AS product_name,
                     products.code AS product_code,
                     bag_formats.name AS format_name,
@@ -21,15 +23,17 @@ class Distribution extends Model
              INNER JOIN bag_formats ON bag_formats.id = finished_stocks.bag_format_id
              WHERE finished_stocks.deleted_at IS NULL
                AND finished_stocks.status IN ('active', 'validated')
-               AND finished_stocks.quantity_bags > 0
-               AND finished_stocks.total_weight_kg > 0
-               AND products.code IN ('FARINE-MAIS', 'ALIMENT-BETAIL')
-             ORDER BY products.name ASC, bag_formats.weight_kg ASC, finished_stocks.created_at ASC"
+               AND finished_stocks.quantity_bags - finished_stocks.reserved_bags > 0
+               AND finished_stocks.total_weight_kg - finished_stocks.reserved_weight_kg > 0
+               AND products.code IN ('FARINE-MAIS', 'ALIMENT-BETAIL'){$siteClause}
+             ORDER BY products.name ASC, bag_formats.weight_kg ASC, finished_stocks.created_at ASC", $params
         )->fetchAll();
     }
 
     public function history()
     {
+        $params = [];
+        $siteClause = Auth::siteClause('distributions.site_id', $params);
         return $this->query(
             "SELECT distributions.*,
                     products.name AS product_name,
@@ -37,19 +41,23 @@ class Distribution extends Model
                     bag_formats.name AS format_name,
                     bag_formats.weight_kg,
                     users.name AS agent_name,
-                    validators.name AS validator_name
+                    validators.name AS validator_name,
+                    official_document.document_number AS official_document_number
              FROM distributions
              INNER JOIN products ON products.id = distributions.product_id
              INNER JOIN bag_formats ON bag_formats.id = distributions.bag_format_id
              LEFT JOIN users ON users.id = distributions.created_by
              LEFT JOIN users validators ON validators.id = distributions.validated_by
-             WHERE distributions.deleted_at IS NULL
-             ORDER BY distributions.distributed_at DESC, distributions.id DESC"
+             LEFT JOIN documents official_document ON official_document.entity_type='distributions' AND official_document.entity_id=distributions.id AND official_document.document_type_id=(SELECT id FROM document_types WHERE code='BS' LIMIT 1) AND official_document.deleted_at IS NULL
+             WHERE distributions.deleted_at IS NULL{$siteClause}
+             ORDER BY distributions.distributed_at DESC, distributions.id DESC", $params
         )->fetchAll();
     }
 
     public function findDetailed($id)
     {
+        $params = ['id' => $id];
+        $siteClause = Auth::siteClause('distributions.site_id', $params);
         return $this->query(
             "SELECT distributions.*,
                     products.name AS product_name,
@@ -57,16 +65,21 @@ class Distribution extends Model
                     bag_formats.name AS format_name,
                     bag_formats.weight_kg,
                     users.name AS agent_name,
-                    validators.name AS validator_name
+                    validators.name AS validator_name,
+                    official_document.document_number AS official_document_number
              FROM distributions
              INNER JOIN products ON products.id = distributions.product_id
              INNER JOIN bag_formats ON bag_formats.id = distributions.bag_format_id
              LEFT JOIN users ON users.id = distributions.created_by
              LEFT JOIN users validators ON validators.id = distributions.validated_by
+             LEFT JOIN documents official_document ON official_document.entity_type = 'distributions'
+                AND official_document.entity_id = distributions.id
+                AND official_document.document_type_id = (SELECT id FROM document_types WHERE code = 'BS' LIMIT 1)
+                AND official_document.deleted_at IS NULL
              WHERE distributions.id = :id
-               AND distributions.deleted_at IS NULL
+               AND distributions.deleted_at IS NULL{$siteClause}
              LIMIT 1",
-            ['id' => $id]
+            $params
         )->fetch();
     }
 
@@ -80,11 +93,12 @@ class Distribution extends Model
             if (!$stock) {
                 throw new RuntimeException('Stock produit fini introuvable.');
             }
+            Auth::requireSiteAccess($stock['site_id']);
 
             $bags = (int) $data['quantity_bags'];
             $totalWeight = (float) $stock['weight_kg'] * $bags;
 
-            if ($bags > (int) $stock['quantity_bags'] || $totalWeight > (float) $stock['total_weight_kg']) {
+            if ($bags > (int) $stock['available_bags'] || $totalWeight > (float) $stock['available_weight_kg']) {
                 throw new RuntimeException('Impossible de sortir plus que le stock disponible.');
             }
 
@@ -92,16 +106,16 @@ class Distribution extends Model
 
             $this->query(
                 "INSERT INTO distributions (
-                    finished_stock_id, product_id, bag_format_id, recipient_name,
+                    site_id, finished_stock_id, product_id, bag_format_id, recipient_name,
                     transporter, exit_voucher, quantity_bags, total_weight_kg,
                     distributed_at, status, created_by, validated_by
                  ) VALUES (
-                    :finished_stock_id, :product_id, :bag_format_id, :recipient_name,
+                    :site_id, :finished_stock_id, :product_id, :bag_format_id, :recipient_name,
                     :transporter, :exit_voucher, :quantity_bags, :total_weight_kg,
                     :distributed_at, 'validated', :created_by, :validated_by
                  )",
                 [
-                    'finished_stock_id' => $stock['id'],
+                    'site_id' => $stock['site_id'], 'finished_stock_id' => $stock['id'],
                     'product_id' => $stock['product_id'],
                     'bag_format_id' => $stock['bag_format_id'],
                     'recipient_name' => $data['recipient_name'],
@@ -116,6 +130,9 @@ class Distribution extends Model
             );
 
             $distributionId = $this->db->lastInsertId();
+
+            require_once dirname(__DIR__) . '/services/DocumentService.php';
+            (new DocumentService($this->db))->register('BS', $stock['site_id'], 'distributions', $distributionId, 'validated', $data['distributed_at'], $user);
 
             $this->query(
                 "UPDATE finished_stocks
@@ -135,21 +152,21 @@ class Distribution extends Model
                 ]
             );
 
-            $stockBefore = $this->latestProductStock($stock['product_id']);
+            $stockBefore = $this->latestProductStock($stock['product_id'], $stock['site_id']);
             $stockAfter = max($stockBefore - $totalWeight, 0);
 
             $this->query(
                 "INSERT INTO stock_movements (
-                    product_id, finished_stock_id, distribution_id, movement_type,
+                    site_id, product_id, finished_stock_id, distribution_id, movement_type,
                     quantity_bags, quantity_kg, stock_before_kg, stock_after_kg,
                     movement_at, status, created_by
                  ) VALUES (
-                    :product_id, :finished_stock_id, :distribution_id, 'out',
+                    :site_id, :product_id, :finished_stock_id, :distribution_id, 'out',
                     :quantity_bags, :quantity_kg, :stock_before_kg, :stock_after_kg,
                     :movement_at, 'validated', :created_by
                  )",
                 [
-                    'product_id' => $stock['product_id'],
+                    'site_id' => $stock['site_id'], 'product_id' => $stock['product_id'],
                     'finished_stock_id' => $stock['id'],
                     'distribution_id' => $distributionId,
                     'quantity_bags' => $bags,
@@ -207,6 +224,8 @@ class Distribution extends Model
     {
         return $this->query(
             "SELECT finished_stocks.*,
+                    finished_stocks.quantity_bags - finished_stocks.reserved_bags AS available_bags,
+                    finished_stocks.total_weight_kg - finished_stocks.reserved_weight_kg AS available_weight_kg,
                     products.name AS product_name,
                     bag_formats.name AS format_name,
                     bag_formats.weight_kg
@@ -222,16 +241,16 @@ class Distribution extends Model
         )->fetch();
     }
 
-    private function latestProductStock($productId)
+    private function latestProductStock($productId, $siteId)
     {
         $row = $this->query(
             "SELECT stock_after_kg
              FROM stock_movements
-             WHERE product_id = :product_id
+             WHERE product_id = :product_id AND site_id = :site_id
                AND deleted_at IS NULL
              ORDER BY movement_at DESC, id DESC
              LIMIT 1",
-            ['product_id' => $productId]
+            ['product_id' => $productId, 'site_id' => $siteId]
         )->fetch();
 
         return $row ? (float) $row['stock_after_kg'] : 0;

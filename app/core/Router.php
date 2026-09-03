@@ -22,6 +22,7 @@ class Router
             'handler' => $handler,
             'auth' => $options['auth'] ?? false,
             'roles' => $options['roles'] ?? [],
+            'permission' => $options['permission'] ?? null,
         ];
     }
 
@@ -44,10 +45,9 @@ class Router
                     Auth::requireLogin();
                 }
 
-                if (!empty($route['roles']) && !Auth::hasRole($route['roles'])) {
-                    http_response_code(403);
-                    echo '403 - Acces refuse';
-                    return null;
+                $permission = $route['permission'] ?: $this->inferPermission($route, $method);
+                if ($route['auth'] && $permission && !Auth::can($permission[0], $permission[1])) {
+                    http_response_code(403); echo '403 - Acces refuse'; return null;
                 }
 
                 return $this->execute($route['handler'], $params);
@@ -56,6 +56,20 @@ class Router
 
         http_response_code(404);
         echo '404 - Page introuvable';
+    }
+
+    private function inferPermission(array $route, $method)
+    {
+        if (!is_string($route['handler']) || strpos($route['handler'], '@') === false) { return null; }
+        list($controller, $action) = explode('@', $route['handler'], 2);
+        $components = ['Dashboard'=>'dashboard','Report'=>'reports','Analytics'=>'analytics','Traceability'=>'traceability','Cancellation'=>'cancellations','Supplier'=>'suppliers','Truck'=>'trucks','Weighing'=>'weighings','WeighbridgeTransport'=>'weighings','Agriculture'=>'agriculture','Livestock'=>'livestock','Butchery'=>'butchery','Budget'=>'budgets','FuelLogistics'=>'fuel-logistics','Silo'=>'silos','Machine'=>'machines','MachineFeed'=>'machine-feeds','Production'=>'production','Waste'=>'waste','Pelletization'=>'pelletization','Packaging'=>'packaging','EmptyPackaging'=>'empty-packaging','FinishedStock'=>'finished-stocks','Distribution'=>'distributions','Transfer'=>'transfers','Alert'=>'alerts','ActivityLog'=>'activity-logs','Site'=>'sites','AccessControl'=>'rbac','Document'=>'documents'];
+        if (!isset($components[$controller]) || $action === 'selectContext') { return null; }
+        $permissionAction = strtoupper($method) === 'GET' ? 'read' : 'create';
+        if (preg_match('/validate/i', $action)) { $permissionAction = 'validate'; }
+        elseif (preg_match('/update|toggle|mark/i', $action)) { $permissionAction = 'update'; }
+        elseif (preg_match('/destroy|delete|revoke|reject/i', $action)) { $permissionAction = 'delete'; }
+        elseif (in_array($action, ['assign', 'approve', 'storeAssignment', 'updatePermissions'], true)) { $permissionAction = 'administer'; }
+        return [$components[$controller], $permissionAction];
     }
 
     private function matches($routePath, $requestPath, array &$params)

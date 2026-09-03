@@ -7,12 +7,14 @@
     </div>
     <a href="<?= e(base_url('production')) ?>" class="page-action"><i class="bi bi-arrow-left"></i><span>Retour</span></a>
 </section>
+<?php if(in_array($batch['status'],['results_submitted','pending_additional_approval'],true)):?><form method="post" action="<?=e(base_url('production/'.$batch['id'].'/validate'))?>" class="form-actions"><?=csrf_field()?><button class="btn-primary"><i class="bi bi-check2-circle"></i><span><?=e($batch['status']==='pending_additional_approval'?'Approuver l’écart et valider':'Valider la production')?></span></button></form><?php endif;?>
 
 <section class="metric-grid">
     <article class="metric-card"><div class="metric-card-top"><span>Quantite traitee</span><span class="metric-icon tone-blue"><i class="bi bi-arrow-down-up"></i></span></div><strong><?= e(number_format((float) $batch['input_quantity_kg'], 0, ',', ' ')) ?> kg</strong></article>
     <article class="metric-card"><div class="metric-card-top"><span>Bon produit</span><span class="metric-icon tone-green"><i class="bi bi-box-seam"></i></span></div><strong><?= e(number_format((float) $batch['output_quantity_kg'], 0, ',', ' ')) ?> kg</strong></article>
     <article class="metric-card"><div class="metric-card-top"><span>Dechets</span><span class="metric-icon tone-orange"><i class="bi bi-recycle"></i></span></div><strong><?= e(number_format((float) $batch['waste_quantity_kg'], 0, ',', ' ')) ?> kg</strong></article>
     <article class="metric-card"><div class="metric-card-top"><span>Rendement</span><span class="metric-icon tone-red"><i class="bi bi-speedometer2"></i></span></div><strong><?= e(number_format($yield, 1, ',', ' ')) ?>%</strong></article>
+    <article class="metric-card"><div class="metric-card-top"><span>Écart matière</span><span class="metric-icon tone-orange"><i class="bi bi-exclamation-diamond"></i></span></div><strong><?=e(number_format((float)$batch['variance_quantity_kg'],3,',',' '))?> kg / <?=e(number_format((float)$batch['variance_percent'],3,',',' '))?>%</strong></article>
 </section>
 
 <?php if ($batch['status'] === 'pending'): ?>
@@ -26,10 +28,14 @@
             <tbody>
                 <tr><th>Lot traitement</th><td><strong><?= e($batch['batch_number']) ?></strong></td></tr>
                 <tr><th>Machine</th><td><?= e($batch['machine_name']) ?></td></tr>
+                <tr><th>BSS</th><td><?=e($batch['bss_number']?:'-')?></td></tr><tr><th>Silo source</th><td><?=e($batch['silo_name'])?></td></tr>
+                <tr><th>Maïs autorisé / chargé</th><td><?=e(number_format((float)$batch['authorized_quantity_kg'],3,',',' '))?> / <?=e(number_format((float)$batch['actual_input_quantity_kg'],3,',',' '))?> kg</td></tr>
                 <tr><th>Produit stocke</th><td><?= e($batch['product_name']) ?></td></tr>
                 <tr><th>Quantite traitee</th><td><?= e(number_format((float) $batch['input_quantity_kg'], 3, ',', ' ')) ?> kg</td></tr>
                 <tr><th>Quantite bon produit</th><td><?= e(number_format((float) $batch['output_quantity_kg'], 3, ',', ' ')) ?> kg</td></tr>
                 <tr><th>Quantite dechets</th><td><?= e(number_format((float) $batch['waste_quantity_kg'], 3, ',', ' ')) ?> kg</td></tr>
+                <?php foreach($batch['waste_lines'] as$line):?><tr><th>Déchet — <?=e($line['name'])?></th><td><?=e(number_format((float)$line['quantity_kg'],3,',',' '))?> kg</td></tr><?php endforeach;?>
+                <tr><th>Tolérance / justification</th><td><?=e($batch['variance_tolerance_percent'])?>% — <?=e($batch['variance_justification']?:'-')?></td></tr>
                 <tr><th>Rendement</th><td><?= e(number_format($yield, 2, ',', ' ')) ?>%</td></tr>
                 <tr><th>Date debut</th><td><?= e($batch['started_at'] ?: '-') ?></td></tr>
                 <tr><th>Date production</th><td><?= e($batch['ended_at'] ?: '-') ?></td></tr>

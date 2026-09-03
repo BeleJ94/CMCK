@@ -11,6 +11,7 @@ class ProductionController extends Controller
             'batches' => $model->allDetailed(),
             'success' => flash('success'),
             'error' => flash('error'),
+            'tolerance'=>$model->tolerance(),
         ], 'layouts.main');
     }
 
@@ -21,8 +22,11 @@ class ProductionController extends Controller
         $this->view('production.create', [
             'title' => 'Nouvelle production',
             'pendingBatches' => $model->pendingForSelect(),
+            'wasteTypes'=>$model->wasteTypes(),
             'production' => $this->old(),
             'errors' => flash('errors') ?: [],
+            'tolerance'=>$model->tolerance(),
+            'siteRequired'=>Auth::currentSiteId() === null,
         ], 'layouts.main');
     }
 
@@ -31,7 +35,7 @@ class ProductionController extends Controller
         $this->ensureCsrf('production/create');
         $model = $this->model('ProductionBatch');
         $data = $this->input();
-        $data = $this->withCalculatedWaste($data, $model);
+        $data['variance_tolerance_percent']=$model->tolerance();
         $errors = $this->validate($data, $model);
 
         if (!empty($errors)) {
@@ -41,8 +45,8 @@ class ProductionController extends Controller
         }
 
         try {
-            $model->validateProduction($data, Auth::user());
-            flash('success', 'Production farine validee avec succes.');
+            $model->submitResults($data, Auth::user());
+            flash('success', 'Résultats enregistrés. Le lot attend une validation indépendante.');
             redirect('production/' . $data['production_batch_id']);
         } catch (Exception $exception) {
             flash('error', $exception->getMessage());
@@ -67,12 +71,30 @@ class ProductionController extends Controller
         ], 'layouts.main');
     }
 
+    public function validateBatch($id)
+    {
+        $this->ensureCsrf('production/'.$id);
+        try{$this->model('ProductionBatch')->validateProduction(['production_batch_id'=>$id],Auth::user());flash('success','Production validée; farine et déchets sont disponibles.');}
+        catch(Exception$e){flash('error',$e->getMessage());}
+        redirect('production/'.$id);
+    }
+
+    public function updateTolerance()
+    {
+        $this->ensureCsrf('production');
+        try{$this->model('ProductionBatch')->updateTolerance($_POST['tolerance_percent']??'',Auth::user());flash('success','Tolérance de production mise à jour.');}catch(Exception$e){flash('error',$e->getMessage());}
+        redirect('production');
+    }
+
     private function input()
     {
         return [
             'production_batch_id' => trim($_POST['production_batch_id'] ?? ''),
             'output_quantity_kg' => trim($_POST['output_quantity_kg'] ?? ''),
             'waste_quantity_kg' => trim($_POST['waste_quantity_kg'] ?? ''),
+            'waste_lines'=>is_array($_POST['waste_lines']??null)?$_POST['waste_lines']:[],
+            'variance_tolerance_percent'=>'2',
+            'variance_justification'=>trim($_POST['variance_justification']??''),
             'ended_at' => trim($_POST['ended_at'] ?? ''),
         ];
     }
@@ -97,42 +119,20 @@ class ProductionController extends Controller
             $errors['production_batch_id'] = 'Ce lot est deja valide.';
         }
 
-        foreach (['output_quantity_kg' => 'quantite bon produit', 'waste_quantity_kg' => 'quantite dechets'] as $field => $label) {
+        foreach (['output_quantity_kg' => 'quantite de farine'] as $field => $label) {
             if ($data[$field] === '' || !is_numeric($data[$field]) || (float) $data[$field] < 0) {
                 $errors[$field] = 'La ' . $label . ' est obligatoire et positive.';
             }
         }
 
-        if (empty($errors['output_quantity_kg']) && empty($errors['waste_quantity_kg'])) {
-            if ((float) $data['output_quantity_kg'] + (float) $data['waste_quantity_kg'] > (float) $batch['input_quantity_kg']) {
-                $errors['output_quantity_kg'] = 'Bon produit + dechets ne doit pas depasser la quantite traitee.';
-            }
-        }
+        foreach($data['waste_lines'] as$type=>$qty){if(!ctype_digit((string)$type)||!is_numeric($qty)||(float)$qty<0){$errors['waste_lines']='Les quantités de déchets doivent être positives.';}}
+        if(!is_numeric($data['variance_tolerance_percent'])||(float)$data['variance_tolerance_percent']<0){$errors['variance_tolerance_percent']='Tolérance invalide.';}
 
         if ($data['ended_at'] === '') {
             $errors['ended_at'] = 'La date de production est obligatoire.';
         }
 
         return $errors;
-    }
-
-    private function withCalculatedWaste(array $data, ProductionBatch $model)
-    {
-        if ($data['production_batch_id'] === '' || !ctype_digit((string) $data['production_batch_id']) || !is_numeric($data['output_quantity_kg'])) {
-            return $data;
-        }
-
-        $batch = $model->findDetailed($data['production_batch_id']);
-
-        if (!$batch) {
-            return $data;
-        }
-
-        $treated = (float) $batch['input_quantity_kg'];
-        $good = (float) $data['output_quantity_kg'];
-        $data['waste_quantity_kg'] = (string) max($treated - $good, 0);
-
-        return $data;
     }
 
     private function old()
@@ -145,6 +145,9 @@ class ProductionController extends Controller
             'production_batch_id' => '',
             'output_quantity_kg' => '',
             'waste_quantity_kg' => '',
+            'waste_lines'=>[],
+            'variance_tolerance_percent'=>'2',
+            'variance_justification'=>'',
             'ended_at' => date('Y-m-d\TH:i'),
         ];
     }

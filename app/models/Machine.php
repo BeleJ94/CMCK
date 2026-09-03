@@ -6,6 +6,8 @@ class Machine extends Model
 
     public function allWithPerformance()
     {
+        $params = [];
+        $siteClause = Auth::siteClause('machines.site_id', $params);
         return $this->query(
             "SELECT machines.*,
                     COALESCE(SUM(machine_feeds.quantity_kg), 0) AS fed_quantity_kg,
@@ -21,30 +23,33 @@ class Machine extends Model
                 AND machine_feeds.deleted_at IS NULL
              LEFT JOIN production_batches ON production_batches.machine_feed_id = machine_feeds.id
                 AND production_batches.deleted_at IS NULL
-             WHERE machines.deleted_at IS NULL
+             WHERE machines.deleted_at IS NULL{$siteClause}
              GROUP BY machines.id
-             ORDER BY machines.name ASC"
+             ORDER BY machines.name ASC", $params
         )->fetchAll();
     }
 
     public function findActive($id)
     {
+        $params = ['id' => $id];
+        $siteClause = Auth::siteClause('site_id', $params);
         return $this->query(
             "SELECT id, name, code, machine_type, capacity_kg_hour, status
              FROM machines
-             WHERE id = :id AND deleted_at IS NULL
+             WHERE id = :id AND deleted_at IS NULL{$siteClause}
              LIMIT 1",
-            ['id' => $id]
+            $params
         )->fetch();
     }
 
     public function createMachine(array $data)
     {
+        $siteId = Auth::requireCurrentSite();
         $this->query(
-            "INSERT INTO machines (name, code, machine_type, capacity_kg_hour, status)
-             VALUES (:name, :code, :machine_type, :capacity_kg_hour, :status)",
+            "INSERT INTO machines (site_id, name, code, machine_type, capacity_kg_hour, status)
+             VALUES (:site_id, :name, :code, :machine_type, :capacity_kg_hour, :status)",
             [
-                'name' => $data['name'],
+                'site_id' => $siteId, 'name' => $data['name'],
                 'code' => $this->uniqueCode($data['name']),
                 'machine_type' => $data['machine_type'],
                 'capacity_kg_hour' => $data['capacity_kg_hour'] ?: null,
@@ -57,30 +62,31 @@ class Machine extends Model
 
     public function updateMachine($id, array $data)
     {
+        $params = [
+            'name' => $data['name'], 'machine_type' => $data['machine_type'],
+            'capacity_kg_hour' => $data['capacity_kg_hour'] ?: null, 'status' => $data['status'], 'id' => $id,
+        ];
+        $siteClause = Auth::siteClause('site_id', $params);
         $this->query(
             "UPDATE machines
              SET name = :name,
                  machine_type = :machine_type,
                  capacity_kg_hour = :capacity_kg_hour,
                  status = :status
-             WHERE id = :id AND deleted_at IS NULL",
-            [
-                'name' => $data['name'],
-                'machine_type' => $data['machine_type'],
-                'capacity_kg_hour' => $data['capacity_kg_hour'] ?: null,
-                'status' => $data['status'],
-                'id' => $id,
-            ]
+             WHERE id = :id AND deleted_at IS NULL{$siteClause}",
+            $params
         );
     }
 
     public function toggleStatus($id)
     {
+        $params = ['id' => $id];
+        $siteClause = Auth::siteClause('site_id', $params);
         $this->query(
             "UPDATE machines
              SET status = CASE WHEN status = 'active' THEN 'inactive' ELSE 'active' END
-             WHERE id = :id AND deleted_at IS NULL",
-            ['id' => $id]
+             WHERE id = :id AND deleted_at IS NULL{$siteClause}",
+            $params
         );
     }
 

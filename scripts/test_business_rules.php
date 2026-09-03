@@ -14,6 +14,7 @@ require dirname(__DIR__) . '/app/models/FinishedStock.php';
 require dirname(__DIR__) . '/app/models/ReportModel.php';
 
 Auth::start();
+ob_start();
 
 $_SERVER['REMOTE_ADDR'] = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
 $_SERVER['HTTP_USER_AGENT'] = 'BusinessRuleTest';
@@ -25,6 +26,8 @@ $user = [
     'email' => 'test@dagril-erp.local',
     'role_slug' => 'administrateur',
 ];
+$_SESSION['user'] = $user;
+unset($_SESSION['current_site_id']);
 $ids = [
     'stock_movements' => [],
     'distributions' => [],
@@ -76,6 +79,36 @@ function assert_near($actual, $expected, $message, $epsilon = 0.001)
 function cleanup(PDO $db, array $ids)
 {
     run_query($db, "DELETE FROM activity_logs WHERE user_agent = 'BusinessRuleTest'");
+    if (!empty($ids['machine_feeds'])) {
+        $feedPlaceholders = implode(',', array_fill(0, count($ids['machine_feeds']), '?'));
+        run_query($db, "UPDATE machine_feeds SET bss_document_id=NULL WHERE id IN ({$feedPlaceholders})", array_values(array_unique($ids['machine_feeds'])));
+    }
+    foreach (['weighings', 'production_batches', 'distributions', 'silo_movements'] as $entityType) {
+        if (empty($ids[$entityType])) { continue; }
+        $placeholders = implode(',', array_fill(0, count($ids[$entityType]), '?'));
+        $documentIds = run_query($db, "SELECT id FROM documents WHERE entity_type = ? AND entity_id IN ({$placeholders})", array_merge([$entityType], array_values(array_unique($ids[$entityType]))))->fetchAll(PDO::FETCH_COLUMN);
+        if ($documentIds) {
+            $docPlaceholders = implode(',', array_fill(0, count($documentIds), '?'));
+            $workflowIds = run_query($db, "SELECT id FROM workflow_instances WHERE document_id IN ({$docPlaceholders})", $documentIds)->fetchAll(PDO::FETCH_COLUMN);
+            if ($workflowIds) {
+                $workflowPlaceholders = implode(',', array_fill(0, count($workflowIds), '?'));
+                foreach (['workflow_notifications', 'workflow_level_approvals', 'workflow_transitions'] as $workflowTable) {
+                    run_query($db, "DELETE FROM {$workflowTable} WHERE workflow_instance_id IN ({$workflowPlaceholders})", $workflowIds);
+                }
+                run_query($db, "DELETE FROM workflow_instances WHERE id IN ({$workflowPlaceholders})", $workflowIds);
+            }
+            run_query($db, "DELETE FROM document_status_history WHERE document_id IN ({$docPlaceholders})", $documentIds);
+            run_query($db, "DELETE FROM document_attachments WHERE document_id IN ({$docPlaceholders})", $documentIds);
+            run_query($db, "DELETE FROM documents WHERE id IN ({$docPlaceholders})", $documentIds);
+        }
+    }
+
+    if (!empty($ids['production_batches'])) {
+        $batchPlaceholders = implode(',', array_fill(0, count($ids['production_batches']), '?'));
+        run_query($db, "DELETE FROM bulk_flour_stock_movements WHERE production_batch_id IN ({$batchPlaceholders})", array_values(array_unique($ids['production_batches'])));
+        run_query($db, "DELETE FROM bulk_flour_stocks WHERE production_batch_id IN ({$batchPlaceholders})", array_values(array_unique($ids['production_batches'])));
+        run_query($db, "DELETE FROM production_waste_lines WHERE production_batch_id IN ({$batchPlaceholders})", array_values(array_unique($ids['production_batches'])));
+    }
 
     foreach ([
         'stock_movements',
@@ -108,8 +141,12 @@ try {
     $wasteProductId = (int) scalar($db, "SELECT id FROM products WHERE code = 'DECHETS-MAIS' LIMIT 1");
     $animalFeedId = (int) scalar($db, "SELECT id FROM products WHERE code = 'ALIMENT-BETAIL' LIMIT 1");
     $bagFormatId = (int) scalar($db, "SELECT id FROM bag_formats WHERE weight_kg = 25 LIMIT 1");
+    $siloSiteId = (int) scalar($db, "SELECT id FROM sites WHERE code = 'SILO' LIMIT 1");
+    $minoSiteId = (int) scalar($db, "SELECT id FROM sites WHERE code = 'MINO' LIMIT 1");
+    $pellSiteId = (int) scalar($db, "SELECT id FROM sites WHERE code = 'PELL' LIMIT 1");
+    $validator = run_query($db, "SELECT u.id,u.name,u.email,r.slug role_slug FROM users u INNER JOIN roles r ON r.id=u.role_id WHERE r.slug IN ('direction','administrateur') AND u.id<>? AND u.status='active' AND u.deleted_at IS NULL ORDER BY FIELD(r.slug,'direction','administrateur') LIMIT 1", [$user['id']])->fetch();
 
-    foreach ([$rawProductId, $flourProductId, $wasteProductId, $animalFeedId, $bagFormatId] as $requiredId) {
+    foreach ([$rawProductId, $flourProductId, $wasteProductId, $animalFeedId, $bagFormatId, $siloSiteId, $minoSiteId, $pellSiteId, $validator['id'] ?? 0] as $requiredId) {
         if ($requiredId <= 0) {
             throw new RuntimeException('Donnees de reference manquantes.');
         }
@@ -123,18 +160,19 @@ try {
     $truckId = (int) $db->lastInsertId();
     $ids['trucks'][] = $truckId;
 
-    run_query($db, "INSERT INTO silos (name, code, product_id, capacity_kg, current_stock_kg, alert_threshold_kg, status) VALUES ('TST Silo QA', 'TST-SILO-QA', ?, 10000, 1000, 100, 'active')", [$rawProductId]);
+    run_query($db, "INSERT INTO silos (site_id, name, code, product_id, capacity_kg, current_stock_kg, alert_threshold_kg, status) VALUES (?, 'TST Silo QA', 'TST-SILO-QA', ?, 10000, 1000, 100, 'active')", [$siloSiteId, $rawProductId]);
     $siloId = (int) $db->lastInsertId();
     $ids['silos'][] = $siloId;
 
-    run_query($db, "INSERT INTO machines (name, code, machine_type, capacity_kg_hour, status) VALUES ('TST Mill QA', 'TST-MILL-QA', 'main', 1000, 'active')");
+    run_query($db, "INSERT INTO machines (site_id, name, code, machine_type, capacity_kg_hour, status) VALUES (?, 'TST Mill QA', 'TST-MILL-QA', 'main', 1000, 'active')", [$minoSiteId]);
     $machineId = (int) $db->lastInsertId();
     $ids['machines'][] = $machineId;
 
-    run_query($db, "INSERT INTO machines (name, code, machine_type, capacity_kg_hour, status) VALUES ('TST Waste QA', 'TST-WASTE-QA', 'waste', 500, 'active')");
+    run_query($db, "INSERT INTO machines (site_id, name, code, machine_type, capacity_kg_hour, status) VALUES (?, 'TST Waste QA', 'TST-WASTE-QA', 'waste', 500, 'active')", [$pellSiteId]);
     $wasteMachineId = (int) $db->lastInsertId();
     $ids['machines'][] = $wasteMachineId;
 
+    Auth::selectSite((string) $siloSiteId);
     $weighingModel = new Weighing();
     $encodedWeighingId = $weighingModel->createEntry([
         'supplier_id' => $supplierId,
@@ -150,7 +188,7 @@ try {
     assert_true($encodedTruckId > 0, 'Reception cree le camion encode si la plaque est nouvelle');
     assert_true((int) scalar($db, 'SELECT truck_id FROM weighings WHERE id = ?', [$encodedWeighingId]) === $encodedTruckId, 'Reception lie la pesee au camion encode');
 
-    run_query($db, "INSERT INTO weighings (supplier_id, truck_id, product_id, reference, poids_brut, poids_tare, poids_net, weighed_at, status, created_by) VALUES (?, ?, ?, 'TST-PB-INVALID', 1000, 0, 0, NOW(), 'pending', ?)", [$supplierId, $truckId, $rawProductId, $user['id']]);
+    run_query($db, "INSERT INTO weighings (site_id, supplier_id, truck_id, product_id, reference, poids_brut, poids_tare, poids_net, weighed_at, status, created_by) VALUES (?, ?, ?, ?, 'TST-PB-INVALID', 1000, 0, 0, NOW(), 'pending', ?)", [$siloSiteId, $supplierId, $truckId, $rawProductId, $user['id']]);
     $invalidWeighingId = (int) $db->lastInsertId();
     $ids['weighings'][] = $invalidWeighingId;
 
@@ -163,15 +201,16 @@ try {
     assert_true($invalidRejected, 'Impossible de valider une pesee avec tare superieure au brut');
     assert_near(scalar($db, 'SELECT current_stock_kg FROM silos WHERE id = ?', [$siloId]), 1000, 'Le stock silo ne bouge pas apres pesee invalide');
 
-    run_query($db, "INSERT INTO weighings (supplier_id, truck_id, product_id, reference, poids_brut, poids_tare, poids_net, weighed_at, status, created_by) VALUES (?, ?, ?, 'TST-PB-VALID', 1500, 0, 0, NOW(), 'pending', ?)", [$supplierId, $truckId, $rawProductId, $user['id']]);
+    run_query($db, "INSERT INTO weighings (site_id, supplier_id, truck_id, product_id, reference, poids_brut, poids_tare, poids_net, weighed_at, status, created_by) VALUES (?, ?, ?, ?, 'TST-PB-VALID', 1500, 0, 0, NOW(), 'pending', ?)", [$siloSiteId, $supplierId, $truckId, $rawProductId, $user['id']]);
     $validWeighingId = (int) $db->lastInsertId();
     $ids['weighings'][] = $validWeighingId;
 
-    $weighingModel->validateExit($validWeighingId, ['poids_tare' => 400, 'silo_id' => $siloId], $user);
+    $weighingModel->validateExit($validWeighingId, ['poids_tare' => 400, 'silo_id' => $siloId], $validator);
     $ids['silo_movements'][] = (int) scalar($db, 'SELECT id FROM silo_movements WHERE weighing_id = ?', [$validWeighingId]);
     assert_near(scalar($db, 'SELECT poids_net FROM weighings WHERE id = ?', [$validWeighingId]), 1100, 'Poids net calcule correctement');
     assert_near(scalar($db, 'SELECT current_stock_kg FROM silos WHERE id = ?', [$siloId]), 2100, 'Entree silo augmente le stock silo');
 
+    Auth::selectSite((string) $minoSiteId);
     $feedModel = new MachineFeed();
     $overFeedRejected = false;
     try {
@@ -207,7 +246,7 @@ try {
         'output_quantity_kg' => 480,
         'waste_quantity_kg' => 120,
         'ended_at' => date('Y-m-d H:i:s'),
-    ], $user);
+    ], $validator);
     $ids['stock_movements'][] = (int) scalar($db, "SELECT id FROM stock_movements WHERE product_id = ? AND quantity_kg = 480 ORDER BY id DESC LIMIT 1", [$flourProductId]);
     $wasteStockId = (int) scalar($db, 'SELECT id FROM waste_stocks WHERE production_batch_id = ?', [$batchId]);
     $ids['waste_stocks'][] = $wasteStockId;
@@ -215,6 +254,7 @@ try {
     assert_near(((float) $batch['output_quantity_kg'] / (float) $batch['input_quantity_kg']) * 100, 80, 'Production calcule le rendement correctement');
     assert_near(scalar($db, 'SELECT quantity_kg FROM waste_stocks WHERE id = ?', [$wasteStockId]), 120, 'Dechets augmentent le stock dechets');
 
+    Auth::selectSite((string) $pellSiteId);
     $wasteTotalBeforeProcessing = (new Waste())->totalAvailable();
     $animalStockBefore = (float) scalar($db, "SELECT COALESCE((SELECT stock_after_kg FROM stock_movements WHERE product_id = ? ORDER BY movement_at DESC, id DESC LIMIT 1), 0)", [$animalFeedId]);
     (new Waste())->processWaste([
@@ -229,6 +269,7 @@ try {
     $animalStockAfter = (float) scalar($db, "SELECT stock_after_kg FROM stock_movements WHERE product_id = ? ORDER BY movement_at DESC, id DESC LIMIT 1", [$animalFeedId]);
     assert_near($animalStockAfter - $animalStockBefore, 40, 'Aliment betail augmente le stock fini');
 
+    Auth::selectSite((string) $minoSiteId);
     $finishedFlourBefore = (float) scalar($db, 'SELECT COALESCE(SUM(total_weight_kg), 0) FROM finished_stocks WHERE product_id = ? AND deleted_at IS NULL', [$flourProductId]);
     (new Packaging())->createPackaging([
         'production_batch_id' => $batchId,
@@ -281,21 +322,18 @@ try {
         'agent-distribution' => ['Distribution', 'Stock finis'],
     ];
     foreach ($rolesToCheck as $roleSlug => $expectedLabels) {
-        $_SESSION['user'] = [
-            'id' => 999,
-            'name' => 'QA',
-            'email' => 'qa@example.test',
-            'role_id' => 999,
-            'role_name' => $roleSlug,
-            'role_slug' => $roleSlug,
-        ];
+        $roleUser = run_query($db, "SELECT users.*, roles.name AS role_name, roles.slug AS role_slug FROM users INNER JOIN roles ON roles.id = users.role_id WHERE roles.slug = ? AND users.status = 'active' AND users.deleted_at IS NULL LIMIT 1", [$roleSlug])->fetch();
+        if (!$roleUser) { throw new RuntimeException('Utilisateur requis introuvable pour le role ' . $roleSlug); }
+        Auth::login($roleUser);
         $labels = array_column(Auth::menu(), 'label');
         foreach ($expectedLabels as $label) {
             assert_true(in_array($label, $labels, true), "Menu {$roleSlug} contient {$label}");
         }
         assert_true(!in_array('Rapports', $labels, true) && !in_array('Utilisateurs', $labels, true), "Menu {$roleSlug} masque rapports/utilisateurs");
     }
-    unset($_SESSION['user']);
+    $adminUser = run_query($db, "SELECT users.*, roles.name AS role_name, roles.slug AS role_slug FROM users INNER JOIN roles ON roles.id = users.role_id WHERE roles.slug = 'administrateur' AND users.status = 'active' AND users.deleted_at IS NULL LIMIT 1")->fetch();
+    Auth::login($adminUser);
+    Auth::selectSite('all');
 
     $filters = ['start_date' => date('Y-m-d'), 'end_date' => date('Y-m-d'), 'supplier_id' => $supplierId, 'machine_id' => $machineId];
     $reports = new ReportModel();
@@ -335,7 +373,9 @@ try {
 
 if ($failures) {
     echo "\n" . count($failures) . " echec(s) metier.\n";
+    ob_end_flush();
     exit(1);
 }
 
 echo "\nToutes les regles metier testees sont conformes.\n";
+ob_end_flush();

@@ -46,15 +46,15 @@
             </label>
             <label>
                 <span>Format sac</span>
-                <select name="bag_format_id" required data-bag-format>
+                <select name="packaging_item_id" required data-bag-format>
                     <option value="">Selectionner un format</option>
                     <?php foreach ($bagFormats as $format): ?>
-                        <option value="<?= e($format['id']) ?>" data-weight="<?= e($format['weight_kg']) ?>" <?= (string) $packaging['bag_format_id'] === (string) $format['id'] ? 'selected' : '' ?>>
-                            <?= e($format['name'] . ' - ' . number_format((float) $format['weight_kg'], 0, ',', ' ') . ' kg') ?>
+                        <option value="<?= e($format['packaging_item_id']) ?>" data-weight="<?= e($format['weight_kg']) ?>" <?= (string) $packaging['packaging_item_id'] === (string) $format['packaging_item_id'] ? 'selected' : '' ?>>
+                            <?= e($format['code'].' — '.$format['name'] . ' - ' . number_format((float) $format['weight_kg'], 0, ',', ' ') . ' kg') ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <?php if (!empty($errors['bag_format_id'])): ?><small><?= e($errors['bag_format_id']) ?></small><?php endif; ?>
+                <?php if (!empty($errors['packaging_item_id'])): ?><small><?= e($errors['packaging_item_id']) ?></small><?php endif; ?>
             </label>
             <label>
                 <span>Nombre sacs</span>

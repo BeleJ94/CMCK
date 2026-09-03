@@ -32,6 +32,7 @@ class ActivityLog extends Model
     {
         $params = [];
         $where = "WHERE activity_logs.id IS NOT NULL";
+        $where .= Auth::siteClause('activity_logs.site_id', $params);
 
         if (!empty($filters['action']) && isset($this->actions()[$filters['action']])) {
             $where .= " AND activity_logs.action = :action";

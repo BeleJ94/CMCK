@@ -68,6 +68,9 @@ class WasteController extends Controller
         ], 'layouts.main');
     }
 
+    public function buffer($id){$this->ensureCsrf('waste');try{$this->model('Waste')->sendToBuffer($id,Auth::user());flash('success','Stock placé en tampon.');}catch(Exception$e){flash('error',$e->getMessage());}redirect('waste');}
+    public function sell(){ $this->ensureCsrf('waste');try{$this->model('Waste')->sell(['waste_stock_id'=>$_POST['waste_stock_id']??'','quantity_kg'=>$_POST['quantity_kg']??'','customer_name'=>trim($_POST['customer_name']??''),'unit_price'=>$_POST['unit_price']??0],Auth::user());flash('success','Vente brute enregistrée.');}catch(Exception$e){flash('error',$e->getMessage());}redirect('waste');}
+
     private function input()
     {
         return [

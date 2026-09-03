@@ -33,7 +33,8 @@
                 <strong>Bon de sortie produits finis</strong>
             </div>
             <div class="meta">
-                <strong><?= e($distribution['exit_voucher']) ?></strong><br>
+                <strong><?= e($distribution['official_document_number'] ?: $distribution['exit_voucher']) ?></strong><br>
+                <?php if (!empty($distribution['official_document_number'])): ?>Référence : <?= e($distribution['exit_voucher']) ?><br><?php endif; ?>
                 <?= e($distribution['distributed_at']) ?>
             </div>
         </div>

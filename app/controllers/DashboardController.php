@@ -10,7 +10,7 @@ class DashboardController extends Controller
             redirect(Auth::homePathFor($user));
         }
 
-        $this->direction();
+        redirect('analytics');
     }
 
     public function pontBasculeHome()
@@ -40,6 +40,7 @@ class DashboardController extends Controller
 
     public function direction()
     {
+        redirect('analytics');
         try {
             $this->model('Alert')->generateSystemAlerts();
             $dashboard = $this->model('DashboardModel')->directionData();

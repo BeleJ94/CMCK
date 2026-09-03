@@ -18,6 +18,7 @@ $bagsTotal = array_sum(array_map(function ($row) {
         <p>Lots disponibles pour emballage, formats sacs et mouvements d entree stock.</p>
     </div>
     <a href="<?= e(base_url('packaging/create')) ?>" class="page-action"><i class="bi bi-plus-circle"></i><span>Nouvel emballage</span></a>
+    <a href="<?=e(base_url('empty-packaging'))?>" class="page-action"><i class="bi bi-bag"></i><span>Sacs vides</span></a>
 </section>
 
 <?php if (!empty($success)): ?><div class="app-alert app-alert-success"><i class="bi bi-check2-circle"></i><?= e($success) ?></div><?php endif; ?>
@@ -59,23 +60,3 @@ $bagsTotal = array_sum(array_map(function ($row) {
         </table>
     </div>
 </section>
-
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    if (window.jQuery && jQuery.fn.DataTable) {
-        jQuery('#packagingAvailableTable').DataTable({
-            pageLength: 10,
-            language: {
-                search: 'Recherche',
-                lengthMenu: 'Afficher _MENU_ lignes',
-                info: 'Affichage _START_ a _END_ sur _TOTAL_ lots',
-                paginate: { previous: 'Precedent', next: 'Suivant' },
-                zeroRecords: 'Aucun lot disponible'
-            }
-        });
-    }
-});
-</script>

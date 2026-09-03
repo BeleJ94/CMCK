@@ -70,6 +70,7 @@ class MachineFeedController extends Controller
             'silo_id' => trim($_POST['silo_id'] ?? ''),
             'machine_id' => trim($_POST['machine_id'] ?? ''),
             'quantity_kg' => trim($_POST['quantity_kg'] ?? ''),
+            'authorized_quantity_kg' => trim($_POST['authorized_quantity_kg'] ?? ''),
             'fed_at' => trim($_POST['fed_at'] ?? ''),
             'ended_at' => trim($_POST['ended_at'] ?? ''),
             'observation' => trim($_POST['observation'] ?? ''),
@@ -88,6 +89,9 @@ class MachineFeedController extends Controller
 
         if ($data['quantity_kg'] === '' || !is_numeric($data['quantity_kg']) || (float) $data['quantity_kg'] <= 0) {
             $errors['quantity_kg'] = 'La quantite envoyee doit etre superieure a zero.';
+        }
+        if ($data['authorized_quantity_kg'] === '' || !is_numeric($data['authorized_quantity_kg']) || (float) $data['authorized_quantity_kg'] <= 0) {
+            $errors['authorized_quantity_kg'] = 'La quantité autorisée du BSS est obligatoire.';
         }
 
         if ($data['fed_at'] === '') {
@@ -111,6 +115,7 @@ class MachineFeedController extends Controller
             'silo_id' => '',
             'machine_id' => '',
             'quantity_kg' => '',
+            'authorized_quantity_kg' => '',
             'fed_at' => date('Y-m-d\TH:i'),
             'ended_at' => '',
             'observation' => '',

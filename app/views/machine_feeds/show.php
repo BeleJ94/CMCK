@@ -20,6 +20,8 @@
         <table class="enterprise-table">
             <tbody>
                 <tr><th>Silo source</th><td><?= e($feed['silo_name'] . ' (' . $feed['silo_code'] . ')') ?></td></tr>
+                <tr><th>BSS validé</th><td><strong><?=e($feed['bss_number']?:'-')?></strong></td></tr>
+                <tr><th>Maïs autorisé / chargé</th><td><?=e(number_format((float)$feed['authorized_quantity_kg'],3,',',' '))?> / <?=e(number_format((float)$feed['quantity_kg'],3,',',' '))?> kg</td></tr>
                 <tr><th>Machine</th><td><?= e($feed['machine_name']) ?></td></tr>
                 <tr><th>Produit</th><td><?= e($feed['product_name']) ?></td></tr>
                 <tr><th>Heure debut</th><td><?= e($feed['fed_at']) ?></td></tr>
