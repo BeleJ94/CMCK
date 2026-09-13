@@ -114,7 +114,7 @@ class SiteController extends Controller
             Auth::selectSite(trim($_POST['site_id'] ?? ''));
             flash('success', 'Contexte de site mis a jour.');
         } catch (Exception $exception) { flash('error', $exception->getMessage()); }
-        redirect(Auth::homePathFor(Auth::user()));
+        redirect(($_POST['_return_to'] ?? '') === 'weighings/entry' ? 'weighings/entry' : Auth::homePathFor(Auth::user()));
     }
 
     private function siteInput()

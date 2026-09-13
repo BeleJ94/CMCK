@@ -55,7 +55,7 @@ ui_check(strpos($sidebar, 'sidebar-site-form') !== false, 'Le changement de site
 ui_check(strpos($sidebar, 'aria-current="page"') !== false, 'La page active est exposee aux technologies d assistance.');
 ui_check(strpos($javascript, 'function enhanceTables') !== false, 'La DataTable commune est centralisee.');
 ui_check(strpos($javascript, 'function refreshBusinessForms') !== false, 'Les calculateurs metier sont rehydrates apres un retour AJAX.');
-ui_check(strpos($javascript, "fetch(form.action") !== false, 'Les formulaires progressifs utilisent fetch et FormData.');
+ui_check(strpos($javascript, "fetch(submissionUrl") !== false && strpos($javascript, "new FormData(form)") !== false && strpos($javascript, "getAttribute('formaction')") !== false, 'Les formulaires progressifs utilisent fetch et FormData.');
 ui_check(strpos($javascript, 'requestInFlight') !== false, 'Une soumission simultanee est bloquee cote interface.');
 ui_check(strpos($javascript, 'Aucune relance automatique') !== false, 'Les erreurs reseau ne provoquent pas de nouvelle operation automatique.');
 ui_check(strpos($javascript, 'function trapFocus') !== false, 'Les dialogues piegent le focus clavier.');
@@ -87,7 +87,7 @@ ui_check(substr_count($sitesView, 'role="tab"') === 5 && strpos($sitesView, 'dat
 ui_check(strpos($javascript, 'function enhanceSiteTabs') !== false && strpos($javascript, "'ArrowRight'") !== false, 'Les onglets multi-sites prennent en charge la navigation clavier.');
 $agricultureView = ui_read($root . '/app/views/agriculture/index.php');
 ui_check(substr_count($agricultureView, 'data-business-tab=') === 4, 'Le parcours agricole répartit les données dans quatre onglets métier.');
-ui_check(substr_count($agricultureView, "agro_modal_start('") === 9, 'Les neuf saisies agricoles sont présentées dans des modales dédiées.');
+ui_check(substr_count($agricultureView, "agro_modal_start('") === 8 && strpos(ui_read($root . '/app/views/agriculture/works.php'), 'data-work-editor') !== false, 'Les huit saisies agricoles et les travaux disposent de modales dédiées.');
 ui_check(strpos($javascript, 'function enhanceBusinessTabs') !== false && strpos($javascript, 'function openWorkspaceModal') !== false, 'Les onglets et modales métier sont réhydratés après AJAX.');
 ui_check(strpos($agricultureView, 'data-campaign-site') !== false && strpos($agricultureView, 'data-suggested-code') !== false, 'La création de campagne demande explicitement une ferme autorisée.');
 ui_check(strpos($javascript, 'function syncCampaignSuggestedCode') !== false, 'Le code de campagne proposé suit la ferme sélectionnée.');

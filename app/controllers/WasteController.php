@@ -7,13 +7,37 @@ class WasteController extends Controller
         $model = $this->model('Waste');
 
         $this->view('waste.index', [
-            'title' => 'Dechets',
+            'title' => 'Déchets et coproduits',
             'availableStock' => $model->totalAvailable(),
             'stockLines' => $model->stockLines(),
             'history' => $model->history(),
             'success' => flash('success'),
             'error' => flash('error'),
         ], 'layouts.main');
+    }
+
+    public function export()
+    {
+        $format = $_GET['format'] ?? '';
+        if (!in_array($format, ['excel','pdf'], true)) { http_response_code(400); echo 'Format d’export invalide.'; return; }
+        require_once dirname(__DIR__).'/services/WasteExportService.php';
+        $service = new WasteExportService();
+        $filters=[];
+        foreach (['search','type','site','state'] as $key) $filters[$key]=is_string($_GET[$key]??null)?$_GET[$key]:($key==='state'?'usable':'');
+        $lines=$service->filtered($this->model('Waste')->stockLines(),$filters);
+        $states=['usable'=>'Stocks utilisables',''=>'Tous les stocks','available'=>'Disponible','buffer'=>'En tampon','empty'=>'Épuisé / indisponible'];
+        $summary='Recherche : '.($filters['search']?:'Toutes').' · Type : '.($filters['type']?:'Tous').' · Site : '.($filters['site']?:'Tous les sites autorisés').' · Situation : '.($states[$filters['state']]??'Non reconnue');
+        header('Cache-Control: private, no-store');
+        $filename='dagril-stocks-dechets-'.date('Ymd-His');
+        if ($format==='excel') {
+            $content=$service->xlsx($lines,$summary);
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment; filename="'.$filename.'.xlsx"');
+            echo $content;
+            return;
+        }
+        $html=$this->renderViewToString('waste.export',['lines'=>$lines,'summary'=>$summary,'service'=>$service]);
+        (new PdfService())->stream('Déchets et coproduits', $html, $filename.'.pdf', 'landscape');
     }
 
     public function process()
@@ -68,8 +92,38 @@ class WasteController extends Controller
         ], 'layouts.main');
     }
 
-    public function buffer($id){$this->ensureCsrf('waste');try{$this->model('Waste')->sendToBuffer($id,Auth::user());flash('success','Stock placé en tampon.');}catch(Exception$e){flash('error',$e->getMessage());}redirect('waste');}
-    public function sell(){ $this->ensureCsrf('waste');try{$this->model('Waste')->sell(['waste_stock_id'=>$_POST['waste_stock_id']??'','quantity_kg'=>$_POST['quantity_kg']??'','customer_name'=>trim($_POST['customer_name']??''),'unit_price'=>$_POST['unit_price']??0],Auth::user());flash('success','Vente brute enregistrée.');}catch(Exception$e){flash('error',$e->getMessage());}redirect('waste');}
+    public function buffer($id)
+    {
+        $this->stockAction(function () use ($id) { $this->model('Waste')->sendToBuffer($id, Auth::user()); }, 'Stock placé en tampon.');
+    }
+
+    public function sell()
+    {
+        $this->stockAction(function () {
+            $quantity = $_POST['quantity_kg'] ?? '';
+            $price = $_POST['unit_price'] ?? '';
+            $customer = trim($_POST['customer_name'] ?? '');
+            if (!is_numeric($quantity) || !is_finite((float)$quantity) || (float)$quantity < 0.001) throw new RuntimeException('Saisissez une quantité positive, au minimum 0,001 kg.');
+            if (!is_numeric($price) || !is_finite((float)$price) || (float)$price < 0) throw new RuntimeException('Saisissez un prix unitaire positif ou nul.');
+            if ($customer === '' || mb_strlen($customer) > 190) throw new RuntimeException('Renseignez le nom du client (190 caractères maximum).');
+            $this->model('Waste')->sell(['waste_stock_id'=>$_POST['waste_stock_id']??'', 'quantity_kg'=>$quantity, 'customer_name'=>$customer, 'unit_price'=>$price], Auth::user());
+        }, 'Vente brute enregistrée.');
+    }
+
+    private function stockAction(callable $action, string $message)
+    {
+        $ajax = strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest';
+        try {
+            if (!verify_csrf($_POST['_token'] ?? '')) throw new RuntimeException('Votre session a expiré. Actualisez la page puis réessayez.');
+            $action();
+            if ($ajax) { $this->json(['ok'=>true,'message'=>$message,'refresh_url'=>base_url('waste')]); return; }
+            flash('success', $message);
+        } catch (Exception $e) {
+            if ($ajax) { $this->json(['ok'=>false,'message'=>$e->getMessage()],422); return; }
+            flash('error', $e->getMessage());
+        }
+        redirect('waste');
+    }
 
     private function input()
     {

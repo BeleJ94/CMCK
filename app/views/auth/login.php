@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#092f3b">
     <title><?= e($title ?? 'Connexion') ?> - <?= e($appName) ?></title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="<?= e(asset_url('vendor/bootstrap-icons/bootstrap-icons.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset_url('css/app.css')) ?>">
 </head>
 <body class="auth-body auth-body-executive">

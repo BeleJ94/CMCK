@@ -5,10 +5,10 @@ use Dompdf\Options;
 
 class PdfService
 {
-    public function stream($title, $bodyHtml, $filename, $orientation = 'landscape')
+    public function stream($title, $bodyHtml, $filename, $orientation = 'landscape', $attachment = true)
     {
         $dompdf = $this->render($title, $bodyHtml, $orientation);
-        $dompdf->stream($filename, ['Attachment' => true]);
+        $dompdf->stream($filename, ['Attachment' => $attachment]);
     }
 
     public function output($title, $bodyHtml, $orientation = 'landscape')
@@ -91,6 +91,7 @@ class PdfService
     private function document($title, $bodyHtml)
     {
         $css = $this->css();
+        $bodyClass = strpos($bodyHtml, 'compact-weighing-ticket') !== false ? 'pdf-weighing-ticket' : '';
 
         return '<!doctype html>
 <html lang="fr">
@@ -99,7 +100,7 @@ class PdfService
     <title>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</title>
     <style>' . $css . '</style>
 </head>
-<body>
+<body class="' . $bodyClass . '">
     <header class="pdf-header">
         <div>
             <p>DAGRIL ERP</p>
@@ -165,6 +166,44 @@ class PdfService
             .ticket-weights > div { display: table-cell; width: 33.33%; padding: 12px; color: #071527; border: 1px solid #d9e1ea; background: #eef2f6; }
             .ticket-card span, .sheet th { color: #667085; font-size: 8px; font-weight: bold; text-transform: uppercase; }
             .ticket-card strong { display: block; margin-top: 4px; color: #071527; font-size: 11px; }
+            .compact-weighing-ticket { padding: 12px; }
+            .compact-weighing-ticket .ticket-header { margin-bottom: 8px; padding-bottom: 8px; }
+            .compact-weighing-ticket .ticket-header h2 { font-size: 17px; margin: 5px 0; }
+            .compact-weighing-ticket .ticket-reference { text-align: right; }
+            .compact-weighing-ticket .ticket-reference small { display: block; font-size: 8px; margin-top: 4px; }
+            .compact-weighing-ticket .ticket-grid, .compact-weighing-ticket .ticket-footer { border-spacing: 5px; margin-bottom: 3px; }
+            .compact-weighing-ticket .ticket-grid > div, .compact-weighing-ticket .ticket-footer > div { padding: 6px; }
+            .compact-weighing-ticket .ticket-weights { margin: 8px 0; border-spacing: 5px; }
+            .compact-weighing-ticket .ticket-weights > div { padding: 9px; }
+            .compact-weighing-ticket .ticket-weights strong { font-size: 16px; }
+            .compact-weighing-ticket .ticket-section-title { font-size: 10px; margin: 10px 0 4px; }
+            .compact-weighing-ticket .ticket-detail-note { font-size: 9px; }
+            /* Monochrome weighing ticket shared by preview, download and print. */
+            .pdf-weighing-ticket { color: #222222; }
+            .pdf-weighing-ticket .pdf-header { display: none; }
+            .pdf-weighing-ticket .compact-weighing-ticket { border: 0; padding: 0; max-width: none; }
+            .pdf-weighing-ticket .ticket-card * { background: transparent; color: #222222; }
+            .pdf-weighing-ticket .ticket-header { padding: 10px 6px 12px; border: 0; border-bottom: .5pt solid #888888; margin: 0 0 12px; }
+            .pdf-weighing-ticket .ticket-header > div { width: 50%; }
+            .pdf-weighing-ticket .ticket-header p { font-size: 9px; letter-spacing: 1px; margin: 0 0 6px; }
+            .pdf-weighing-ticket .ticket-header h2 { font-size: 20px; margin: 0 0 8px; }
+            .pdf-weighing-ticket .ticket-header strong { font-size: 10px; }
+            .pdf-weighing-ticket .ticket-reference small { font-size: 8px; line-height: 1.5; }
+            .pdf-weighing-ticket .ticket-state { display: inline-block; font-size: 9px; }
+            .pdf-weighing-ticket .ticket-weights { border-spacing: 6px; margin: 0 0 12px; table-layout: fixed; }
+            .pdf-weighing-ticket .ticket-weights > div { padding: 10px 8px; border: 0; border-bottom: .5pt solid #aaaaaa; background: transparent; }
+            .pdf-weighing-ticket .ticket-weights strong { font-size: 18px; margin-top: 6px; }
+            .pdf-weighing-ticket .ticket-section-title { font-size: 10px; margin: 12px 6px 4px; padding-bottom: 6px; border-bottom: .5pt solid #aaaaaa; }
+            .pdf-weighing-ticket .ticket-section-title span { font-size: 10px; margin-left: 8px; }
+            .pdf-weighing-ticket .ticket-grid { border-spacing: 6px; margin: 0; table-layout: fixed; }
+            .pdf-weighing-ticket .ticket-grid > div { padding: 8px; border: 0; }
+            .pdf-weighing-ticket .ticket-grid strong { font-size: 10px; font-weight: normal; line-height: 1.5; margin-top: 5px; overflow-wrap: anywhere; }
+            .pdf-weighing-ticket .ticket-card span { font-size: 8px; font-weight: normal; color: #444444; }
+            .pdf-weighing-ticket .ticket-detail-note { margin: 6px 14px; font-size: 9px; line-height: 1.5; }
+            .pdf-weighing-ticket .ticket-footer { margin-top: 12px; border-top: .5pt solid #888888; border-spacing: 6px; table-layout: fixed; }
+            .pdf-weighing-ticket .ticket-footer > div { border: 0; padding: 9px 8px; }
+            .pdf-weighing-ticket .ticket-footer strong { font-size: 9px; font-weight: normal; }
+            .pdf-weighing-ticket .pdf-footer { color: #444444; font-size: 8px; border-top: .5pt solid #aaaaaa; }
             .signatures { display: table; width: 100%; border-spacing: 16px; margin-top: 52px; }
             .signature { display: table-cell; width: 33.33%; border-top: 1px solid #071527; padding-top: 8px; text-align: center; font-weight: bold; }
         ';

@@ -91,6 +91,12 @@ class Auth
         return $user && in_array(self::roleSlug($user), $roles, true);
     }
 
+    public static function canSelfValidate($userId)
+    {
+        $user = self::user();
+        return $user && (int)$user['id'] === (int)$userId && self::hasRole(['administrateur']);
+    }
+
     public static function can($component, $action, $siteId = null)
     {
         $user = self::user();
@@ -281,7 +287,7 @@ class Auth
                 ['label' => 'Stocks agricoles', 'path' => 'agriculture/stocks', 'icon' => 'bi-boxes', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Transports agricoles', 'path' => 'agriculture/transports', 'icon' => 'bi-truck', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Main-d’œuvre', 'path' => 'agriculture/workers', 'icon' => 'bi-people', 'roles' => ['administrateur', 'direction']],
-                ['label' => 'Matériels', 'path' => 'agriculture/equipment', 'icon' => 'bi-tractor', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Matériels', 'path' => 'agriculture/equipment', 'icon' => 'bi-tools', 'roles' => ['administrateur', 'direction']],
             ]],
             ['label' => 'Approvisionnements & matières', 'icon' => 'bi-box-arrow-in-down', 'items' => [
                 ['label' => 'Fournisseurs', 'path' => 'suppliers', 'icon' => 'bi-building-check', 'roles' => ['administrateur', 'direction', 'agent-pont-bascule']],
@@ -320,6 +326,7 @@ class Auth
                 ['label' => 'Journal d’activité', 'path' => 'activity-logs', 'icon' => 'bi-clock-history', 'roles' => ['administrateur', 'direction']],
             ]],
             ['label' => 'Administration', 'icon' => 'bi-sliders', 'items' => [
+                ['label' => 'Gestion des silos', 'path' => 'silo-administration', 'icon' => 'bi-database-gear', 'roles' => ['administrateur']],
                 ['label' => 'Utilisateurs', 'path' => 'users', 'icon' => 'bi-people', 'roles' => ['administrateur']],
                 ['label' => 'Sites & structures', 'path' => 'sites', 'icon' => 'bi-diagram-3', 'roles' => ['administrateur']],
                 ['label' => 'Rôles & permissions', 'path' => 'access-control', 'icon' => 'bi-shield-lock', 'roles' => ['administrateur']],
@@ -331,6 +338,7 @@ class Auth
         $legacySlugs = ['administrateur','direction','agent-pont-bascule','agent-silo','agent-production','agent-emballage','agent-distribution'];
         foreach ($groups as $group) {
             $items = array_values(array_filter($group['items'], function ($item) use ($roleSlug, $legacySlugs) {
+                if ($item['path'] === 'silo-administration') { return self::can('silos', 'administer'); }
                 if (in_array($roleSlug, $legacySlugs, true)) { return in_array($roleSlug, $item['roles'], true); }
                 $permission = self::menuPermission($item['path']);
                 return $permission ? self::can($permission[0], $permission[1]) : false;
@@ -352,6 +360,7 @@ class Auth
 
     private static function menuPermission($path)
     {
+        if ($path === 'silo-administration') { return ['silos', 'administer']; }
         $first = explode('/', trim($path, '/'))[0];
         $map = ['dashboard'=>'dashboard','direction'=>'dashboard','terrain'=>'dashboard','reports'=>'reports','analytics'=>'analytics','traceability'=>'traceability','cancellations'=>'cancellations','documents'=>'documents','transfers'=>'transfers','agriculture'=>'agriculture','livestock'=>'livestock','butchery'=>'butchery','budgets'=>'budgets','fuel-logistics'=>'fuel-logistics','suppliers'=>'suppliers','trucks'=>'trucks','weighings'=>'weighings','silos'=>'silos','machines'=>'machines','machine-feeds'=>'machine-feeds','production'=>'production','waste'=>'waste','pelletization'=>'pelletization','packaging'=>'packaging','empty-packaging'=>'empty-packaging','finished-stocks'=>'finished-stocks','distributions'=>'distributions','alerts'=>'alerts','activity-logs'=>'activity-logs','sites'=>'sites','users'=>'users','access-control'=>'rbac'];
         if (!isset($map[$first])) { return null; }

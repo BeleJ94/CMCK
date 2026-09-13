@@ -3,9 +3,14 @@ require_once dirname(__DIR__).'/tests/integration/TestBootstrap.php';
 $db=DagrilIntegrationTest::boot();
 require_once dirname(__DIR__).'/app/services/CancellationService.php';
 
-$distribution=DagrilIntegrationTest::row("SELECT d.*,fs.total_weight_kg stock_before,fs.quantity_bags bags_before FROM distributions d JOIN finished_stocks fs ON fs.id=d.finished_stock_id WHERE d.status='validated' AND fs.deleted_at IS NULL ORDER BY d.id LIMIT 1");
-if(!$distribution){fwrite(STDERR,"[ECHEC] Une distribution validée est requise dans les fixtures.\n");exit(1);}
-$admin=DagrilIntegrationTest::loginRole('administrateur',$distribution['site_id']);
+// Each run owns its distribution; previous runs cancel theirs permanently.
+require_once dirname(__DIR__).'/app/core/Model.php';
+require_once dirname(__DIR__).'/app/models/Distribution.php';
+$stock=DagrilIntegrationTest::row("SELECT fs.* FROM finished_stocks fs JOIN products p ON p.id=fs.product_id WHERE fs.deleted_at IS NULL AND fs.status IN('active','validated') AND fs.quantity_bags-fs.reserved_bags>2 AND fs.total_weight_kg-fs.reserved_weight_kg>0 AND p.code IN('FARINE-MAIS','ALIMENT-BETAIL') ORDER BY fs.id LIMIT 1");
+if(!$stock)throw new RuntimeException('Stock de test disponible requis pour préparer une distribution.');
+$admin=DagrilIntegrationTest::loginRole('administrateur',$stock['site_id']);
+$distributionId=(new Distribution())->createDistribution(['finished_stock_id'=>$stock['id'],'quantity_bags'=>1,'recipient_name'=>'Test annulation','transporter'=>'','exit_voucher'=>'CANCEL-'.bin2hex(random_bytes(6)),'distributed_at'=>date('Y-m-d H:i:s')],$admin);
+$distribution=DagrilIntegrationTest::row("SELECT d.*,fs.total_weight_kg stock_before,fs.quantity_bags bags_before FROM distributions d JOIN finished_stocks fs ON fs.id=d.finished_stock_id WHERE d.id=?",[$distributionId]);
 $service=new CancellationService($db);
 $request=$service->request('distribution',$distribution['id'],'Correction intégration: distribution validée erronée',$admin);
 DagrilIntegrationTest::check(DagrilIntegrationTest::scalar('SELECT status FROM cancellation_requests WHERE id=?',[$request])==='pending_approval','Annulation validée soumise à deuxième approbation');

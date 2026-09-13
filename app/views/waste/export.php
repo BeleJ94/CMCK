@@ -1,0 +1,8 @@
+<style>
+.pdf-header{border-bottom:1px solid #888!important;background:white!important}.pdf-header h1{color:#222!important}table{width:100%;border-collapse:collapse;font-size:9px;table-layout:fixed}thead{display:table-header-group}th{background:#f1f3f4!important;color:#222!important;text-align:left}td,th{padding:7px 5px;border-bottom:1px solid #ddd;word-wrap:break-word}tr{page-break-inside:avoid}.export-meta{font-size:10px;color:#555;line-height:1.6}.export-number{text-align:right;white-space:nowrap}.export-total{font-size:11px;border-top:1px solid #777;padding-top:10px} 
+</style>
+<p class="export-meta">Stocks au <?=e(date('d/m/Y à H:i'))?><br><?=e($summary)?></p>
+<table><thead><tr><th style="width:23%">Origine / produit</th><th style="width:20%">Type / qualité</th><th style="width:8%">Site</th><th style="width:15%">Disponible (kg)</th><th style="width:14%">Situation</th><th style="width:20%">Créé le</th></tr></thead><tbody>
+<?php foreach($lines as$l):?><tr><td><strong><?=e($l['batch_number']?:'Stock de déchets')?></strong><br><?=e($l['product_name'])?></td><td><?=e($l['waste_type_name']?:'Non précisé')?><br><?=e($l['quality_grade']?:'Non précisée')?></td><td><?=e($l['site_code'])?></td><td class="export-number"><?=e(number_format((float)$l['quantity_kg'],3,',',' '))?></td><td><?=e($service->status($l))?></td><td><?=e(date('d/m/Y H:i',strtotime($l['created_at'])))?></td></tr><?php endforeach;?>
+<?php if(!$lines):?><tr><td colspan="6">Aucun stock ne correspond aux filtres sélectionnés.</td></tr><?php endif;?></tbody></table>
+<p class="export-total"><strong><?=count($lines)?> stock(s) · Total : <?=e(number_format(array_sum(array_column($lines,'quantity_kg')),3,',',' '))?> kg</strong></p>

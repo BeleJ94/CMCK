@@ -16,7 +16,7 @@ function ptok($condition, $message) { global $failures; echo ($condition ? 'OK  
 function ptdocs($db, $entity, $id) { $docs=ptq($db,'SELECT id FROM documents WHERE entity_type=? AND entity_id=?',[$entity,$id])->fetchAll(PDO::FETCH_COLUMN); foreach($docs as $doc){$instances=ptq($db,'SELECT id FROM workflow_instances WHERE document_id=?',[$doc])->fetchAll(PDO::FETCH_COLUMN);foreach($instances as $instance){foreach(['workflow_notifications','workflow_level_approvals','workflow_transitions'] as $table)ptq($db,"DELETE FROM $table WHERE workflow_instance_id=?",[$instance]);ptq($db,'DELETE FROM workflow_instances WHERE id=?',[$instance]);}ptq($db,'DELETE FROM document_status_history WHERE document_id=?',[$doc]);ptq($db,'DELETE FROM documents WHERE id=?',[$doc]);}}
 
 try {
-    $users=ptq($db,"SELECT u.*,r.name role_name,r.slug role_slug FROM users u JOIN roles r ON r.id=u.role_id WHERE u.status='active' AND u.deleted_at IS NULL AND r.slug IN('administrateur','direction') LIMIT 2")->fetchAll();
+    $users=ptq($db,"SELECT u.*,r.name role_name,r.slug role_slug FROM users u JOIN roles r ON r.id=u.role_id WHERE u.status='active' AND u.deleted_at IS NULL AND r.slug IN('administrateur','direction') ORDER BY FIELD(r.slug,'direction','administrateur'),u.id LIMIT 2")->fetchAll();
     if(count($users)<2) throw new RuntimeException('Deux utilisateurs administrateur/direction sont requis.');
     $creator=$users[0]; $validator=$users[1];
     $pell=(int)ptq($db,"SELECT id FROM sites WHERE code='PELL'")->fetchColumn();

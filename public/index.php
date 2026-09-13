@@ -28,6 +28,13 @@ require_once dirname(__DIR__) . '/app/services/AuthorizationService.php';
 
 $router = new Router();
 
+$router->get('/silo-administration', 'Silo@administration', ['auth' => true, 'permission' => ['silos', 'administer']]);
+$router->get('/silo-administration/create', 'Silo@create', ['auth' => true, 'permission' => ['silos', 'administer']]);
+$router->post('/silo-administration', 'Silo@store', ['auth' => true, 'permission' => ['silos', 'administer']]);
+$router->get('/silo-administration/{id}/edit', 'Silo@edit', ['auth' => true, 'permission' => ['silos', 'administer']]);
+$router->post('/silo-administration/{id}/update', 'Silo@update', ['auth' => true, 'permission' => ['silos', 'administer']]);
+$router->post('/silo-administration/{id}/status', 'Silo@setStatus', ['auth' => true, 'permission' => ['silos', 'administer']]);
+
 $router->get('/', 'Dashboard@index', ['auth' => true]);
 $router->get('/login', 'Auth@showLogin');
 $router->post('/login', 'Auth@login');
@@ -71,6 +78,7 @@ $router->get('/weighings/entry', 'Weighing@entry', ['auth' => true, 'roles' => [
 $router->post('/weighings/entry', 'Weighing@storeEntry', ['auth' => true, 'roles' => ['agent-pont-bascule', 'direction', 'administrateur']]);
 $router->get('/weighings/exit', 'Weighing@exitList', ['auth' => true, 'roles' => ['agent-pont-bascule', 'direction', 'administrateur']]);
 $router->get('/weighings/{id}/exit', 'Weighing@exitForm', ['auth' => true, 'roles' => ['agent-pont-bascule', 'direction', 'administrateur']]);
+$router->post('/weighings/{id}/exit/prepare', 'Weighing@prepareExit', ['auth' => true, 'permission' => ['weighings','update']]);
 $router->post('/weighings/{id}/exit', 'Weighing@validateExit', ['auth' => true, 'roles' => ['agent-pont-bascule', 'direction', 'administrateur']]);
 $router->get('/weighings/{id}/ticket', 'Weighing@ticket', ['auth' => true, 'roles' => ['agent-pont-bascule', 'direction', 'administrateur']]);
 $router->post('/weighings/{id}/return', 'Weighing@progressReturn', ['auth' => true, 'permission' => ['weighings','update']]);
@@ -79,12 +87,16 @@ $router->get('/agriculture/campaigns','Agriculture@campaigns',['auth'=>true,'per
 $router->get('/agriculture/plots','Agriculture@plots',['auth'=>true,'permission'=>['agriculture','read']]);
 $router->get('/agriculture/planning','Agriculture@planning',['auth'=>true,'permission'=>['agriculture','read']]);
 $router->get('/agriculture/inputs','Agriculture@inputs',['auth'=>true,'permission'=>['agriculture','read']]);
+$router->get('/agriculture/works/data','Agriculture@workData',['auth'=>true,'permission'=>['agriculture','read']]);
+$router->post('/agriculture/works/{id}/correct','Agriculture@correctWork',['auth'=>true,'permission'=>['agriculture','update']]);
+$router->post('/agriculture/works/{id}/cancel','Agriculture@cancelWork',['auth'=>true,'permission'=>['agriculture','delete']]);
 $router->get('/agriculture/works','Agriculture@works',['auth'=>true,'permission'=>['agriculture','read']]);
 $router->get('/agriculture/harvests','Agriculture@harvests',['auth'=>true,'permission'=>['agriculture','read']]);
 $router->get('/agriculture/stocks','Agriculture@stocks',['auth'=>true,'permission'=>['agriculture','read']]);
 $router->get('/agriculture/transports','Agriculture@transports',['auth'=>true,'permission'=>['agriculture','read']]);
 $router->get('/agriculture/workers','Agriculture@workers',['auth'=>true,'permission'=>['agriculture','read']]);
 $router->get('/agriculture/equipment','Agriculture@equipmentDirectory',['auth'=>true,'permission'=>['agriculture','read']]);
+$router->post('/agriculture/campaigns/{id}/update','Agriculture@updateCampaign',['auth'=>true,'roles'=>['administrateur'],'permission'=>['agriculture','update']]);
 $router->post('/agriculture/campaigns','Agriculture@campaign',['auth'=>true,'permission'=>['agriculture','create']]);
 $router->post('/agriculture/plots','Agriculture@plot',['auth'=>true,'permission'=>['agriculture','administer']]);
 $router->post('/agriculture/campaign-plots','Agriculture@planPlot',['auth'=>true,'permission'=>['agriculture','create']]);
@@ -93,6 +105,7 @@ $router->post('/agriculture/workers','Agriculture@worker',['auth'=>true,'permiss
 $router->post('/agriculture/equipment','Agriculture@equipment',['auth'=>true,'permission'=>['agriculture','administer']]);
 $router->post('/agriculture/works','Agriculture@work',['auth'=>true,'permission'=>['agriculture','update']]);
 $router->post('/agriculture/harvests','Agriculture@harvest',['auth'=>true,'permission'=>['agriculture','create']]);
+$router->post('/agriculture/harvests/{id}/update','Agriculture@updateHarvest',['auth'=>true,'permission'=>['agriculture','update']]);
 $router->post('/agriculture/harvests/{id}/validate','Agriculture@validateHarvest',['auth'=>true,'permission'=>['agriculture','validate']]);
 $router->post('/agriculture/transports','Agriculture@transport',['auth'=>true,'permission'=>['agriculture','create']]);
 $router->post('/agriculture/transports/{id}/approve','Agriculture@approveTransport',['auth'=>true,'permission'=>['agriculture','validate']]);
@@ -177,10 +190,12 @@ $router->get('/machine-feeds/{id}', 'MachineFeed@show', ['auth' => true, 'roles'
 $router->get('/production', 'Production@index', ['auth' => true, 'roles' => ['agent-production', 'direction', 'administrateur']]);
 $router->get('/production/create', 'Production@create', ['auth' => true, 'roles' => ['agent-production', 'direction', 'administrateur']]);
 $router->post('/production', 'Production@store', ['auth' => true, 'permission' => ['production', 'update']]);
+$router->get('/production/export', 'Production@export', ['auth'=>true,'permission'=>['production','read']]);
 $router->get('/production/{id}', 'Production@show', ['auth' => true, 'roles' => ['agent-production', 'direction', 'administrateur']]);
 $router->post('/production/{id}/validate', 'Production@validateBatch', ['auth' => true, 'permission' => ['production','validate']]);
 $router->post('/production/tolerance', 'Production@updateTolerance', ['auth' => true, 'permission' => ['production','administer']]);
 $router->get('/waste', 'Waste@index', ['auth' => true, 'roles' => ['agent-production', 'direction', 'administrateur']]);
+$router->get('/waste/export', 'Waste@export', ['auth' => true, 'permission' => ['waste','read']]);
 $router->get('/waste/process', 'Waste@process', ['auth' => true, 'roles' => ['agent-production', 'direction', 'administrateur']]);
 $router->post('/waste/process', 'Waste@store', ['auth' => true, 'roles' => ['agent-production', 'direction', 'administrateur']]);
 $router->get('/waste/history', 'Waste@history', ['auth' => true, 'roles' => ['agent-production', 'direction', 'administrateur']]);

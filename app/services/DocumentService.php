@@ -26,7 +26,7 @@ class DocumentService
     {
         $allowed=['draft'=>['pending_validation','cancelled'],'pending_validation'=>['validated','cancelled'],'validated'=>['cancelled'],'cancelled'=>[]];
         $this->db->beginTransaction();try{$doc=$this->findById($id,true,true);if(!$doc){throw new RuntimeException('Document introuvable.');}Auth::requireSiteAccess($doc['site_id']);if(!in_array($newStatus,$allowed[$doc['status']]??[],true)){throw new RuntimeException('Transition documentaire interdite.');}
-            if($newStatus==='validated'&&!empty($doc['created_by'])&&(int)$doc['created_by']===(int)$user['id']){throw new RuntimeException('Séparation des tâches: le créateur ne peut pas valider ce document.');}
+            if($newStatus==='validated'&&!empty($doc['created_by'])&&(int)$doc['created_by']===(int)$user['id']&&!Auth::canSelfValidate($user['id'])){throw new RuntimeException('Séparation des tâches: le créateur ne peut pas valider ce document.');}
             $fields="status=:status";$params=['status'=>$newStatus,'id'=>$id];if($newStatus==='validated'){$fields.=',validated_by=:actor,validated_at=NOW()';$params['actor']=$user['id'];}if($newStatus==='cancelled'){$fields.=',cancelled_by=:actor,cancelled_at=NOW()';$params['actor']=$user['id'];}
             $this->db->prepare("UPDATE documents SET {$fields} WHERE id=:id")->execute($params);$this->history($id,$doc['status'],$newStatus,$user['id'],$reason);$this->db->commit();
         }catch(Exception $e){$this->db->rollBack();throw $e;}

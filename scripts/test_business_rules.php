@@ -1,6 +1,8 @@
 <?php
 
 require dirname(__DIR__) . '/app/helpers/functions.php';
+// Match the web bootstrap, including runs around local midnight.
+date_default_timezone_set(config('app.timezone', 'UTC'));
 require dirname(__DIR__) . '/app/core/Database.php';
 require dirname(__DIR__) . '/app/core/Model.php';
 require dirname(__DIR__) . '/app/core/Auth.php';
@@ -46,8 +48,17 @@ $ids = [
 ];
 $failures = [];
 
+function qa_reference($reference)
+{
+    static $suffix;
+    if ($suffix === null) $suffix = strtoupper(bin2hex(random_bytes(4)));
+    return $reference . '-' . $suffix;
+}
+
 function run_query(PDO $db, $sql, array $params = [])
 {
+    // Isolate this run from fixtures left by a previously interrupted test.
+    $sql = preg_replace_callback('/TST-[A-Z0-9-]+/', function ($m) { return qa_reference($m[0]); }, $sql);
     $statement = $db->prepare($sql);
     $statement->execute($params);
     return $statement;
@@ -78,6 +89,9 @@ function assert_near($actual, $expected, $message, $epsilon = 0.001)
 
 function cleanup(PDO $db, array $ids)
 {
+    foreach ($ids['waste_stocks'] as $stockId) {
+        run_query($db, 'DELETE FROM waste_stock_movements WHERE waste_stock_id = ?', [$stockId]);
+    }
     run_query($db, "DELETE FROM activity_logs WHERE user_agent = 'BusinessRuleTest'");
     if (!empty($ids['machine_feeds'])) {
         $feedPlaceholders = implode(',', array_fill(0, count($ids['machine_feeds']), '?'));
@@ -176,7 +190,7 @@ try {
     $weighingModel = new Weighing();
     $encodedWeighingId = $weighingModel->createEntry([
         'supplier_id' => $supplierId,
-        'truck_plate_number' => 'TST-QA-NEW',
+        'truck_plate_number' => qa_reference('TST-QA-NEW'),
         'driver_name' => 'QA New Driver',
         'driver_phone' => '+243 009',
         'product_id' => $rawProductId,
@@ -263,7 +277,7 @@ try {
         'output_quantity_kg' => 40,
         'processed_at' => date('Y-m-d H:i:s'),
     ], $user);
-    $ids['waste_processings'] = array_merge($ids['waste_processings'], array_map('intval', run_query($db, 'SELECT id FROM waste_processings WHERE created_by = ? AND machine_id = ? ORDER BY id DESC LIMIT 1', [$user['id'], $wasteMachineId])->fetchAll(PDO::FETCH_COLUMN)));
+    $ids['waste_processings'] = array_merge($ids['waste_processings'], array_map('intval', run_query($db, 'SELECT id FROM waste_processings WHERE created_by = ? AND machine_id = ? ORDER BY id DESC', [$user['id'], $wasteMachineId])->fetchAll(PDO::FETCH_COLUMN)));
     $ids['stock_movements'][] = (int) scalar($db, "SELECT id FROM stock_movements WHERE product_id = ? AND quantity_kg = 40 ORDER BY id DESC LIMIT 1", [$animalFeedId]);
     assert_near($wasteTotalBeforeProcessing - (new Waste())->totalAvailable(), 50, 'Traitement dechets diminue le stock dechets');
     $animalStockAfter = (float) scalar($db, "SELECT stock_after_kg FROM stock_movements WHERE product_id = ? ORDER BY movement_at DESC, id DESC LIMIT 1", [$animalFeedId]);
@@ -292,7 +306,7 @@ try {
             'finished_stock_id' => $finishedStockId,
             'recipient_name' => 'QA Client',
             'transporter' => 'QA Transport',
-            'exit_voucher' => 'TST-BS-OVER',
+            'exit_voucher' => qa_reference('TST-BS-OVER'),
             'quantity_bags' => 11,
             'distributed_at' => date('Y-m-d H:i:s'),
         ], $user);
@@ -305,7 +319,7 @@ try {
         'finished_stock_id' => $finishedStockId,
         'recipient_name' => 'QA Client',
         'transporter' => 'QA Transport',
-        'exit_voucher' => 'TST-BS-VALID',
+        'exit_voucher' => qa_reference('TST-BS-VALID'),
         'quantity_bags' => 4,
         'distributed_at' => date('Y-m-d H:i:s'),
     ], $user);
@@ -315,21 +329,21 @@ try {
     assert_near(scalar($db, 'SELECT total_weight_kg FROM finished_stocks WHERE id = ?', [$finishedStockId]), 150, 'Distribution diminue le stock produit fini en kg');
 
     $rolesToCheck = [
-        'agent-pont-bascule' => ['Pont-bascule'],
-        'agent-silo' => ['Silos', 'Alimentation'],
-        'agent-production' => ['Production', 'Dechets'],
-        'agent-emballage' => ['Emballage', 'Stock finis'],
-        'agent-distribution' => ['Distribution', 'Stock finis'],
+        'agent-pont-bascule' => ['weighings'],
+        'agent-silo' => ['silos', 'machine-feeds'],
+        'agent-production' => ['production', 'waste'],
+        'agent-emballage' => ['packaging', 'finished-stocks'],
+        'agent-distribution' => ['distributions', 'finished-stocks'],
     ];
     foreach ($rolesToCheck as $roleSlug => $expectedLabels) {
         $roleUser = run_query($db, "SELECT users.*, roles.name AS role_name, roles.slug AS role_slug FROM users INNER JOIN roles ON roles.id = users.role_id WHERE roles.slug = ? AND users.status = 'active' AND users.deleted_at IS NULL LIMIT 1", [$roleSlug])->fetch();
         if (!$roleUser) { throw new RuntimeException('Utilisateur requis introuvable pour le role ' . $roleSlug); }
         Auth::login($roleUser);
-        $labels = array_column(Auth::menu(), 'label');
+        $labels = array_column(Auth::menu(), 'path');
         foreach ($expectedLabels as $label) {
             assert_true(in_array($label, $labels, true), "Menu {$roleSlug} contient {$label}");
         }
-        assert_true(!in_array('Rapports', $labels, true) && !in_array('Utilisateurs', $labels, true), "Menu {$roleSlug} masque rapports/utilisateurs");
+        assert_true(!in_array('reports', $labels, true) && !in_array('users', $labels, true), "Menu {$roleSlug} masque rapports/utilisateurs");
     }
     $adminUser = run_query($db, "SELECT users.*, roles.name AS role_name, roles.slug AS role_slug FROM users INNER JOIN roles ON roles.id = users.role_id WHERE roles.slug = 'administrateur' AND users.status = 'active' AND users.deleted_at IS NULL LIMIT 1")->fetch();
     Auth::login($adminUser);
@@ -338,7 +352,7 @@ try {
     $filters = ['start_date' => date('Y-m-d'), 'end_date' => date('Y-m-d'), 'supplier_id' => $supplierId, 'machine_id' => $machineId];
     $reports = new ReportModel();
     $dailyRows = array_filter($reports->dailyReception($filters), function ($row) {
-        return $row['reference'] === 'TST-PB-VALID';
+        return $row['reference'] === qa_reference('TST-PB-VALID');
     });
     assert_true(count($dailyRows) === 1, 'Rapport reception affiche la pesee test');
     assert_near(array_values($dailyRows)[0]['poids_net'], 1100, 'Rapport reception affiche le bon poids net');
@@ -350,10 +364,9 @@ try {
     assert_near(array_values($productionRows)[0]['yield_rate'], 80, 'Rapport production affiche le bon rendement');
 
     $wasteRows = $reports->waste(['start_date' => date('Y-m-d'), 'end_date' => date('Y-m-d'), 'supplier_id' => '', 'machine_id' => $wasteMachineId]);
-    $testWasteRows = array_filter($wasteRows, function ($row) {
-        return (float) $row['input_quantity_kg'] === 50.0 && (float) $row['output_quantity_kg'] === 40.0;
-    });
-    assert_true(count($testWasteRows) >= 1, 'Rapport dechets affiche le traitement test');
+    // A processing operation may consume several FIFO stock lines.
+    assert_near(array_sum(array_column($wasteRows, 'input_quantity_kg')), 50, 'Rapport déchets : totalité du stock traité');
+    assert_near(array_sum(array_column($wasteRows, 'output_quantity_kg')), 40, 'Rapport déchets : totalité de la production');
 
     $packagingRows = $reports->packaging(['start_date' => date('Y-m-d'), 'end_date' => date('Y-m-d'), 'supplier_id' => '', 'machine_id' => '']);
     $testPackagingRows = array_filter($packagingRows, function ($row) {
@@ -363,7 +376,7 @@ try {
 
     $distributionRows = $reports->distribution(['start_date' => date('Y-m-d'), 'end_date' => date('Y-m-d'), 'supplier_id' => '', 'machine_id' => '']);
     $testDistributionRows = array_filter($distributionRows, function ($row) {
-        return $row['exit_voucher'] === 'TST-BS-VALID';
+        return $row['exit_voucher'] === qa_reference('TST-BS-VALID');
     });
     assert_true(count($testDistributionRows) === 1, 'Rapport distribution affiche le bon de sortie test');
     assert_near(array_values($testDistributionRows)[0]['total_weight_kg'], 100, 'Rapport distribution affiche le bon poids distribue');

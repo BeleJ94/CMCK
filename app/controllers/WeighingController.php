@@ -21,6 +21,9 @@ class WeighingController extends Controller
 
         $this->view('weighings.entry', [
             'title' => 'Pesee entree',
+            'currentSiteId' => Auth::currentSiteId(),
+            'receptionSites' => Auth::sites(),
+            'error' => flash('error'),
             'suppliers' => $model->suppliers(),
             'products' => $model->products(),
             'transports' => $model->availableTransports(),
@@ -45,7 +48,7 @@ class WeighingController extends Controller
         }
 
         try{$this->model('Weighing')->createEntry($data, Auth::user());flash('success', 'Pesée brute enregistrée. Aucun stock silo n’a été modifié.');}
-        catch(Exception $exception){flash('error',$exception->getMessage());redirect('weighings/entry');}
+        catch(Exception $exception){$_SESSION['old_weighing_entry']=$data;flash('error',$exception->getMessage());redirect('weighings/entry');}
         redirect('weighings');
     }
 
@@ -55,6 +58,7 @@ class WeighingController extends Controller
 
         $this->view('weighings.exit', [
             'title' => 'Pesee sortie',
+            'error' => flash('error'),
             'pending' => $model->pending(),
             'weighing' => null,
             'silos' => [],
@@ -80,12 +84,22 @@ class WeighingController extends Controller
 
         $this->view('weighings.exit', [
             'title' => 'Pesee sortie',
+            'error' => flash('error'),
             'pending' => $model->pending(),
             'weighing' => $weighing,
             'silos' => $model->silos(),
-            'exit' => $this->oldExit(),
+            'exit' => $this->oldExit(json_decode($weighing['exit_draft'] ?? 'null', true) ?: []),
+            'canValidateExit' => (Auth::canSelfValidate(Auth::user()['id']) || ((int)$weighing['created_by'] !== (int)Auth::user()['id'] && (int)($weighing['exit_prepared_by']??0) !== (int)Auth::user()['id'])) && Auth::can('weighings','validate',$weighing['site_id']),
+            'canPrepareExit' => Auth::can('weighings','update',$weighing['site_id']),
+            'success' => flash('success'),
             'errors' => flash('errors') ?: [],
         ], 'layouts.main');
+    }
+
+    public function prepareExit($id)
+    {
+        $_POST['exit_action']='prepare';
+        $this->validateExit($id);
     }
 
     public function validateExit($id)
@@ -120,10 +134,16 @@ class WeighingController extends Controller
         }
 
         try {
+            if(($_POST['exit_action']??'validate')==='prepare'){
+                $model->saveExitDraft($id,$data,Auth::user());
+                flash('success','Saisie enregistrée. La livraison reste à valider ; aucun stock silo n’a été modifié.');
+                redirect('weighings/'.$id.'/exit');
+            }
             $model->validateExit($id, $data, Auth::user());
-            flash('success', 'Livraison validee et stock silo mis a jour.');
+            flash('success', $data['decision']==='reject' ? 'Refus enregistré. Aucun crédit du silo.' : 'Livraison validée. Le poids net a été ajouté au silo.');
             redirect('weighings/' . $id . '/ticket');
         } catch (Exception $exception) {
+            $_SESSION['old_weighing_exit'] = $data;
             flash('error', $exception->getMessage());
             redirect('weighings/' . $id . '/exit');
         }
@@ -144,11 +164,13 @@ class WeighingController extends Controller
                 'weighing' => $weighing,
                 'pdfMode' => true,
             ]);
-            (new PdfService())->stream('Ticket de pesee', $html, 'ticket-pesee-' . $this->slug($weighing['official_document_number'] ?: $weighing['reference']) . '.pdf', 'portrait');
+            (new PdfService())->stream('Ticket de pesee', $html, 'ticket-pesee-' . $this->slug($weighing['official_document_number'] ?: $weighing['reference']) . '.pdf', 'portrait', ($_GET['preview'] ?? '') !== '1');
             return;
         }
 
         $this->view('weighings.ticket', [
+            'success' => flash('success'),
+            'error' => flash('error'),
             'title' => 'Ticket de pesee',
             'weighing' => $weighing,
         ], 'layouts.main');
@@ -213,13 +235,13 @@ class WeighingController extends Controller
         ];
     }
 
-    private function oldExit()
+    private function oldExit(array $draft = [])
     {
         Auth::start();
         $old = $_SESSION['old_weighing_exit'] ?? null;
         unset($_SESSION['old_weighing_exit']);
 
-        return $old ?: ['poids_tare'=>'','silo_id'=>'','humidity_percent'=>'','impurities_percent'=>'','weight_tolerance_percent'=>'2','max_humidity_percent'=>'14','max_impurities_percent'=>'2','quality_notes'=>'','decision'=>'accept'];
+        return $old ?: $draft ?: ['poids_tare'=>'','silo_id'=>'','humidity_percent'=>'','impurities_percent'=>'','weight_tolerance_percent'=>'2','max_humidity_percent'=>'14','max_impurities_percent'=>'2','quality_notes'=>'','decision'=>'accept'];
     }
 
     private function ensureCsrf($redirect)

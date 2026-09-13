@@ -84,7 +84,7 @@ class MachineFeed extends Model
         $params = [];
         $siteClause = Auth::siteClause('site_id', $params);
         return $this->query(
-            "SELECT id, name, code, machine_type, capacity_kg_hour
+            "SELECT id, site_id, name, code, machine_type, capacity_kg_hour
              FROM machines
              WHERE deleted_at IS NULL
                AND status IN ('active', 'validated')
@@ -96,7 +96,23 @@ class MachineFeed extends Model
 
     public function createFeed(array $data, array $user)
     {
-        $operationSiteId = Auth::requireCurrentSite();
+        $operationSiteId = Auth::currentSiteId();
+        foreach (['quantity_kg' => 'chargée', 'authorized_quantity_kg' => 'autorisée'] as $field => $label) {
+            $value = $data[$field] ?? ($field === 'authorized_quantity_kg' ? ($data['quantity_kg'] ?? '') : '');
+            if (!is_numeric($value) || !is_finite((float)$value) || (float)$value < 0.001 || (float)$value > 999999999.999) {
+                throw new RuntimeException('La quantité '.$label.' doit être comprise entre 0,001 et 999 999 999,999 kg.');
+            }
+            $data[$field] = round((float)$value, 3);
+        }
+        foreach (['fed_at' => 'début', 'ended_at' => 'fin'] as $field => $label) {
+            $raw = str_replace('T', ' ', trim($data[$field] ?? ''));
+            if ($field === 'ended_at' && $raw === '') { $data[$field] = ''; continue; }
+            $format = strlen($raw) === 16 ? 'Y-m-d H:i' : 'Y-m-d H:i:s';
+            $date = DateTimeImmutable::createFromFormat('!'.$format, $raw);
+            if (!$date || $date->format($format) !== $raw) throw new RuntimeException('La date et l’heure de '.$label.' sont invalides.');
+            $data[$field] = $date->format('Y-m-d H:i:s');
+        }
+        if ($data['ended_at'] !== '' && $data['ended_at'] < $data['fed_at']) throw new RuntimeException('La fin doit être postérieure ou égale au début de l’alimentation.');
         $this->db->beginTransaction();
 
         try {
@@ -112,16 +128,23 @@ class MachineFeed extends Model
             if (!$silo) {
                 throw new RuntimeException('Silo source introuvable.');
             }
+            if (!in_array($silo['status'], ['active', 'validated'], true)) {
+                throw new RuntimeException('Ce silo est inactif et ne peut pas alimenter une machine.');
+            }
             Auth::requireSiteAccess($silo['site_id']);
 
             $machine = $this->query(
-                "SELECT * FROM machines WHERE id = :id AND site_id = :site_id AND machine_type = 'main'
+                "SELECT * FROM machines WHERE id = :id AND machine_type = 'main'
                  AND status IN ('active', 'validated') AND deleted_at IS NULL FOR UPDATE",
-                ['id' => $data['machine_id'], 'site_id' => $operationSiteId]
+                ['id' => $data['machine_id']]
             )->fetch();
-            if (!$machine) {
+            if (!$machine || ($operationSiteId !== null && (int)$machine['site_id'] !== (int)$operationSiteId)) {
                 throw new RuntimeException('Machine principale introuvable sur le site courant.');
             }
+
+            $operationSiteId = (int)$machine['site_id'];
+            Auth::requireSiteAccess($operationSiteId);
+            Auth::requirePermission('machine-feeds', 'create', $operationSiteId);
 
             $authorized = (float) ($data['authorized_quantity_kg'] ?? $data['quantity_kg']);
             $quantity = (float) $data['quantity_kg'];
@@ -129,7 +152,7 @@ class MachineFeed extends Model
             $stockBefore = (float) $silo['current_stock_kg'];
 
             if ($quantity > $stockBefore) {
-                throw new RuntimeException('Quantite envoyee superieure au stock silo.');
+                throw new RuntimeException('Stock insuffisant dans '.$silo['name'].' : '.number_format($stockBefore, 3, ',', ' ').' kg disponibles pour '.number_format($quantity, 3, ',', ' ').' kg demandés.');
             }
 
             $stockAfter = $stockBefore - $quantity;
@@ -244,6 +267,6 @@ class MachineFeed extends Model
 
     private function batchNumber()
     {
-        return 'LOT-' . date('Ymd-His') . '-' . random_int(100, 999);
+        return 'LOT-' . date('Ymd-His') . '-' . strtoupper(bin2hex(random_bytes(6)));
     }
 }

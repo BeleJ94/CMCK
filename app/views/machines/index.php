@@ -1,79 +1,30 @@
-<section class="dashboard-hero">
-    <span class="hero-icon"><i class="bi bi-gear-wide-connected"></i></span>
-    <div>
-        <p class="section-label">Production</p>
-        <h2>Machines</h2>
-        <p>Referentiel machines et suivi de performance operationnelle.</p>
-    </div>
-    <a href="<?= e(base_url('machines/create')) ?>" class="page-action"><i class="bi bi-plus-circle"></i><span>Nouvelle machine</span></a>
-</section>
-
-<?php if (!empty($success)): ?>
-    <div class="app-alert app-alert-success"><i class="bi bi-check2-circle"></i><?= e($success) ?></div>
-<?php endif; ?>
-<?php if (!empty($error)): ?>
-    <div class="app-alert app-alert-error"><i class="bi bi-exclamation-triangle"></i><?= e($error) ?></div>
-<?php endif; ?>
-
-<section class="metric-grid">
-    <?php
-        $activeCount = count(array_filter($machines, function ($machine) { return $machine['status'] === 'active'; }));
-        $fedTotal = array_sum(array_map(function ($machine) { return (float) $machine['fed_quantity_kg']; }, $machines));
-        $outputTotal = array_sum(array_map(function ($machine) { return (float) $machine['output_quantity_kg']; }, $machines));
-    ?>
-    <article class="metric-card"><div class="metric-card-top"><span>Machines actives</span><span class="metric-icon tone-green"><i class="bi bi-check2-circle"></i></span></div><strong><?= e($activeCount) ?></strong></article>
-    <article class="metric-card"><div class="metric-card-top"><span>Quantite alimentee</span><span class="metric-icon tone-blue"><i class="bi bi-arrow-down-up"></i></span></div><strong><?= e(number_format($fedTotal, 0, ',', ' ')) ?> kg</strong></article>
-    <article class="metric-card"><div class="metric-card-top"><span>Production sortie</span><span class="metric-icon tone-orange"><i class="bi bi-box-seam"></i></span></div><strong><?= e(number_format($outputTotal, 0, ',', ' ')) ?> kg</strong></article>
-</section>
-
-<section class="table-panel">
-    <div class="panel-heading">
-        <span class="panel-icon"><i class="bi bi-table"></i></span>
-        <div>
-            <h3>Liste machines</h3>
-            <p>Activation, modification et performance par machine.</p>
-        </div>
-    </div>
-    <div class="table-responsive">
-        <table id="machinesTable" class="enterprise-table">
-            <thead>
-                <tr>
-                    <th>Nom</th>
-                    <th>Type</th>
-                    <th>Capacite horaire</th>
-                    <th>Alimente</th>
-                    <th>Production</th>
-                    <th>Rendement</th>
-                    <th>Lots</th>
-                    <th>Statut</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($machines as $machine): ?>
-                    <tr>
-                        <td><strong><?= e($machine['name']) ?></strong><br><small><?= e($machine['code']) ?></small></td>
-                        <td><?= e($machine['machine_type'] === 'waste' ? 'Machine dechets' : 'Machine principale') ?></td>
-                        <td><?= e(number_format((float) $machine['capacity_kg_hour'], 0, ',', ' ')) ?> kg/h</td>
-                        <td><?= e(number_format((float) $machine['fed_quantity_kg'], 0, ',', ' ')) ?> kg</td>
-                        <td><?= e(number_format((float) $machine['output_quantity_kg'], 0, ',', ' ')) ?> kg</td>
-                        <td><?= e(number_format((float) $machine['yield_rate'], 1, ',', ' ')) ?>%</td>
-                        <td><?= e((int) $machine['batches_count']) ?></td>
-                        <td><span class="status-badge status-<?= e($machine['status']) ?>"><?= e($machine['status']) ?></span></td>
-                        <td>
-                            <div class="table-actions">
-                                <a href="<?= e(base_url('machines/' . $machine['id'] . '/edit')) ?>" class="icon-button" title="Modifier"><i class="bi bi-pencil-square"></i></a>
-                                <?php if (Auth::hasRole(['administrateur', 'direction'])): ?>
-                                    <form method="post" action="<?= e(base_url('machines/' . $machine['id'] . '/toggle')) ?>">
-                                        <?= csrf_field() ?>
-                                        <button type="submit" class="icon-button" title="Activer/desactiver"><i class="bi bi-power"></i></button>
-                                    </form>
-                                <?php endif; ?>
-                            </div>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-</section>
+<?php $states=['active'=>'Active','validated'=>'Active','inactive'=>'Inactive','pending'=>'En attente','cancelled'=>'Annulée'];$batchStates=['in_progress'=>'En cours','results_submitted'=>'Résultats à valider','pending_additional_approval'=>'Approbation complémentaire','validated'=>'Validé','pending'=>'En attente','cancelled'=>'Annulé'];$periodLabel=['month'=>'ce mois','year'=>'cette année','all'=>'tout l’historique'][$period];$sites=Auth::sites();$kg=fn($v)=>number_format((float)$v,3,',',' ').' kg';$types=['main'=>'Machine principale','waste'=>'Traitement des déchets']; ?>
+<div class="machine-directory" data-machine-directory data-open-editor="<?=e($openEditor)?>" data-context="<?=e(Auth::currentSiteId()??'all')?>" data-url="<?=e(base_url('machines'))?>">
+<header class="campaign-heading"><div><p class="page-kicker">PRODUCTION · ÉQUIPEMENTS</p><h2>Machines</h2><p>Consultez les équipements et leur activité de production.</p></div><?php if(Auth::can('machines','create')):?><button type="button" class="btn-primary" data-machine-edit="new" data-workspace-modal-open="machineEditor">Nouvelle machine</button><?php endif;?></header>
+<?php if($success):?><p class="app-alert app-alert-success"><?=e($success)?></p><?php endif;?><?php if($error):?><p class="app-alert app-alert-error"><?=e($error)?></p><?php endif;?>
+<div class="campaign-list"><div class="campaign-filters machine-filters" role="search" aria-label="Filtrer les machines"><label>Recherche<input type="search" data-machine-search placeholder="Nom ou code…"></label><label>Site<select data-machine-site><option value="">Tous les sites du périmètre</option><?php foreach($sites as$site):if(Auth::currentSiteId()&&(int)$site['id']!==Auth::currentSiteId())continue;?><option value="<?=e($site['id'])?>"><?=e($site['name'])?></option><?php endforeach;?></select></label><label>Type<select data-machine-type><option value="">Tous</option><?php foreach($types as$key=>$label):?><option value="<?=e($key)?>"><?=e($label)?></option><?php endforeach;?></select></label><label>État<select data-machine-state><option value="">Tous</option><option value="active">Actives</option><option value="inactive">Inactives</option><option value="pending">En attente</option><option value="cancelled">Annulées</option></select></label><label>Période<select data-machine-period><?php foreach(['month'=>'Ce mois','year'=>'Cette année','all'=>'Tout l’historique'] as$key=>$label):?><option value="<?=e($key)?>" <?=$period===$key?'selected':''?>><?=e($label)?></option><?php endforeach;?></select></label><button type="button" class="btn-secondary" data-machine-reset>Réinitialiser</button></div></div>
+<p class="plot-visual-note">Quantités des opérations démarrées sur la période. Production validée uniquement. Les opérations en cours sont comptées sur tout l’historique.</p><p class="app-alert app-alert-error" data-machine-load-error hidden role="alert"></p>
+<div class="machine-card-grid">
+<?php foreach($machines as$machine):$active=in_array($machine['status'],['active','validated'],true);?>
+<article class="machine-card" data-machine-card data-id="<?=e($machine['id'])?>" data-search="<?=e($machine['name'].' '.$machine['code'])?>" data-site="<?=e($machine['site_id'])?>" data-type="<?=e($machine['machine_type'])?>" data-state="<?=e($active?'active':$machine['status'])?>">
+<div class="machine-card-visual"><?php require view_path('machines.illustration');?><span class="machine-state <?=$active?'is-active':''?>"><?=e($states[$machine['status']]??$machine['status'])?></span></div>
+<div class="machine-card-body"><small><?=e($machine['site_name'].' · '.$machine['code'])?></small><h3><?=e($machine['name'])?></h3><p><?=e($types[$machine['machine_type']])?></p><dl class="machine-card-numbers"><div><dt>Alimenté · <?=e($periodLabel)?></dt><dd><?=e($kg($machine['fed_quantity_kg']))?></dd></div><div><dt>Production validée · <?=e($periodLabel)?></dt><dd><?=e($kg($machine['output_quantity_kg']))?></dd></div></dl><p class="machine-activity"><?=e($machine['open_count'])?> opération(s) en cours<?php if($machine['open_count']):?> · <?=e($kg($machine['open_quantity_kg']))?> chargés<?php endif;?></p><button type="button" class="btn-primary" data-machine-open="<?=e($machine['id'])?>" aria-haspopup="dialog">Consulter <i class="bi bi-arrow-right" aria-hidden="true"></i></button></div>
+</article>
+<template data-machine-detail="<?=e($machine['id'])?>">
+<header class="campaign-drawer-heading"><div><p class="page-kicker"><?=e($machine['site_name'].' · '.$machine['code'])?></p><h2 id="machineDetailTitle"><?=e($machine['name'])?></h2><small><?=e($types[$machine['machine_type']].' · '.$states[$machine['status']])?></small></div><button type="button" class="modal-close" data-machine-close aria-label="Fermer">×</button></header>
+<div class="campaign-drawer-body">
+<section class="machine-open-operations" aria-label="Opérations en cours"><h3>Opérations en cours · <?=e($machine['open_count'])?></h3><p>Visibles quelle que soit la période sélectionnée.</p>
+<?php if(!$machine['open_operations']):?><p>Aucune opération en cours.</p><?php endif;?>
+<div class="machine-history"><?php foreach($machine['open_operations'] as$op):?><article><strong><?=e($op['reference'])?></strong><span><?=e($batchStates[$op['status']]??$op['status'])?></span><small><?=e(date('d/m/Y H:i',strtotime($op['date'])).' · '.$op['source'].' · '.$kg($op['quantity']))?></small></article><?php endforeach;?></div></section>
+<h3>Indicateurs · <?=e($periodLabel)?></h3><dl class="feed-detail-facts"><div><dt>Capacité horaire</dt><dd><?=$machine['capacity_kg_hour']!==null&&$machine['capacity_kg_hour']>0?e($kg($machine['capacity_kg_hour'])).'/h':'Non renseignée'?></dd></div><div><dt>Rendement des opérations validées</dt><dd><?=$machine['yield_rate']===null?'Pas de production validée':e(number_format($machine['yield_rate'],1,',',' ')).' %'?></dd></div><div><dt>Alimenté sur la période</dt><dd><?=e($kg($machine['fed_quantity_kg']))?></dd></div><div><dt>Production validée sur la période</dt><dd><?=e($kg($machine['output_quantity_kg']))?></dd></div><div><dt>Lots / traitements sur la période</dt><dd><?=e($machine['batches_count'])?></dd></div><div><dt>Opérations encore en cours</dt><dd><?=e($machine['open_count'])?></dd></div></dl>
+<p class="plot-visual-note">Le statut « Active » autorise l’utilisation de l’équipement ; il ne mesure pas son fonctionnement en temps réel.</p><h3>Dernières opérations de la période</h3>
+<?php if(!$machine['history']):?><p>Aucune opération démarrée sur cette période. Les opérations encore en cours restent visibles ci-dessus.</p><?php endif;?>
+<div class="machine-history"><?php foreach($machine['history'] as$op):?><article><strong><?=e($op['reference'])?></strong><span><?=e($batchStates[$op['status']]??$op['status'])?></span><small><?=e(date('d/m/Y H:i',strtotime($op['date'])).' · '.$op['source'].' · '.$kg($op['quantity']))?></small></article><?php endforeach;?></div></div>
+<footer class="feed-detail-footer"><?php if(Auth::can('machines','update',$machine['site_id'])):?><button type="button" class="btn-primary" data-machine-edit="<?=e($machine['id'])?>" data-workspace-modal-open="machineEditor">Modifier</button><form method="post" action="<?=e(base_url('machines/'.$machine['id'].'/toggle'))?>" data-confirm="Confirmez le changement de disponibilité de cette machine."><?=csrf_field()?><input type="hidden" name="_period" value="<?=e($period)?>"><button class="btn-secondary" type="submit" data-machine-toggle><?=$active?'Désactiver':'Activer'?></button></form><?php endif;?><button type="button" class="btn-secondary" data-machine-close>Fermer</button></footer></template>
+<?php endforeach;?></div><p class="plot-empty" data-machine-empty hidden>Aucune machine ne correspond aux filtres.</p><footer class="campaign-pagination"><span data-machine-count role="status"></span><div><button class="btn-secondary" data-machine-page="-1" type="button">Précédent</button><span data-machine-page-label></span><button class="btn-secondary" data-machine-page="1" type="button">Suivant</button></div></footer>
+<dialog class="campaign-drawer machine-detail" data-machine-drawer aria-labelledby="machineDetailTitle"></dialog>
+<script type="application/json" data-machine-records><?=json_encode(array_map(fn($m)=>array_intersect_key($m,array_flip(['id','site_id','name','code','machine_type','capacity_kg_hour','status'])),$machines),JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?></script>
+<div class="entity-modal-backdrop workspace-modal-backdrop" data-workspace-modal-close></div>
+<section id="machineEditor" class="entity-modal workspace-entity-modal feed-editor" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="machineEditorTitle"><header><div><p class="page-kicker">ÉQUIPEMENT</p><h2 id="machineEditorTitle">Nouvelle machine</h2><p>Identifiez l’équipement et définissez sa disponibilité.</p></div><button type="button" class="modal-close" data-workspace-modal-close aria-label="Fermer">×</button></header>
+<form method="post" action="<?=e(base_url('machines'))?>" class="enterprise-form" data-machine-form data-confirm="Confirmez l’enregistrement de cette machine."><?=csrf_field()?><input type="hidden" name="_period" value="<?=e($period)?>"><div class="feed-form-body"><p class="app-alert app-alert-error" data-feed-error hidden role="alert"></p><div class="form-grid"><label><span>Nom *</span><input name="name" minlength="2" maxlength="150" required></label><label><span>Site *</span><select name="site_id" required><option value="">Choisir le site</option><?php foreach($sites as$site):if(Auth::currentSiteId()&&(int)$site['id']!==Auth::currentSiteId())continue;?><option value="<?=e($site['id'])?>" <?=(int)$site['id']===Auth::currentSiteId()?'selected':''?>><?=e($site['name'])?></option><?php endforeach;?></select><small>Le site ne peut pas être modifié après création.</small></label><label><span>Type *</span><select name="machine_type"><?php foreach($types as$key=>$label):?><option value="<?=e($key)?>"><?=e($label)?></option><?php endforeach;?></select></label><label><span>Capacité horaire (kg/h)</span><input type="number" name="capacity_kg_hour" min="0.001" max="999999999.999" step="0.001"><small>Laissez vide si elle est inconnue.</small></label><label><span>État *</span><select name="status"><?php foreach(['active'=>'Active','inactive'=>'Inactive','pending'=>'En attente','validated'=>'Active (validée)','cancelled'=>'Annulée'] as$key=>$label):?><option value="<?=e($key)?>"><?=e($label)?></option><?php endforeach;?></select></label></div></div><footer><button class="btn-secondary" type="button" data-workspace-modal-close>Annuler</button><button class="btn-primary" type="submit">Enregistrer la machine</button></footer></form></section>
+</div>

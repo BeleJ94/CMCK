@@ -66,7 +66,7 @@ class Weighing extends Model
                     silos.name AS silo_name,
                     silos.code AS silo_code,
                     transport.origin_type, transport.transport_reference, transport.route_description, transport.toll_amount, transport.toll_details,
-                    origin_site.name AS origin_site_name, bt_document.document_number AS bt_number,
+                    origin_site.name AS origin_site_name, COALESCE(bt_document.document_number,transport.transport_reference) AS bt_number,
                     official_document.document_number AS official_document_number,
                     nc.reference AS nc_reference, wr.return_number, wr.status AS return_status
              FROM weighings
@@ -192,6 +192,31 @@ class Weighing extends Model
         }
     }
 
+    public function saveExitDraft($id, array $data, array $user)
+    {
+        $this->db->beginTransaction();
+        try {
+            $weighing=$this->query('SELECT * FROM weighings WHERE id=:id AND deleted_at IS NULL FOR UPDATE',['id'=>$id])->fetch();
+            if(!$weighing || $weighing['status']!=='pending')throw new RuntimeException('Cette pesée ne peut plus être préparée.');
+            Auth::requireSiteAccess($weighing['site_id']);
+            Auth::requirePermission('weighings','update',$weighing['site_id']);
+            $tare=(float)($data['poids_tare']??-1);
+            if(!isset($data['poids_tare']) || !is_numeric($data['poids_tare']) || $tare<0 || $tare>=(float)$weighing['poids_brut'])throw new RuntimeException('La tare doit être positive ou nulle et inférieure au poids brut.');
+            $silo=$this->query('SELECT id FROM silos WHERE id=:id AND site_id=:site AND deleted_at IS NULL',['id'=>$data['silo_id']??0,'site'=>$weighing['site_id']])->fetch();
+            if(!$silo)throw new RuntimeException('Sélectionnez un silo du site de réception.');
+            $fields=['poids_tare','silo_id','humidity_percent','impurities_percent','weight_tolerance_percent','max_humidity_percent','max_impurities_percent','decision','quality_notes'];
+            $draft=array_intersect_key($data,array_flip($fields));
+            foreach(['humidity_percent','impurities_percent','weight_tolerance_percent','max_humidity_percent','max_impurities_percent'] as$field){
+                if(!isset($draft[$field])||!is_numeric($draft[$field])||(float)$draft[$field]<0)throw new RuntimeException('Renseignez les mesures et seuils de qualité.');
+            }
+            if(!in_array($draft['decision']??'',['accept','reject'],true))throw new RuntimeException('Décision invalide.');
+            if($draft['decision']==='reject'&&trim($draft['quality_notes']??'')==='')throw new RuntimeException('Le motif du refus est obligatoire.');
+            $this->query('UPDATE weighings SET exit_draft=:draft,exit_prepared_by=:actor,exit_prepared_at=NOW() WHERE id=:id',['draft'=>json_encode($draft,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),'actor'=>$user['id'],'id'=>$id]);
+            $this->logActivity('prepare_exit','pont-bascule','weighings',$id,'Sortie enregistrée à valider, sans mouvement de stock.',null,$draft,$user);
+            $this->db->commit();
+        } catch(Exception $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
+    }
+
     public function validateExit($id, array $data, array $user)
     {
         $data=array_merge(['humidity_percent'=>0,'impurities_percent'=>0,'weight_tolerance_percent'=>2,'max_humidity_percent'=>14,'max_impurities_percent'=>2,'quality_notes'=>'','decision'=>'accept'],$data);
@@ -211,6 +236,7 @@ class Weighing extends Model
                 throw new RuntimeException('Pesee introuvable.');
             }
             Auth::requireSiteAccess($weighing['site_id']);
+            if(!empty($weighing['exit_prepared_by']) && (int)$weighing['exit_prepared_by']===(int)$user['id']&&!Auth::canSelfValidate($user['id']))throw new RuntimeException('La sortie doit être validée par un autre utilisateur que son préparateur.');
             require_once dirname(__DIR__) . '/services/AuthorizationService.php';
             (new AuthorizationService($this->db))->assertCanValidateRecord($user['id'] ?? null, 'weighings', $weighing);
 
@@ -252,6 +278,9 @@ class Weighing extends Model
 
             if (!$silo) {
                 throw new RuntimeException('Silo destination introuvable.');
+            }
+            if (!in_array($silo['status'], ['active', 'validated'], true)) {
+                throw new RuntimeException('Ce silo est inactif et ne peut pas recevoir de livraison.');
             }
             Auth::requireSiteAccess($silo['site_id']);
             if ((int) $silo['site_id'] !== (int) $weighing['site_id']) {

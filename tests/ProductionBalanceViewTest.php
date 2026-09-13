@@ -1,0 +1,5 @@
+<?php
+require dirname(__DIR__).'/app/helpers/functions.php';$kg=fn($n)=>number_format((float)$n,3,',',' ').' kg';
+function renderBalance($loaded,$flour,$waste){global $kg;$b=['actual_input_quantity_kg'=>$loaded,'output_quantity_kg'=>$flour,'waste_quantity_kg'=>$waste];ob_start();require view_path('production.balance');return ob_get_clean();}
+function check($v,$message){if(!$v)throw new RuntimeException($message);echo "OK : $message\n";}
+$html=renderBalance(300,240,55);check(str_contains($html,'width:80%'),'Farine proportionnelle au chargement');check(str_contains($html,'5,000 kg'),'Écart de 5 kg affiché');check(str_contains($html,'aria-label="Farine'),'Quantités lisibles sans dépendre des couleurs');$html=renderBalance(300,310,10);check(str_contains($html,'Dépassement')&&str_contains($html,'20,000 kg'),'Sorties excessives explicitement signalées');check(!str_contains($html,'width:-'),'Aucun segment négatif');$html=renderBalance(0,0,0);check(!str_contains($html,'NAN')&&!str_contains($html,'INF'),'Bilan nul sans division par zéro');

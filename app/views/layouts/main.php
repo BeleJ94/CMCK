@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#12324a">
     <title><?= e($title ?? 'Application') ?> - <?= e(config('app.name')) ?></title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="<?= e(asset_url('vendor/bootstrap-icons/bootstrap-icons.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset_url('css/app.css')) ?>">
 </head>
 <body class="app-body">
@@ -71,6 +71,16 @@
     </section>
     <div class="command-palette-backdrop" data-command-close></div>
 
+    <script src="<?= e(asset_url('vendor/sweetalert2/sweetalert2.all.min.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/works.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/campaigns.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/plots.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/depots.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/machine-feeds.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/machines.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/production.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/waste.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/pelletization.js')) ?>"></script>
     <script src="<?= e(asset_url('js/app.js')) ?>"></script>
 </body>
 </html>

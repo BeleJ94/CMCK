@@ -76,7 +76,7 @@ class AuthorizationService
     {
         $siteId = isset($record['site_id']) ? (int) $record['site_id'] : null;
         $this->assertAllowed($userId, $component, 'validate', $siteId);
-        if (!empty($record[$creatorField]) && (int) $record[$creatorField] === (int) $userId) {
+        if (!empty($record[$creatorField]) && (int) $record[$creatorField] === (int) $userId && !Auth::canSelfValidate($userId)) {
             throw new RuntimeException('Separation des taches: le createur ne peut pas valider cette operation.');
         }
     }

@@ -1,0 +1,36 @@
+<?php
+$plotValidated=[];foreach($harvests as$h){if($h['status']==='validated'&&empty($h['deleted_at']))$plotValidated[$h['campaign_plot_id']]=($plotValidated[$h['campaign_plot_id']]??0)+(float)$h['net_weight_kg']/1000;}
+$plotCampaignMap=array_column($campaigns,null,'id');$plotPlansMap=[];$plotSites=[];
+foreach($campaignPlots as$plan){if(isset($plotCampaignMap[$plan['campaign_id']])){$plan['campaign']=$plotCampaignMap[$plan['campaign_id']];$plotPlansMap[$plan['plot_id']][]=$plan;}}
+foreach($plots as$plot)$plotSites[$plot['site_id']]=$plot['site_name'];
+$plotNumber=fn($n)=>number_format((float)$n,2,',',' ');
+$plotDate=fn($d)=>$d?date('d/m/Y',strtotime($d)):'—';
+$plotStates=['planned'=>'Planifiée','in_progress'=>'En cours','harvested'=>'Récoltée','closed'=>'Clôturée'];
+?>
+<section id="agriPlanning" class="campaign-directory plot-directory" data-plot-directory data-context="<?=e(Auth::currentSiteId()??'all')?>">
+<header class="campaign-heading"><div><p class="page-kicker">AGRICULTURE · <?=e($currentSiteLabel)?></p><h2>Parcelles agricoles</h2><p>Vos terres, leurs cultures et leurs campagnes en un coup d’œil.</p></div><?php if(Auth::can('agriculture','create')):?><button type="button" class="btn-primary" data-workspace-modal-open="plotModal"><i class="bi bi-plus-lg" aria-hidden="true"></i> Créer une parcelle</button><?php endif;?></header>
+<div class="campaign-list"><div class="campaign-filters" role="search" aria-label="Filtrer les parcelles"><label>Recherche<input type="search" data-plot-filter="search" placeholder="Parcelle, culture, campagne…"></label><label>Ferme<select data-plot-filter="site"><option value="">Toutes les fermes</option><?php foreach($plotSites as$id=>$name):?><option value="<?=e($id)?>"><?=e($name)?></option><?php endforeach;?></select></label><label>Statut<select data-plot-filter="status"><option value="">Tous les statuts</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label><label>Campagne<select data-plot-filter="current"><option value="">Toutes les parcelles</option><option value="yes">En campagne</option><option value="no">Sans campagne en cours</option></select></label><button type="button" class="btn-secondary" data-plot-reset>Réinitialiser</button></div></div>
+<p class="plot-visual-note">Illustrations indicatives, sans représentation des limites réelles. Surfaces et récoltes validées de la campagne affichée · vert : exploitation, doré : récolte.</p>
+<div class="plot-card-grid">
+<?php foreach($plots as$plot):
+$plans=$plotPlansMap[$plot['id']]??[];usort($plans,fn($a,$b)=>strcmp($b['campaign']['start_date'],$a['campaign']['start_date'])?:((int)$b['id']<=>(int)$a['id']));
+$currentPlans=array_values(array_filter($plans,fn($p)=>in_array($p['campaign']['status'],['in_progress','harvesting'],true)&&$p['campaign']['start_date']<=date('Y-m-d')&&$p['campaign']['end_date']>=date('Y-m-d')&&$p['status']!=='closed'));
+$mainPlan=$currentPlans[0]??$plans[0]??null;$search=$plot['name'].' '.$plot['code'].' '.$plot['site_name'].' '.implode(' ',array_map(fn($p)=>$p['variety_name'].' '.$p['campaign']['name'],$plans));
+?>
+<article class="plot-card" data-plot-card data-id="<?=e($plot['id'])?>" data-search="<?=e($search)?>" data-site="<?=e($plot['site_id'])?>" data-status="<?=e($plot['status'])?>" data-current="<?=$currentPlans?'yes':'no'?>" data-area="<?=e($plot['total_area_ha'])?>">
+<div class="plot-card-visual"><?php require view_path('agriculture.plot_illustration');?><span class="plot-site-label"><?=e($plot['site_code'])?></span><span class="plot-state <?=$plot['status']==='active'?'is-active':''?>"><?=$plot['status']==='active'?'Active':'Inactive'?></span></div>
+<div class="plot-card-body"><small><?=e($plot['code'])?></small><h3><?=e($plot['name'])?></h3><p class="plot-crop"><i class="bi bi-flower1" aria-hidden="true"></i> <?=e($mainPlan['variety_name']??'Culture à planifier')?></p>
+<div class="plot-campaign-label"><small><?=$currentPlans?'Campagne en cours':($mainPlan?'Dernière planification':'Prochaine étape')?></small><strong><?=e($mainPlan['campaign']['name']??'Planifier cette parcelle')?></strong><?php if(count($currentPlans)>1):?><small>+ <?=count($currentPlans)-1?> autre(s) campagne(s) en cours</small><?php endif;?></div>
+<dl class="plot-card-numbers"><div><dt>Superficie totale</dt><dd><?=e($plotNumber($plot['total_area_ha']))?> ha</dd></div><div><dt>Exploitée · campagne affichée</dt><dd><?=$mainPlan?e($plotNumber($mainPlan['actual_area_ha'])).' ha':'—'?></dd></div></dl>
+<div class="plot-card-actions"><button type="button" class="btn-secondary" data-plot-open="<?=e($plot['id'])?>" aria-haspopup="dialog" aria-label="Consulter <?=e($plot['name'])?>">Consulter</button><?php if($plot['status']==='active'&&Auth::can('agriculture','create',$plot['site_id'])):?><button type="button" class="btn-primary" data-workspace-modal-open="planModal" data-plan-plot="<?=e($plot['id'])?>" data-plan-site-id="<?=e($plot['site_id'])?>">Planifier</button><?php endif;?></div></div>
+</article>
+<template data-plot-detail="<?=e($plot['id'])?>"><header class="campaign-drawer-heading"><div><p class="page-kicker"><?=e($plot['site_name'])?></p><h2 id="plotDetailTitle"><?=e($plot['name'])?></h2><small><?=e($plot['code'])?> · <?=$plot['status']==='active'?'Active':'Inactive'?></small></div><button type="button" class="modal-close" data-plot-close aria-label="Fermer">×</button></header><div class="campaign-drawer-body">
+<?php require view_path('agriculture.plot_illustration');?><p>Superficie physique : <strong><?=e($plotNumber($plot['total_area_ha']))?> ha</strong> · <?=count($plans)?> planification(s)</p><p>Les superficies des campagnes successives ne s’additionnent pas pour calculer une surface disponible.</p>
+<?php if($plot['status']==='active'&&Auth::can('agriculture','create',$plot['site_id'])):?><button type="button" class="btn-primary" data-plot-plan data-workspace-modal-open="planModal" data-plan-plot="<?=e($plot['id'])?>" data-plan-site-id="<?=e($plot['site_id'])?>">Planifier cette parcelle</button><?php endif;?>
+<h3>Campagnes et cultures</h3><?php if(!$plans):?><p class="campaign-empty-note">Aucune planification. Choisissez une campagne et une variété pour commencer.</p><?php endif;?>
+<?php foreach($plans as$p):?><article class="campaign-detail-item"><strong><?=e($p['campaign']['name'])?></strong><span><?=e($p['variety_name'])?> · <?=e($plotStates[$p['status']]??$p['status'])?></span><small><?=e($plotDate($p['campaign']['start_date']).' au '.$plotDate($p['campaign']['end_date']))?></small><span><?=e($plotNumber($p['actual_area_ha']))?> ha exploités · <?=e($plotNumber($p['target_tons_per_ha']))?> t/ha visées</span></article><?php endforeach;?></div></template>
+<?php endforeach;?>
+</div><p class="plot-empty" data-plot-empty hidden>Aucune parcelle ne correspond à votre sélection. Réinitialisez les filtres ou créez une parcelle.</p>
+<footer class="campaign-pagination"><span data-plot-count role="status"></span><div><button type="button" class="btn-secondary" data-plot-page="-1">Précédent</button><span data-plot-page-label></span><button type="button" class="btn-secondary" data-plot-page="1">Suivant</button></div></footer>
+<dialog class="campaign-drawer plot-detail" data-plot-drawer aria-labelledby="plotDetailTitle"></dialog>
+</section>

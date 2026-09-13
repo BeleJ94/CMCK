@@ -7,6 +7,11 @@ class MachineFeedController extends Controller
         $this->view('machine_feeds.index', [
             'title' => 'Alimentation machines',
             'feeds' => $this->model('MachineFeed')->allDetailed(),
+            'silos' => $this->model('MachineFeed')->silosForSelect(),
+            'machines' => $this->model('MachineFeed')->machinesForSelect(),
+            'feed' => $this->old(),
+            'openCreate' => !empty($_GET['create']),
+            'errors' => flash('errors') ?: [],
             'success' => flash('success'),
             'error' => flash('error'),
         ], 'layouts.main');
@@ -14,25 +19,24 @@ class MachineFeedController extends Controller
 
     public function create()
     {
-        $model = $this->model('MachineFeed');
-
-        $this->view('machine_feeds.create', [
-            'title' => 'Nouvelle alimentation',
-            'feed' => $this->old(),
-            'silos' => $model->silosForSelect(),
-            'machines' => $model->machinesForSelect(),
-            'errors' => flash('errors') ?: [],
-        ], 'layouts.main');
+        $_GET['create'] = 1;
+        $this->index();
     }
 
     public function store()
     {
-        $this->ensureCsrf('machine-feeds/create');
+        $ajax = strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest';
+        if (!verify_csrf($_POST['_token'] ?? '')) {
+            if ($ajax) return $this->json(['ok'=>false,'message'=>'Session expirée. Rechargez la page avant de réessayer.'],419);
+            flash('error','Session expirée. Rechargez la page avant de réessayer.');
+            redirect('machine-feeds/create');
+        }
         $model = $this->model('MachineFeed');
         $data = $this->input();
         $errors = $this->validate($data);
 
         if (!empty($errors)) {
+            if ($ajax) return $this->json(['ok'=>false,'message'=>implode(' ', $errors),'errors'=>$errors],422);
             flash('errors', $errors);
             $_SESSION['old_machine_feed'] = $data;
             redirect('machine-feeds/create');
@@ -40,10 +44,13 @@ class MachineFeedController extends Controller
 
         try {
             $feedId = $model->createFeed($data, Auth::user());
-            flash('success', 'Alimentation machine creee. Lot en attente production.');
+            if ($ajax) return $this->json(['ok'=>true,'message'=>'Alimentation créée : stock silo mis à jour, BSS validé et lot de production démarré.','refresh_url'=>base_url('machine-feeds'),'id'=>$feedId]);
+            flash('success', 'Alimentation créée. Lot de production démarré.');
             redirect('machine-feeds/' . $feedId);
         } catch (Exception $exception) {
-            flash('error', $exception->getMessage());
+            $message = $exception instanceof PDOException ? 'L’alimentation n’a pas été enregistrée. Une erreur de stockage est survenue ; contactez l’administrateur.' : $exception->getMessage();
+            if ($ajax) return $this->json(['ok'=>false,'message'=>$message],422);
+            flash('error', $message);
             $_SESSION['old_machine_feed'] = $data;
             redirect('machine-feeds/create');
         }

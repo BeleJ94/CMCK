@@ -11,8 +11,8 @@ function to($db,$sql,$p=[]){return tq($db,$sql,$p)->fetch();}
 function ok($v,$m){if(!$v){throw new RuntimeException('ECHEC: '.$m);}echo "[OK] {$m}\n";}
 function blocked($f,$m){$v=false;try{$f();}catch(Exception $e){$v=true;}ok($v,$m);}
 try {
- $creator=to($db,"SELECT u.*,r.name role_name,r.slug role_slug FROM users u JOIN roles r ON r.id=u.role_id WHERE r.slug='administrateur' AND u.status='active' LIMIT 1");
- $validator=to($db,"SELECT u.*,r.name role_name,r.slug role_slug FROM users u JOIN roles r ON r.id=u.role_id WHERE r.slug='direction' AND u.status='active' LIMIT 1");
+ $creator=to($db,"SELECT u.*,r.name role_name,r.slug role_slug FROM users u JOIN roles r ON r.id=u.role_id WHERE r.slug='direction' AND u.status='active' LIMIT 1");
+ $validator=to($db,"SELECT u.*,r.name role_name,r.slug role_slug FROM users u JOIN roles r ON r.id=u.role_id WHERE r.slug='administrateur' AND u.status='active' LIMIT 1");
  $source=to($db,"SELECT id FROM sites WHERE code='MINO'"); $dest=to($db,"SELECT id FROM sites WHERE code='DEP-DEV'");
  Auth::login($creator); Auth::selectSite((string)$source['id']); $suffix=random_int(10000,99999);
  tq($db,"INSERT INTO products(name,code,category,unit,status) VALUES('QA Transfer',:code,'finished_product','kg','active')",['code'=>'TST-TR-'.$suffix]); $productId=(int)$db->lastInsertId();

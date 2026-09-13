@@ -1,80 +1,40 @@
 <?php
-$totalTreated = 0;
-$totalGood = 0;
-$totalWaste = 0;
-$pendingCount = 0;
-$validatedCount = 0;
-
-foreach ($batches as $batch) {
-    $totalTreated += (float) $batch['input_quantity_kg'];
-    $totalGood += (float) $batch['output_quantity_kg'];
-    $totalWaste += (float) $batch['waste_quantity_kg'];
-    $pendingCount += $batch['status'] === 'pending' ? 1 : 0;
-    $validatedCount += $batch['status'] === 'validated' ? 1 : 0;
-}
-
-$averageYield = $totalTreated > 0 ? ($totalGood / $totalTreated) * 100 : 0;
+$states=['pending'=>'À produire','in_progress'=>'À produire','results_submitted'=>'À valider','pending_additional_approval'=>'Écart à approuver','validated'=>'Validée','cancelled'=>'Annulée'];$kg=fn($n)=>number_format((float)$n,3,',',' ').' kg';$counts=['todo'=>0,'review'=>0,'variance'=>0,'validated'=>0];$output=0;$input=0;
+foreach($batches as$b){if(in_array($b['status'],['pending','in_progress'],true))$counts['todo']++;if($b['status']==='results_submitted')$counts['review']++;if($b['status']==='pending_additional_approval')$counts['variance']++;if($b['status']==='validated'){$counts['validated']++;$output+=(float)$b['output_quantity_kg'];$input+=(float)$b['actual_input_quantity_kg'];}}
 ?>
-
-<section class="dashboard-hero">
-    <span class="hero-icon"><i class="bi bi-gear-wide-connected"></i></span>
-    <div>
-        <p class="section-label">Production</p>
-        <h2>Production farine</h2>
-        <p>Validation des lots issus des alimentations machines et mise a jour des stocks farine/dechets.</p>
-    </div>
-    <a href="<?= e(base_url('production/create')) ?>" class="page-action"><i class="bi bi-plus-circle"></i><span>Nouvelle production</span></a>
-</section>
-
-<?php if (!empty($success)): ?><div class="app-alert app-alert-success"><i class="bi bi-check2-circle"></i><?= e($success) ?></div><?php endif; ?>
-<?php if (!empty($error)): ?><div class="app-alert app-alert-error"><i class="bi bi-exclamation-triangle"></i><?= e($error) ?></div><?php endif; ?>
-<?php if(Auth::currentSiteId() === null): ?><div class="app-alert alert-info"><i class="bi bi-buildings"></i><span>Vue consolidée en lecture. Sélectionnez un site pour créer une production ou modifier sa tolérance.</span></div><?php endif; ?>
-<?php if(Auth::can('production','administer') && Auth::currentSiteId() !== null):?><section class="form-panel"><form method="post" action="<?=e(base_url('production/tolerance'))?>" class="enterprise-form"><?=csrf_field()?><div class="form-grid"><label><span>Tolérance maximale d’écart (%)</span><input type="number" min="0" max="100" step="0.001" name="tolerance_percent" value="<?=e($tolerance??2)?>" required></label></div><div class="form-actions"><button class="btn-primary">Enregistrer la tolérance</button></div></form></section><?php endif;?>
-
-<section class="metric-grid">
-    <article class="metric-card"><div class="metric-card-top"><span>Lots en attente</span><span class="metric-icon tone-orange"><i class="bi bi-hourglass-split"></i></span></div><strong><?= e(number_format($pendingCount, 0, ',', ' ')) ?></strong></article>
-    <article class="metric-card"><div class="metric-card-top"><span>Productions validees</span><span class="metric-icon tone-green"><i class="bi bi-check2-circle"></i></span></div><strong><?= e(number_format($validatedCount, 0, ',', ' ')) ?></strong></article>
-    <article class="metric-card"><div class="metric-card-top"><span>Farine produite</span><span class="metric-icon tone-blue"><i class="bi bi-box-seam"></i></span></div><strong><?= e(number_format($totalGood, 0, ',', ' ')) ?> kg</strong></article>
-    <article class="metric-card"><div class="metric-card-top"><span>Rendement moyen</span><span class="metric-icon tone-red"><i class="bi bi-speedometer2"></i></span></div><strong><?= e(number_format($averageYield, 1, ',', ' ')) ?>%</strong></article>
-</section>
-
-<section class="table-panel">
-    <div class="panel-heading"><span class="panel-icon"><i class="bi bi-table"></i></span><div><h3>Historique productions</h3><p>Lots de traitement, quantites produites, dechets et rendement.</p></div></div>
-    <div class="table-responsive">
-        <table id="productionTable" class="enterprise-table">
-            <thead>
-                <tr>
-                    <th>Lot</th>
-                    <th>Machine</th>
-                    <th>Quantite traitee</th>
-                    <th>Bon produit</th>
-                    <th>Dechets</th>
-                    <th>Rendement</th>
-                    <th>Date</th>
-                    <th>Agent</th>
-                    <th>Statut</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($batches as $batch): ?>
-                    <?php
-                    $yield = (float) $batch['input_quantity_kg'] > 0 ? ((float) $batch['output_quantity_kg'] / (float) $batch['input_quantity_kg']) * 100 : 0;
-                    ?>
-                    <tr>
-                        <td><strong><?= e($batch['batch_number']) ?></strong></td>
-                        <td><?= e($batch['machine_name']) ?></td>
-                        <td><?= e(number_format((float) $batch['input_quantity_kg'], 0, ',', ' ')) ?> kg</td>
-                        <td><?= e(number_format((float) $batch['output_quantity_kg'], 0, ',', ' ')) ?> kg</td>
-                        <td><?= e(number_format((float) $batch['waste_quantity_kg'], 0, ',', ' ')) ?> kg</td>
-                        <td><?= e(number_format($yield, 1, ',', ' ')) ?>%</td>
-                        <td><?= e($batch['ended_at'] ?: $batch['started_at']) ?></td>
-                        <td><?= e($batch['agent_name'] ?: '-') ?></td>
-                        <td><span class="status-badge status-<?= e($batch['status']) ?>"><?= $batch['status'] === 'pending' ? 'En attente' : e($batch['status']) ?></span></td>
-                        <td><a class="icon-button" href="<?= e(base_url('production/' . $batch['id'])) ?>" title="Voir"><i class="bi bi-eye"></i></a></td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-</section>
+<div class="production-directory" data-production-directory data-now="<?=e(date('Y-m-d\TH:i:s'))?>" data-open-batch="<?=e($openBatch)?>" data-open-detail="<?=e($openDetail)?>" data-context="<?=e(Auth::currentSiteId()??'all')?>">
+<header class="campaign-heading"><div><p class="page-kicker">MINOTERIE · RÉSULTATS</p><h2>Production farine</h2><p>Choisissez un lot « À produire », puis cliquez sur « Saisir les résultats ».</p></div><a class="btn-secondary" href="<?=e(base_url('machine-feeds'))?>">Voir les alimentations</a></header>
+<?php if($success):?><p class="app-alert app-alert-success"><?=e($success)?></p><?php endif;?><?php if($error):?><p class="app-alert app-alert-error"><?=e($error)?></p><?php endif;?>
+<div class="production-summary" role="group" aria-label="Filtrer par étape de production">
+<?php foreach([['todo','À produire','todo','bi-gear'],['results_submitted','À valider','review','bi-clipboard-check'],['pending_additional_approval','Écarts à approuver','variance','bi-exclamation-triangle'],['validated','Validées','validated','bi-check-circle']] as[$stage,$label,$count,$icon]):?>
+<button type="button" class="production-stage stage-<?=e($stage)?>" data-prod-stage="<?=e($stage)?>" aria-pressed="false"><span><i class="bi <?=e($icon)?>" aria-hidden="true"></i><?=e($label)?></span><strong><?=e($counts[$count])?></strong><small><?=$stage==='validated'?e($kg($output)).' de farine':'Afficher les lots'?></small></button><?php endforeach;?></div>
+<div class="production-next" data-prod-next-panel hidden role="status"><div><strong>Résultats enregistrés</strong><p data-prod-next-label></p></div><button type="button" class="btn-primary" data-prod-next>Passer au lot suivant</button><button type="button" class="btn-secondary" data-prod-next-dismiss>Fermer</button></div>
+<?php $filterMachines=[];$filterSilos=[];foreach($batches as$item){$filterMachines[$item['machine_code']]=$item['machine_name'];$filterSilos[$item['silo_id']]=$item['silo_name'];}asort($filterMachines);asort($filterSilos);?>
+<section class="production-table-panel">
+<div class="waste-panel-heading"><p>Exporter tous les lots correspondant aux filtres.</p><div class="waste-actions"><a class="btn-secondary" data-prod-export="excel" href="<?=e(base_url('production/export?format=excel'))?>" download>Excel</a><a class="btn-secondary" data-prod-export="pdf" href="<?=e(base_url('production/export?format=pdf'))?>" download>PDF</a></div></div>
+<div class="campaign-filters production-table-filters" role="search" aria-label="Filtrer les productions">
+<label>Recherche<input type="search" data-prod-search placeholder="Lot, silo, BSS…"></label><label>Machine<select data-prod-machine><option value="">Toutes</option><?php foreach($filterMachines as$value=>$label):?><option value="<?=e($value)?>"><?=e($label)?></option><?php endforeach;?></select></label>
+<label>Étape<select data-prod-state><option value="">Toutes</option><option value="todo">À produire</option><option value="results_submitted">À valider</option><option value="pending_additional_approval">Écart à approuver</option><option value="validated">Validée</option><option value="cancelled">Annulée</option></select></label>
+<label>Silo<select data-prod-silo><option value="">Tous</option><?php foreach($filterSilos as$value=>$label):?><option value="<?=e($value)?>"><?=e($label)?></option><?php endforeach;?></select></label>
+<label>Date à filtrer<select data-prod-date-kind><option value="start">Début du lot</option><option value="end">Fin de production</option></select></label><label>Du<input type="date" data-prod-from></label><label>Au<input type="date" data-prod-to></label><button class="btn-secondary" type="button" data-prod-reset>Réinitialiser</button></div>
+<p class="prod-date-error" data-prod-date-error hidden role="alert">La date de fin du filtre doit être postérieure ou égale à la date de début.</p>
+<div class="table-responsive production-table-scroll" role="region" aria-label="Liste des productions" tabindex="0"><table class="enterprise-table production-data-table" data-datatable="false"><caption class="sr-only">Lots de production : dates, machines, quantités, étapes et actions.</caption><thead><tr>
+<?php foreach(['date'=>'Début / fin','reference'=>'Lot / BSS','machine'=>'Machine / silo','loaded'=>'Chargé (kg)','flour'=>'Farine (kg)','waste'=>'Déchets (kg)','yield'=>'Rendement','state'=>'Étape'] as$key=>$label):?><th scope="col" aria-sort="<?=$key==='date'?'descending':'none'?>"><button type="button" data-prod-sort="<?=e($key)?>"><?=e($label)?> <i class="bi bi-arrow-down-up" aria-hidden="true"></i></button></th><?php endforeach;?><th scope="col">Actions</th></tr></thead><tbody>
+<?php foreach($batches as$b):$todo=in_array($b['status'],['pending','in_progress'],true);$review=in_array($b['status'],['results_submitted','pending_additional_approval'],true);$edit=($todo||$review)&&Auth::can('production','update',$b['site_id']);$validate=$review&&Auth::can('production','validate',$b['site_id'])&&((int)$b['created_by']!==(int)Auth::user()['id']||Auth::canSelfValidate(Auth::user()['id']))&&($b['status']!=='pending_additional_approval'||(int)$b['results_submitted_by']!==(int)Auth::user()['id']);?>
+<tr data-prod-row data-state="<?=e($todo?'todo':$b['status'])?>" data-machine="<?=e($b['machine_code'])?>" data-silo="<?=e($b['silo_id'])?>" data-start="<?=e(substr($b['started_at'],0,10))?>" data-end="<?=e(substr($b['ended_at']??'',0,10))?>" data-date="<?=e($b['started_at'])?>" data-reference="<?=e($b['batch_number'])?>" data-loaded="<?=e($b['actual_input_quantity_kg'])?>" data-flour="<?=$todo?'':e($b['output_quantity_kg'])?>" data-waste="<?=$todo?'':e($b['waste_quantity_kg'])?>" data-yield="<?=$todo||(float)$b['actual_input_quantity_kg']<=0?'':e(100*(float)$b['output_quantity_kg']/(float)$b['actual_input_quantity_kg'])?>" data-search="<?=e($b['batch_number'].' '.$b['machine_name'].' '.$b['silo_name'].' '.$b['bss_number'])?>">
+<td><strong><?=e(date('d/m/Y H:i',strtotime($b['started_at'])))?></strong><small>Fin : <?=$b['ended_at']?e(date('d/m/Y H:i',strtotime($b['ended_at']))):'Non renseignée'?></small></td>
+<td><strong class="production-lot-reference"><?=e($b['batch_number'])?></strong><small><?=e($b['bss_number']?:'BSS non référencé')?></small></td>
+<td><strong><?=e($b['machine_name'])?></strong><small><?=e($b['silo_name'])?></small></td>
+<td class="prod-numeric"><?=e(number_format((float)$b['actual_input_quantity_kg'],3,',',' '))?></td><td class="prod-numeric"><?=$todo?'—':e(number_format((float)$b['output_quantity_kg'],3,',',' '))?></td><td class="prod-numeric"><?=$todo?'—':e(number_format((float)$b['waste_quantity_kg'],3,',',' '))?></td><td class="prod-numeric"><?=$todo||(float)$b['actual_input_quantity_kg']<=0?'—':e(number_format(100*(float)$b['output_quantity_kg']/(float)$b['actual_input_quantity_kg'],1,',',' ')).' %'?></td>
+<td><span class="campaign-status prod-status-<?=e($b['status'])?>"><?=e($states[$b['status']]??$b['status'])?></span></td><td><div class="production-actions">
+<?php if($edit):?><button class="<?=$todo?'btn-primary':'btn-secondary'?>" type="button" data-prod-edit="<?=e($b['id'])?>" data-workspace-modal-open="productionEditor"><?=$todo?'Saisir les résultats':'Corriger les résultats'?></button><?php endif;?>
+<?php if($validate):?><form method="post" action="<?=e(base_url('production/'.$b['id'].'/validate'))?>" data-confirm="Confirmez la validation du lot <?=e($b['batch_number'])?> : la farine et les déchets seront ajoutés aux stocks."><?=csrf_field()?><input type="hidden" name="version" value="<?=e($b['version'])?>"><button class="btn-primary" type="submit"><?=$b['status']==='pending_additional_approval'?'Examiner l’écart et valider':'Valider la production'?></button></form><?php elseif($review):?><small>Validation attendue d’un utilisateur habilité<?php if($b['status']==='pending_additional_approval'):?> autre que le déclarant<?php endif;?>.</small><?php endif;?>
+<button type="button" class="btn-secondary" data-prod-open="<?=e($b['id'])?>">Consulter</button></div></td></tr>
+<template data-prod-detail="<?=e($b['id'])?>"><?php require view_path('production.detail_panel');?></template>
+<?php endforeach;?></tbody></table></div><p data-prod-empty class="plot-empty" hidden>Aucun lot pour cette sélection. Les lots sont créés depuis les alimentations des machines.</p><footer class="campaign-pagination"><span data-prod-count role="status"></span><label class="prod-page-size">Lignes <select data-prod-size><option value="10">10</option><option value="25">25</option><option value="50">50</option></select></label><div><button class="btn-secondary" type="button" data-prod-page="-1">Précédent</button><span data-prod-page-label></span><button class="btn-secondary" type="button" data-prod-page="1">Suivant</button></div></footer></section>
+<?php if(Auth::currentSiteId()!==null&&Auth::can('production','administer')):?><details class="production-settings"><summary>Tolérance d’écart du site · <?=e($tolerance)?> %</summary><form method="post" action="<?=e(base_url('production/tolerance'))?>" data-confirm="Confirmez la tolérance appliquée aux prochaines soumissions de résultats."><?=csrf_field()?><label>Tolérance (%)<input type="number" name="tolerance_percent" min="0" max="100" step="0.001" value="<?=e($tolerance)?>" required></label><button class="btn-secondary">Enregistrer</button></form></details><?php endif;?>
+<dialog class="campaign-drawer production-detail" data-prod-drawer aria-labelledby="productionDetailTitle"></dialog>
+<script type="application/json" data-prod-records><?=json_encode($batches,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?></script>
+<div class="entity-modal-backdrop workspace-modal-backdrop" data-workspace-modal-close></div>
+<section id="productionEditor" class="entity-modal workspace-entity-modal feed-editor" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="productionEditorTitle"><header><div class="prod-panel-heading"><span class="prod-panel-icon" aria-hidden="true"><i class="bi bi-pencil-square"></i></span><div><p class="page-kicker">RÉSULTATS DU LOT</p><h2 id="productionEditorTitle">Saisir les résultats</h2><p data-prod-context></p></div></div><button type="button" class="modal-close" data-workspace-modal-close aria-label="Fermer">×</button></header><form class="enterprise-form" method="post" action="<?=e(base_url('production'))?>" data-prod-form data-confirm="Soumettre ces résultats pour validation ? Les stocks seront créés uniquement après validation."><?=csrf_field()?><input type="hidden" name="production_batch_id"><input type="hidden" name="version"><div class="feed-form-body"><p class="app-alert app-alert-error" data-feed-error hidden role="alert"></p><section class="prod-form-step"><h3><span>1</span> Lot sélectionné</h3><p class="prod-selected-lot" data-prod-selected></p></section><section class="prod-form-step"><h3><span>2</span> Résultats</h3><div class="form-grid"><label><span>Farine produite (kg) *</span><input type="number" name="output_quantity_kg" min="0" max="999999999.999" step="0.001" required></label><?php foreach($wasteTypes as$t):?><label><span><?=e($t['name'])?> (kg)</span><input type="number" name="waste_lines[<?=e($t['id'])?>]" data-prod-waste="<?=e($t['id'])?>" value="0" min="0" max="999999999.999" step="0.001" required></label><?php endforeach;?></div></section><section class="prod-form-step"><h3><span>3</span> Contrôle et fin de production</h3><p class="prod-control-hint" data-prod-control-hint></p><div class="form-grid"><label class="form-wide"><span>Justification de l’écart <span data-prod-required></span></span><textarea name="variance_justification" maxlength="5000" rows="3"></textarea></label><label><span>Date et heure de fin *</span><input type="datetime-local" name="ended_at" step="1" required></label><label class="form-wide" data-prod-reason hidden><span>Motif de correction *</span><textarea name="correction_reason" maxlength="1000" disabled></textarea></label></div></section></div><div class="prod-submit-summary" data-prod-preview aria-live="polite"></div><footer><small class="prod-footer-note">Stocks créés après validation</small><button type="button" class="btn-secondary" data-workspace-modal-close>Annuler</button><button class="btn-primary" type="submit">Soumettre les résultats</button></footer></form></section>
+</div>

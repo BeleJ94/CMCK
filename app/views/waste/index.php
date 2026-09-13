@@ -1,65 +1,28 @@
 <?php
-$activeLines = array_filter($stockLines, function ($line) {
-    return (float) $line['quantity_kg'] > 0 && $line['status'] === 'active';
-});
-$processedTotal = array_sum(array_map(function ($row) {
-    return (float) $row['input_quantity_kg'];
-}, $history));
-$feedTotal = array_sum(array_map(function ($row) {
-    return (float) $row['output_quantity_kg'];
-}, $history));
-$yield = $processedTotal > 0 ? ($feedTotal / $processedTotal) * 100 : 0;
+require_once dirname(__DIR__,2).'/services/WasteExportService.php';
+$exportService=new WasteExportService();
+$kg=fn($n)=>number_format((float)$n,3,',',' ');$buffer=0;$types=[];$sites=[];$saleLines=[];
+$storageLabels=['available'=>'Disponible','buffer'=>'En tampon','consumed'=>'Consommé','sold'=>'Vendu','reserved'=>'Réservé'];
+foreach($stockLines as$l){$types[$l['waste_type_name']?:'Non précisé']=true;$sites[$l['site_code']]=true;if($l['status']==='active'&&(float)$l['quantity_kg']>0&&in_array($l['storage_status'],['available','buffer'],true)){if($l['storage_status']==='buffer')$buffer+=(float)$l['quantity_kg'];if(Auth::can('waste','validate',$l['site_id']))$saleLines[]=$l;}}
+ksort($types);ksort($sites);
 ?>
-
-<section class="dashboard-hero">
-    <span class="hero-icon"><i class="bi bi-recycle"></i></span>
-    <div>
-        <p class="section-label">Production</p>
-        <h2>Module dechets</h2>
-        <p>Stock dechets disponible, traitements vers machine dechets et production aliment betail.</p>
-    </div>
-    <a href="<?= e(base_url('waste/process')) ?>" class="page-action"><i class="bi bi-plus-circle"></i><span>Traiter des dechets</span></a>
-</section>
-
-<?php if (!empty($success)): ?><div class="app-alert app-alert-success"><i class="bi bi-check2-circle"></i><?= e($success) ?></div><?php endif; ?>
-<?php if (!empty($error)): ?><div class="app-alert app-alert-error"><i class="bi bi-exclamation-triangle"></i><?= e($error) ?></div><?php endif; ?>
-
-<section class="metric-grid">
-    <article class="metric-card"><div class="metric-card-top"><span>Stock disponible</span><span class="metric-icon tone-orange"><i class="bi bi-recycle"></i></span></div><strong><?= e(number_format($availableStock, 0, ',', ' ')) ?> kg</strong></article>
-    <article class="metric-card"><div class="metric-card-top"><span>Lignes actives</span><span class="metric-icon tone-blue"><i class="bi bi-list-check"></i></span></div><strong><?= e(count($activeLines)) ?></strong></article>
-    <article class="metric-card"><div class="metric-card-top"><span>Dechets traites</span><span class="metric-icon tone-green"><i class="bi bi-gear-wide-connected"></i></span></div><strong><?= e(number_format($processedTotal, 0, ',', ' ')) ?> kg</strong></article>
-    <article class="metric-card"><div class="metric-card-top"><span>Rendement moyen</span><span class="metric-icon tone-red"><i class="bi bi-speedometer2"></i></span></div><strong><?= e(number_format($yield, 1, ',', ' ')) ?>%</strong></article>
-</section>
-
-<section class="table-panel">
-    <div class="panel-heading"><span class="panel-icon"><i class="bi bi-database"></i></span><div><h3>Stock dechets disponible</h3><p>Lignes de stock issues des productions farine.</p></div></div>
-    <div class="table-responsive">
-        <table id="wasteStockTable" class="enterprise-table">
-            <thead>
-                <tr>
-                    <th>Origine</th>
-                    <th>Produit</th>
-                    <th>Type / qualité / site</th>
-                    <th>Quantite disponible</th>
-                    <th>Statut</th>
-                    <th>Date creation</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($stockLines as $line): ?>
-                    <tr>
-                        <td><strong><?= e($line['batch_number'] ?: 'Stock dechets') ?></strong></td>
-                        <td><?= e($line['product_name']) ?></td>
-                        <td><?=e(($line['waste_type_name']?:'-').' / '.$line['quality_grade'].' / '.$line['site_code'])?></td>
-                        <td><?= e(number_format((float) $line['quantity_kg'], 0, ',', ' ')) ?> kg</td>
-                        <td><span class="status-badge status-<?= e($line['status']) ?>"><?= e($line['status']) ?></span></td>
-                        <td><?= e($line['created_at']) ?></td>
-                        <td><form method="post" action="<?=e(base_url('waste/'.$line['id'].'/buffer'))?>"><?=csrf_field()?><button>Stock tampon</button></form></td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-</section>
-<section class="form-panel"><h3>Vente brute</h3><form method="post" action="<?=e(base_url('waste/sell'))?>" class="enterprise-form"><?=csrf_field()?><div class="form-grid"><label><span>Stock</span><select name="waste_stock_id"><?php foreach($stockLines as$l):if($l['quantity_kg']<=0)continue;?><option value="<?=$l['id']?>"><?=e(($l['waste_type_name']?:'Déchet').' — '.($l['batch_number']?:'-').' — '.$l['quantity_kg'].' kg')?></option><?php endforeach;?></select></label><label><span>Quantité kg</span><input type="number" step="0.001" min="0.001" name="quantity_kg"></label><label><span>Client</span><input name="customer_name" required></label><label><span>Prix unitaire</span><input type="number" step="0.0001" min="0" name="unit_price"></label></div><button class="btn-primary">Enregistrer vente</button></form></section>
+<div class="waste-directory" data-waste-directory>
+<header class="campaign-heading"><div><p class="page-kicker">PRODUCTION · VALORISATION</p><h2>Déchets et coproduits</h2><p>Retrouvez les stocks issus de la farine et choisissez leur prochaine utilisation.</p></div><div class="waste-actions"><a class="btn-secondary" href="<?=e(base_url('waste/history'))?>">Historique des traitements</a><a class="btn-primary" href="<?=e(base_url('waste/process'))?>">Traiter des déchets</a></div></header>
+<?php if($success):?><p class="app-alert app-alert-success"><?=e($success)?></p><?php endif;?><?php if($error):?><p class="app-alert app-alert-error" role="alert"><?=e($error)?></p><?php endif;?>
+<div class="waste-overview">
+<article><i class="bi bi-recycle" aria-hidden="true"></i><div><small>Stock utilisable</small><strong><?=$kg($availableStock)?> kg</strong><span>Disponible et tampon inclus</span></div></article>
+<article><i class="bi bi-box-seam" aria-hidden="true"></i><div><small>Dont stock tampon</small><strong><?=$kg($buffer)?> kg</strong><span>Identifié pour une utilisation ultérieure</span></div></article>
+<article><i class="bi bi-arrow-repeat" aria-hidden="true"></i><div><small>Valoriser les déchets</small><strong>Traiter ou vendre</strong><span>Choisissez une ligne de stock ci-dessous</span></div></article>
+</div>
+<section class="waste-stock-panel"><div class="waste-panel-heading"><div><h3>Stocks de déchets</h3><p>Les quantités sont exprimées en kilogrammes. Les exports incluent tous les résultats filtrés.</p></div><div class="waste-actions"><a class="btn-secondary" data-waste-export="excel" href="<?=e(base_url('waste/export?format=excel'))?>" download><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Excel</a><a class="btn-secondary" data-waste-export="pdf" href="<?=e(base_url('waste/export?format=pdf'))?>" download><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> PDF</a></div></div>
+<div class="waste-filters" role="search" aria-label="Filtrer les stocks"><label>Recherche<input type="search" data-wf="search" placeholder="Lot, produit, qualité…"></label><label>Type<select data-wf="type"><option value="">Tous</option><?php foreach($types as$t=>$unused):?><option><?=e($t)?></option><?php endforeach;?></select></label><label>Site<select data-wf="site"><option value="">Tous</option><?php foreach($sites as$s=>$unused):?><option><?=e($s)?></option><?php endforeach;?></select></label><label>Disponibilité<select data-wf="state"><option value="usable">Stocks utilisables</option><option value="">Tous les stocks</option><option value="available">Disponible</option><option value="buffer">En tampon</option><option value="empty">Épuisé / indisponible</option></select></label><button class="btn-secondary" type="button" data-waste-reset>Réinitialiser</button></div>
+<div class="table-responsive" tabindex="0" role="region" aria-label="Stocks de déchets"><table class="enterprise-table" data-datatable="false"><thead><tr><th scope="col">Origine / produit</th><th scope="col">Type / qualité</th><th scope="col">Site</th><th scope="col">Disponible</th><th scope="col">Situation</th><th scope="col">Créé le</th><th scope="col">Actions</th></tr></thead><tbody>
+<?php foreach($stockLines as$l):$usable=$l['status']==='active'&&(float)$l['quantity_kg']>0&&in_array($l['storage_status'],['available','buffer'],true);$state=$usable?$l['storage_status']:'empty';?>
+<tr data-waste-row data-search="<?=e($exportService->searchText($l))?>" data-type="<?=e($l['waste_type_name']?:'Non précisé')?>" data-site="<?=e($l['site_code'])?>" data-state="<?=e($state)?>"><td><strong><?=e($l['batch_number']?:'Stock de déchets')?></strong><small><?=e($l['product_name'])?></small></td><td><?=e($l['waste_type_name']?:'Non précisé')?><small>Qualité : <?=e($l['quality_grade']?:'Non précisée')?></small></td><td><?=e($l['site_code'])?></td><td class="waste-quantity"><?=$kg($l['quantity_kg'])?> kg</td><td><span class="waste-status waste-status-<?=e($state)?>"><?=e($usable?$storageLabels[$state]:($storageLabels[$l['storage_status']]??'Indisponible'))?></span></td><td><?=e(date('d/m/Y H:i',strtotime($l['created_at'])))?></td><td><div class="waste-actions">
+<?php if($usable&&Auth::can('waste','validate',$l['site_id'])):?><button type="button" class="btn-primary" data-waste-sell="<?=e($l['id'])?>" data-workspace-modal-open="wasteSale">Vendre</button><?php endif;?>
+<?php if($state==='available'&&Auth::can('waste','update',$l['site_id'])):?><form method="post" action="<?=e(base_url('waste/'.$l['id'].'/buffer'))?>" data-confirm="Placer ce stock en tampon ? Sa quantité restera inchangée et utilisable pour un traitement."><?=csrf_field()?><button class="btn-secondary">Mettre en tampon</button></form><?php elseif(!$usable):?><small>Aucune action disponible</small><?php endif;?></div></td></tr>
+<?php endforeach;?></tbody></table></div>
+<p class="plot-empty" data-waste-empty hidden>Aucun stock ne correspond aux filtres. Essayez « Tous les stocks » ou réinitialisez la recherche.</p><footer class="campaign-pagination"><span data-waste-count role="status"></span><div><button type="button" class="btn-secondary" data-waste-page="-1">Précédent</button><span data-waste-page-label></span><button type="button" class="btn-secondary" data-waste-page="1">Suivant</button></div></footer></section>
+<div class="entity-modal-backdrop workspace-modal-backdrop" data-workspace-modal-close></div>
+<section id="wasteSale" class="entity-modal workspace-entity-modal feed-editor" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="wasteSaleTitle"><header><div><p class="page-kicker">VALORISATION</p><h2 id="wasteSaleTitle">Vendre des déchets bruts</h2><p>Vérifiez le stock puis renseignez les informations de vente.</p></div><button type="button" class="modal-close" data-workspace-modal-close aria-label="Fermer">×</button></header><form method="post" action="<?=e(base_url('waste/sell'))?>" class="enterprise-form" data-waste-sale-form data-confirm="Enregistrer cette vente ? La quantité vendue sera retirée du stock."><?=csrf_field()?><div class="feed-form-body"><p class="app-alert app-alert-error" data-feed-error hidden role="alert"></p><label>Stock à vendre<select name="waste_stock_id" required><?php foreach($saleLines as$l):?><option value="<?=e($l['id'])?>" data-quantity="<?=e($l['quantity_kg'])?>"><?=e(($l['waste_type_name']?:'Déchet').' · '.($l['batch_number']?:'Stock').' · '.$l['site_code'])?></option><?php endforeach;?></select></label><p class="waste-sale-summary" data-waste-available></p><div class="form-grid"><label>Quantité (kg) *<input type="number" step="0.001" min="0.001" name="quantity_kg" required></label><label>Prix unitaire / kg *<input type="number" step="0.0001" min="0" name="unit_price" required></label><label class="form-wide">Client *<input name="customer_name" maxlength="190" required autocomplete="organization"></label></div><p class="waste-sale-summary" data-waste-total aria-live="polite">Renseignez la quantité et le prix pour calculer le total.</p></div><footer><button type="button" class="btn-secondary" data-workspace-modal-close>Annuler</button><button class="btn-primary" type="submit">Enregistrer la vente</button></footer></form></section>
+</div>

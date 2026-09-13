@@ -1,48 +1,20 @@
-<section class="dashboard-hero">
-    <span class="hero-icon"><i class="bi bi-arrow-down-up"></i></span>
-    <div>
-        <p class="section-label">Production</p>
-        <h2>Alimentation machines</h2>
-        <p>Sorties silos vers machines principales et lots en attente production.</p>
-    </div>
-    <a href="<?= e(base_url('machine-feeds/create')) ?>" class="page-action"><i class="bi bi-plus-circle"></i><span>Nouvelle alimentation</span></a>
+<?php $sites=array_column(Auth::sites(),null,'id');$states=['pending'=>'Production en cours','validated'=>'Production validée','cancelled'=>'Annulée'];$batchStates=['in_progress'=>'Production en cours','results_submitted'=>'Résultats à valider','pending_additional_approval'=>'Approbation complémentaire','validated'=>'Production validée','cancelled'=>'Annulée'];$formFeed=$feed;$canCreate=Auth::can('machine-feeds','create'); ?>
+<div class="machine-feed-page" data-machine-feed-page data-open-create="<?=!empty($openCreate)?'1':'0'?>">
+<header class="campaign-heading"><div><p class="page-kicker">MINOTERIE · PRODUCTION</p><h2>Alimentation des machines</h2><p>Du silo à la machine : suivez les chargements et leurs lots de production.</p></div><?php if($canCreate):?><button type="button" class="btn-primary" data-workspace-modal-open="machineFeedModal"><i class="bi bi-plus-lg" aria-hidden="true"></i>Nouvelle alimentation</button><?php endif;?></header>
+<?php if(!empty($success)):?><div class="app-alert app-alert-success"><?=e($success)?></div><?php endif;?>
+<?php if(!empty($error)):?><div class="app-alert app-alert-error" role="alert"><?=e($error)?></div><?php endif;?>
+<section class="campaign-list">
+<div class="campaign-filters feed-filters" role="search" aria-label="Filtrer les alimentations"><label>Recherche<input type="search" data-feed-search placeholder="Silo, machine, BSS ou lot…"></label><label>État de la production<select data-feed-state><option value="">Tous les états</option><option value="pending">En cours / à valider</option><option value="validated">Validée</option><option value="cancelled">Annulée</option></select></label><button type="button" class="btn-secondary" data-feed-reset>Réinitialiser</button></div>
+<div class="table-responsive"><table class="enterprise-table feed-table" data-datatable="false"><thead><tr><th>Début / BSS</th><th>Silo → machine</th><th>Chargement</th><th>Lot de production</th><th>État</th><th>Action</th></tr></thead><tbody>
+<?php foreach($feeds as$item):?><tr data-feed-row data-state="<?=e($item['status'])?>" data-search="<?=e(implode(' ',[$item['silo_name'],$item['machine_name'],$item['product_name'],$item['batch_number'],$item['bss_number']]))?>"><td data-label="Début / BSS"><strong><?=e(date('d/m/Y H:i',strtotime($item['fed_at'])))?></strong><small><?=e($item['bss_number']?:'BSS non référencé')?></small></td><td data-label="Parcours"><strong><?=e($item['silo_name'])?> → <?=e($item['machine_name'])?></strong><small><?=e($item['product_name'])?></small></td><td data-label="Chargement"><strong><?=e(number_format((float)$item['quantity_kg'],3,',',' '))?> kg</strong><small>Autorisé : <?=e(number_format((float)$item['authorized_quantity_kg'],3,',',' '))?> kg</small></td><td data-label="Lot"><?=e($item['batch_number']?:'—')?></td><td data-label="État"><span class="campaign-status feed-status-<?=e($item['status'])?>"><?=e($item['status']==='cancelled'?'Annulée':($batchStates[$item['batch_status']]??$states[$item['status']]??$item['status']))?></span></td><td><a class="btn-secondary" data-feed-detail-open="<?=e($item['id'])?>" aria-haspopup="dialog" href="<?=e(base_url('machine-feeds/'.$item['id']))?>" aria-label="Consulter l’alimentation du <?=e(date('d/m/Y H:i',strtotime($item['fed_at'])))?>">Consulter</a></td></tr><?php endforeach;?>
+</tbody></table></div><p class="campaign-empty-note" data-feed-empty hidden>Aucune alimentation pour cette sélection.</p><footer class="campaign-pagination"><span data-feed-count role="status"></span><div><button type="button" class="btn-secondary" data-feed-page="-1">Précédent</button><span data-feed-pagination></span><button type="button" class="btn-secondary" data-feed-page="1">Suivant</button></div></footer>
 </section>
-
-<?php if (!empty($success)): ?><div class="app-alert app-alert-success"><i class="bi bi-check2-circle"></i><?= e($success) ?></div><?php endif; ?>
-<?php if (!empty($error)): ?><div class="app-alert app-alert-error"><i class="bi bi-exclamation-triangle"></i><?= e($error) ?></div><?php endif; ?>
-
-<section class="table-panel">
-    <div class="panel-heading"><span class="panel-icon"><i class="bi bi-table"></i></span><div><h3>Historique alimentations</h3><p>Suivi des quantites envoyees et lots crees.</p></div></div>
-    <div class="table-responsive">
-        <table id="feedsTable" class="enterprise-table">
-            <thead>
-                <tr>
-                    <th>Debut</th>
-                    <th>Fin</th>
-                    <th>Silo</th>
-                    <th>Machine</th>
-                    <th>Produit</th>
-                    <th>Quantite</th>
-                    <th>Lot</th>
-                    <th>Statut</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($feeds as $feed): ?>
-                    <tr>
-                        <td><?= e($feed['fed_at']) ?></td>
-                        <td><?= e($feed['ended_at'] ?: '-') ?></td>
-                        <td><?= e($feed['silo_name']) ?></td>
-                        <td><?= e($feed['machine_name']) ?></td>
-                        <td><?= e($feed['product_name']) ?></td>
-                        <td><?= e(number_format((float) $feed['quantity_kg'], 0, ',', ' ')) ?> kg</td>
-                        <td><strong><?= e($feed['batch_number'] ?: '-') ?></strong></td>
-                        <td><span class="status-badge status-<?= e($feed['status']) ?>"><?= $feed['status'] === 'pending' ? 'En attente production' : e($feed['status']) ?></span></td>
-                        <td><a class="icon-button" href="<?= e(base_url('machine-feeds/' . $feed['id'])) ?>"><i class="bi bi-eye"></i></a></td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-</section>
+<?php foreach($feeds as$item):?><template data-feed-detail="<?=e($item['id'])?>"><?php require view_path('machine_feeds.detail');?></template><?php endforeach;?>
+<dialog class="campaign-drawer feed-detail" data-feed-drawer aria-labelledby="feedDetailTitle"></dialog>
+<?php if($canCreate):?>
+<div class="entity-modal-backdrop workspace-modal-backdrop" data-workspace-modal-close></div>
+<section id="machineFeedModal" class="entity-modal workspace-entity-modal feed-editor" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="machineFeedTitle">
+<header><div><p class="page-kicker">SILO → MACHINE → PRODUCTION</p><h2 id="machineFeedTitle">Nouvelle alimentation</h2><p>Le chargement déduit le stock du silo et démarre un lot de production.</p></div><button type="button" class="modal-close" data-workspace-modal-close aria-label="Fermer">×</button></header>
+<?php $feed=$formFeed;require view_path('machine_feeds.form');?>
+</section><?php endif;?>
+</div>

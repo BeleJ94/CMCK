@@ -799,6 +799,15 @@
 
     function hydrate(root) {
         root = root || document;
+        if(window.initMachineFeeds)window.initMachineFeeds(root);
+        if(window.initMachines)window.initMachines(root);
+        if(window.initProduction)window.initProduction(root);
+        if(window.initWaste)window.initWaste(root);
+        if(window.initPelletization)window.initPelletization(root);
+        if (window.initWorkDirectory) window.initWorkDirectory(root);
+        if (window.initCampaignDirectory) window.initCampaignDirectory(root);
+        if (window.initPlotDirectory) window.initPlotDirectory(root);
+        if (window.initDepotDirectory) window.initDepotDirectory(root);
         enhanceAccessibility(root);
         refreshBusinessForms(root);
         enhanceDetailTriggers(root);
@@ -931,12 +940,43 @@
         closeWorkspaceModal(false);
         var modal=document.getElementById(id);if(!modal||!modal.classList.contains('workspace-entity-modal'))return;
         workspaceModalReturnFocus=trigger||document.activeElement;var form=qs('form',modal);if(form){form.reset();var page=qs('[data-agriculture-section]');var returnField=form.elements._return_to;if(page&&returnField&&page.dataset.agricultureSection!=='overview')returnField.value='agriculture/'+page.dataset.agricultureSection;}
+        if(id==='harvestModal')prepareHarvestEditor(modal,trigger);
+        updateHarvestPlanSummary(qs('[data-harvest-plan]',modal));
+        var depotStock=trigger&&trigger.getAttribute('data-depot-stock');if(depotStock){var stockField=qs('[data-farm-transport-stock]',modal);if(stockField)stockField.value=depotStock;}
+        enhanceFarmTransportRoutes(modal);
         var campaignSite=qs('[data-campaign-site]',modal);if(campaignSite)syncCampaignSuggestedCode(campaignSite);
         var plotSite=qs('[data-plot-site]',modal);if(plotSite)syncPlotSuggestedCode(plotSite);
         var farmCodeSite=qs('[data-farm-code-site]',modal);if(farmCodeSite)syncFarmSuggestedCode(farmCodeSite);
         var planSite=qs('[data-plan-site]',modal);if(planSite){var requestedSite=trigger?trigger.getAttribute('data-plan-site-id'):'';if(requestedSite)planSite.value=requestedSite;syncPlanSite(planSite);var requestedPlot=trigger?trigger.getAttribute('data-plan-plot'):'';var plotSelect=qs('[data-plan-plot-select]',modal);if(requestedPlot&&plotSelect)plotSelect.value=requestedPlot;updatePlotContext(plotSelect);}
+        var requestedCampaign=trigger?trigger.getAttribute('data-plan-campaign-id'):null;var campaignSelect=qs('[data-plan-campaign]',modal);if(requestedCampaign&&campaignSelect)campaignSelect.value=requestedCampaign;
         modal.classList.add('is-open');var backdrop=qs('.workspace-modal-backdrop');if(backdrop)backdrop.classList.add('is-open');document.body.classList.add('workspace-modal-open');modal.setAttribute('aria-hidden','false');
         var first=qs('input:not([type="hidden"]),select,textarea,button',modal);if(first)window.setTimeout(function(){first.focus({preventScroll:true});},0);
+    }
+
+    document.addEventListener('input',function(event){if(event.target.closest('#harvestModal'))updateHarvestNet(event.target.form);});
+
+    function prepareHarvestEditor(modal,trigger){
+        var form=qs('form',modal),raw=trigger&&trigger.getAttribute('data-harvest-edit'),data=raw?JSON.parse(raw):null;
+        if(!form.dataset.createAction){form.dataset.createAction=form.action;form.dataset.createConfirm=form.dataset.confirm;}
+        form.action=data?trigger.getAttribute('data-harvest-update-url'):form.dataset.createAction;
+        qs('#harvestModalTitle',modal).textContent=data?'Modifier la récolte':'Soumettre une récolte';
+        qs('footer button[type="submit"],footer button:not([type])',modal).textContent=data?'Enregistrer les modifications':'Soumettre la récolte';
+        var select=qs('[data-harvest-plan]',modal),fixed=qs('[data-harvest-fixed-plan]',modal),reason=qs('[name="reason"]',form),notice=qs('[data-harvest-edit-notice]',modal);
+        select.disabled=!!data;fixed.disabled=!data;reason.disabled=!data;reason.required=!!data;qs('[data-harvest-reason]',modal).hidden=!data;notice.hidden=!data;
+        if(data){select.value=data.campaign_plot_id;fixed.value=data.campaign_plot_id;Object.keys(data).forEach(function(name){if(name==='campaign_plot_id'||!form.elements[name])return;var field=form.elements[name];field.value=data[name]===null?'':(field.type==='datetime-local'?String(data[name]).replace(' ','T'):String(data[name]));});notice.textContent=data.harvest_number+(data.status==='validated'?' · Correction administrative : le stock restant sera ajusté selon le nouveau poids net.':' · Correction de la récolte avant validation.')+' La campagne et la parcelle restent inchangées.';}
+        form.dataset.confirmTitle=data?'Confirmer la modification de récolte':'Soumettre une récolte';form.dataset.confirm=data?'Vérifiez les poids et le motif. Une récolte validée conserve sa validation et son stock sera ajusté.':form.dataset.createConfirm;
+        var summaryNote=qs('.harvest-plan-summary-note',modal);if(summaryNote)summaryNote.textContent=data&&data.status==='validated'?'Récoltes validées avant correction · la valeur précédente de cette récolte est incluse.':'Données de la campagne sélectionnée · hors récolte en cours de saisie.';
+        updateHarvestNet(form);
+    }
+    function updateHarvestNet(form){if(!form||!qs('[data-harvest-net]',form))return;var net=(Number(form.elements.gross_weight_kg.value)||0)-(Number(form.elements.tare_weight_kg.value)||0)-(Number(form.elements.drying_loss_kg.value)||0);qs('[data-harvest-net]',form).textContent=net.toLocaleString('fr-FR',{minimumFractionDigits:3,maximumFractionDigits:3})+' kg';}
+
+    function updateHarvestPlanSummary(select) {
+        if(!select)return;
+        var summary=qs('.harvest-plan-summary',select.form),option=select.options[select.selectedIndex];
+        if(!summary)return;
+        var data=null;try{data=option&&option.dataset.harvestSummary?JSON.parse(option.dataset.harvestSummary):null;}catch(error){}
+        summary.hidden=!data;
+        qsa('[data-harvest-info]',summary).forEach(function(field){field.textContent=data?(data[field.dataset.harvestInfo]||'—'):'';});
     }
 
     function syncCampaignSuggestedCode(select) {
@@ -1048,7 +1088,101 @@
         return field && field.selectedIndex >= 0 ? field.options[field.selectedIndex] : null;
     }
 
+    function enhanceFarmTransportRoutes(root) {
+        qsa('[data-farm-transport-stock]', root).forEach(function (select) {
+            var form = select.form;
+            var route = form && qs('[data-farm-transport-route]', form);
+            if (!route) return;
+            function syncRoute() {
+                var option = select.options[select.selectedIndex];
+                var origin = option ? option.getAttribute('data-route-origin') : '';
+                var destination = route.getAttribute('data-route-destination');
+                route.value = origin && destination ? origin + ' → ' + destination : '';
+            }
+            if (!select.dataset.routeReady) {
+                select.dataset.routeReady = 'true';
+                select.addEventListener('change', syncRoute);
+                form.addEventListener('reset', function () { window.setTimeout(syncRoute, 0); });
+            }
+            syncRoute();
+        });
+    }
+
+    function enhanceWeighingEntry(root) {
+        qsa('[data-weighing-entry]', root).forEach(function (form) {
+            var select = qs('[data-entry-transport]', form);
+            if (!select) return;
+            var workspace = form.closest('.weighing-entry-workspace');
+            var dialog = workspace && qs('.entry-bt-dialog', workspace);
+            var display = qs('[data-entry-display]', form);
+            var trigger = qs('[data-entry-picker-open]', form);
+            var error = qs('[data-entry-picker-error]', form);
+            var choices = dialog ? qsa('[data-entry-choice]', dialog) : [];
+            function syncContext() {
+                var option = select.options[select.selectedIndex];
+                qsa('[data-entry-context]', form).forEach(function (field) {
+                    field.textContent = option && option.value ? option.getAttribute('data-entry-' + field.dataset.entryContext) || '—' : '—';
+                });
+                if (display) display.value = option && option.value ? option.textContent.trim() : '';
+                choices.forEach(function (choice) {
+                    var selected = choice.dataset.entryChoice === select.value;
+                    choice.setAttribute('aria-pressed', String(selected));
+                    qs('.entry-bt-selected', choice).hidden = !selected;
+                });
+                if (select.value && error) { error.hidden = true; display.removeAttribute('aria-invalid'); }
+            }
+            if (!select.dataset.entryReady) {
+                select.dataset.entryReady = 'true';
+                select.addEventListener('change', syncContext);
+                form.addEventListener('reset', function () { window.setTimeout(syncContext, 0); });
+                if (dialog && typeof dialog.showModal === 'function') {
+                    qs('[data-entry-select-fallback]', form).hidden = true;
+                    select.required = false;
+                    qs('[data-entry-picker]', form).hidden = false;
+                    var search = qs('[data-entry-picker-search]', dialog);
+                    function normalize(value) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase().trim(); }
+                    function filter() {
+                        var terms = normalize(search.value).split(/\s+/).filter(Boolean);
+                        var count = 0;
+                        choices.forEach(function (choice) {
+                            var text = normalize(choice.textContent);
+                            choice.hidden = !terms.every(function (term) { return text.indexOf(term) !== -1; });
+                            if (!choice.hidden) count++;
+                        });
+                        qs('[data-entry-picker-count]', dialog).textContent = count + ' BT disponible(s)';
+                        qs('[data-entry-picker-empty]', dialog).hidden = count !== 0;
+                    }
+                    function open() { search.value = ''; filter(); syncContext(); if (!dialog.open) dialog.showModal(); search.focus(); }
+                    trigger.addEventListener('click', open);
+                    display.addEventListener('click', open);
+                    search.addEventListener('input', filter);
+                    choices.forEach(function (choice) {
+                        choice.addEventListener('click', function () {
+                            select.value = choice.dataset.entryChoice;
+                            select.dispatchEvent(new Event('change', { bubbles: true }));
+                            dialog.close();
+                        });
+                    });
+                    qsa('[data-entry-picker-close]', dialog).forEach(function (button) { button.addEventListener('click', function () { dialog.close(); }); });
+                    dialog.addEventListener('keydown', function (event) {
+                        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); dialog.close(); }
+                    });
+                    dialog.addEventListener('close', function () { if (trigger.isConnected) trigger.focus(); });
+                    form.addEventListener('submit', function (event) {
+                        if (!select.value) {
+                            event.preventDefault(); event.stopImmediatePropagation();
+                            error.hidden = false; display.setAttribute('aria-invalid', 'true'); open();
+                        }
+                    }, true);
+                }
+            }
+            syncContext();
+        });
+    }
+
     function refreshBusinessForms(root) {
+        enhanceWeighingEntry(root);
+        enhanceFarmTransportRoutes(root);
         qsa('[data-weighing-exit], [data-production-form], [data-waste-form], [data-packaging-form], [data-distribution-form]', root)
             .forEach(updateBusinessForm);
     }
@@ -1057,10 +1191,19 @@
         if (!form) return;
 
         if (form.matches('[data-weighing-exit]')) {
+            var exitWorkspace = form.closest('.weighing-exit-workspace');
+            var decision = qs('[name="decision"]', form);
+            if (exitWorkspace && decision) {
+                var rejected = decision.value === 'reject';
+                qsa('[data-exit-validate-label]', exitWorkspace).forEach(function (button) { button.textContent = rejected ? 'Confirmer le refus' : 'Valider et créditer le silo'; });
+                var effect = qs('[data-exit-effect]', exitWorkspace);
+                if (effect) effect.textContent = rejected ? 'Le refus ne crédite pas le silo.' : 'La validation d’une livraison acceptée ajoute le poids net au silo choisi.';
+            }
+
             var gross = numericValue(form.querySelector('[data-poids-brut]'));
             var tare = numericValue(form.querySelector('[data-poids-tare]'));
             var net = form.querySelector('[data-poids-net]');
-            if (net) net.value = Math.max(gross - tare, 0).toLocaleString('fr-FR', { maximumFractionDigits: 3 });
+            if (net) net.value = form.querySelector('[data-poids-tare]').value === '' ? 'À calculer' : Math.max(gross - tare, 0).toLocaleString('fr-FR', { maximumFractionDigits: 3 });
         }
 
         if (form.matches('[data-production-form]')) {
@@ -1442,7 +1585,7 @@
         var dialog = qs('[data-action-dialog]');
         var title = operationName(form, submitter);
         qs('[data-action-dialog-title]').textContent = title;
-        qs('[data-action-dialog-description]').textContent = form.getAttribute('data-confirm') || 'Vérifiez le résumé avant de lancer cette opération.';
+        qs('[data-action-dialog-description]').textContent = (submitter && submitter.getAttribute('data-confirm')) || form.getAttribute('data-confirm') || 'Vérifiez le résumé avant de lancer cette opération.';
         renderOperationSummary(form);
         setShellInert(true);
         document.body.classList.add('action-dialog-open');
@@ -1603,7 +1746,8 @@
             data.append(submitter.name, submitter.value || '1');
         }
 
-        fetch(form.action, {
+        var submissionUrl = submitter && submitter.getAttribute('formaction') || form.action;
+        fetch(submissionUrl, {
             method: 'POST',
             body: data,
             credentials: 'same-origin',
@@ -1631,6 +1775,7 @@
             return;
         }
         if (!response.ok || !payload || payload.ok === false) {
+            if(pendingForm&&pendingForm.matches('[data-feed-form],[data-machine-form],[data-prod-form],[data-waste-sale-form],[data-pellet-form]')){var feedError=qs('[data-feed-error]',pendingForm);feedError.textContent=payload&&payload.message?payload.message:'L’alimentation n’a pas été enregistrée.';feedError.hidden=false;feedError.scrollIntoView({block:'nearest'});}
             showToast('Opération refusée', payload && payload.message ? payload.message : 'Le serveur a refusé cette opération.', 'error');
             return;
         }
@@ -1661,8 +1806,23 @@
         var incomingAgriculture=parsed.querySelector('[data-agriculture-section]');var currentAgriculture=qs('[data-agriculture-section]');
         if(incomingAgriculture&&currentAgriculture&&incomingAgriculture.dataset.agricultureSection===currentAgriculture.dataset.agricultureSection&&incomingAgriculture.dataset.agricultureSection!=='overview'){
             var section=incomingAgriculture.dataset.agricultureSection;var directoryIds={campaigns:'agriCampaigns',plots:'agriPlanning',planning:'agriPlanning',inputs:'agriExtraDirectory',works:'agriExtraDirectory',harvests:'agriHarvests',stocks:'agriExtraDirectory',transports:'agriTransports',workers:'agriExtraDirectory',equipment:'agriExtraDirectory'};var id=directoryIds[section];var incomingDirectory=id?incomingAgriculture.querySelector('#'+id):null;var currentDirectory=id?currentAgriculture.querySelector('#'+id):null;
-            if(response.ok&&incomingDirectory&&currentDirectory){currentDirectory.replaceWith(incomingDirectory);incomingDirectory.hidden=false;hydrate(incomingDirectory);syncShell(parsed,response.url);if(responseKind==='error'){showToast('Opération refusée',responseMessage||'Le serveur a refusé cette opération.','error');}else{showToast('Opération réussie',responseMessage||'Le tableau a été actualisé sans recharger la page.','success');}return;}
+            if(response.ok&&incomingDirectory&&currentDirectory){
+                if(section==='campaigns'||section==='plots'){
+                    (section==='plots'?['#plotModal','#planModal']:['#campaignModal','#planModal']).forEach(function(selector){var next=incomingAgriculture.querySelector(selector);var previous=currentAgriculture.querySelector(selector);if(next&&previous){previous.replaceWith(next);hydrate(next);}});
+                }
+                if(section==='harvests'){var nextHarvest=incomingAgriculture.querySelector('#harvestModal'),previousHarvest=currentAgriculture.querySelector('#harvestModal');if(nextHarvest&&previousHarvest){previousHarvest.replaceWith(nextHarvest);hydrate(nextHarvest);}}
+                if(section==='stocks'){var nextTransport=incomingAgriculture.querySelector('#transportModal'),previousTransport=currentAgriculture.querySelector('#transportModal');if(nextTransport&&previousTransport){previousTransport.replaceWith(nextTransport);hydrate(nextTransport);}}
+                if(section==='transports'){
+                    ['.transport-summary','#transportModal'].forEach(function(selector){
+                        var next=incomingAgriculture.querySelector(selector);var previous=currentAgriculture.querySelector(selector);
+                        if(next&&previous){previous.replaceWith(next);hydrate(next);}
+                    });
+                }
+                currentDirectory.replaceWith(incomingDirectory);incomingDirectory.hidden=false;hydrate(incomingDirectory);syncShell(parsed,response.url);if(responseKind==='error'){showToast('Opération refusée',responseMessage||'Le serveur a refusé cette opération.','error');}else{showToast('Opération réussie',responseMessage||'Le tableau a été actualisé sans recharger la page.','success');}return;}
         }
+
+        var nextProduction=incoming.querySelector('[data-production-directory]'),oldProduction=current.querySelector('[data-production-directory]');
+        if(response.ok&&nextProduction&&oldProduction){var productionSaved=pendingForm&&pendingForm.matches('[data-prod-form]');var listScroll=productionSaved?Number(pendingForm.dataset.returnScroll||0):window.scrollY;oldProduction.replaceWith(nextProduction);hydrate(nextProduction);syncShell(parsed,response.url);if(productionSaved&&window.showProductionNext)window.showProductionNext(nextProduction);window.scrollTo({top:listScroll,behavior:'instant'});return;}
 
         current.innerHTML = incoming.innerHTML;
         current.removeAttribute('aria-busy');
@@ -1760,6 +1920,7 @@
             form.classList.remove('is-submitting');
             form.removeAttribute('aria-busy');
         }
+        if(form&&document.contains(form)&&form.matches('[data-feed-form],[data-machine-form],[data-prod-form],[data-waste-sale-form],[data-pellet-form]')&&form.closest('.is-open'))document.body.classList.add('workspace-modal-open');
         pendingForm = null;
         pendingSubmitter = null;
         if (dialogReturnFocus && document.contains(dialogReturnFocus)) {
@@ -1921,6 +2082,22 @@
     });
 
     document.addEventListener('click', function (event) {
+        var ticketPreviewOpen = event.target.closest('[data-ticket-preview-open]');
+        var ticketPreview = qs('[data-ticket-preview]');
+        if (ticketPreviewOpen && ticketPreview) {
+            var ticketFrame = qs('iframe', ticketPreview);
+            if (!ticketFrame.hasAttribute('src')) ticketFrame.src = ticketFrame.dataset.src;
+            ticketPreview.showModal();
+            return;
+        }
+        if (ticketPreview && ticketPreview.open) {
+            var bounds = ticketPreview.getBoundingClientRect();
+            var outside = event.target === ticketPreview && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom);
+            if (event.target.closest('[data-ticket-preview-close]') || outside) {
+                ticketPreview.close();
+                return;
+            }
+        }
         var sidebarTrigger = event.target.closest('[data-sidebar-toggle]');
         var sidebarClose = event.target.closest('[data-sidebar-close], .sidebar-nav a');
         if (sidebarTrigger || sidebarClose) {
@@ -1994,6 +2171,8 @@
         if(event.target.matches('[data-plot-site]'))syncPlotSuggestedCode(event.target);
         if(event.target.matches('[data-farm-code-site]'))syncFarmSuggestedCode(event.target);
         if(event.target.matches('[data-plan-site]'))syncPlanSite(event.target);
+        if(event.target.closest('#harvestModal'))updateHarvestNet(event.target.form);
+        if(event.target.matches('[data-harvest-plan]'))updateHarvestPlanSummary(event.target);
         if(event.target.matches('[data-plan-plot-select]'))updatePlotContext(event.target);
         var businessForm = event.target.closest('[data-weighing-exit], [data-production-form], [data-waste-form], [data-packaging-form], [data-distribution-form]');
         if (businessForm) updateBusinessForm(businessForm);

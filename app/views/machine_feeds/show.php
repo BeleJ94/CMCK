@@ -9,9 +9,9 @@
 </section>
 
 <section class="metric-grid">
-    <article class="metric-card"><div class="metric-card-top"><span>Quantite envoyee</span><span class="metric-icon tone-blue"><i class="bi bi-arrow-down-up"></i></span></div><strong><?= e(number_format((float) $feed['quantity_kg'], 0, ',', ' ')) ?> kg</strong></article>
-    <article class="metric-card"><div class="metric-card-top"><span>Statut alimentation</span><span class="metric-icon tone-orange"><i class="bi bi-hourglass-split"></i></span></div><strong><?= $feed['status'] === 'pending' ? 'En attente production' : e($feed['status']) ?></strong></article>
-    <article class="metric-card"><div class="metric-card-top"><span>Statut lot</span><span class="metric-icon tone-green"><i class="bi bi-box-seam"></i></span></div><strong><?= e($feed['batch_status'] ?: '-') ?></strong></article>
+    <article class="metric-card"><div class="metric-card-top"><span>Quantite envoyee</span><span class="metric-icon tone-blue"><i class="bi bi-arrow-down-up"></i></span></div><strong><?= e(number_format((float) $feed['quantity_kg'], 3, ',', ' ')) ?> kg</strong></article>
+    <article class="metric-card"><div class="metric-card-top"><span>Statut alimentation</span><span class="metric-icon tone-orange"><i class="bi bi-hourglass-split"></i></span></div><strong><?= $feed['status'] === 'pending' ? 'En production' : e($feed['status']) ?></strong></article>
+    <article class="metric-card"><div class="metric-card-top"><span>Statut lot</span><span class="metric-icon tone-green"><i class="bi bi-box-seam"></i></span></div><strong><?= e(['in_progress'=>'En cours','results_submitted'=>'Résultats à valider','pending_additional_approval'=>'Approbation complémentaire','validated'=>'Validée','cancelled'=>'Annulée'][$feed['batch_status']] ?? $feed['batch_status'] ?: '—') ?></strong></article>
 </section>
 
 <section class="table-panel">

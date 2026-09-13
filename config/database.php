@@ -5,6 +5,6 @@ return [
     'port' => getenv('DAGRIL_DB_PORT') !== false ? getenv('DAGRIL_DB_PORT') : '3306',
     'database' => getenv('DAGRIL_DB_DATABASE') !== false ? getenv('DAGRIL_DB_DATABASE') : 'cmck_milltrack',
     'username' => getenv('DAGRIL_DB_USERNAME') !== false ? getenv('DAGRIL_DB_USERNAME') : 'root',
-    'password' => getenv('DAGRIL_DB_PASSWORD') !== false ? getenv('DAGRIL_DB_PASSWORD') : '',
+    'password' => getenv('DAGRIL_DB_PASSWORD') !== false ? getenv('DAGRIL_DB_PASSWORD') : 'ServBay.dev',
     'charset' => 'utf8mb4',
 ];
