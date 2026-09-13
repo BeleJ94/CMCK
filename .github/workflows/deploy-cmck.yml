@@ -10,9 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Deploy to CMCK VPS
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -25,18 +22,13 @@ jobs:
 
             cd /var/www/vhosts/belej-erp.com/cmck.belej-erp.com
 
-            echo "=== Current branch ==="
-            git branch --show-current
-
             echo "=== Fetching GitHub ==="
             git fetch origin main
 
-            echo "=== Updating application ==="
-            git pull --ff-only origin main
+            echo "=== Deploying ==="
+            git reset --hard origin/main
 
-            echo "=== Updating permissions ==="
-            find . -type d -not -path "./.git*" -exec chmod 755 {} \;
-            find . -type f -not -path "./.git/*" -exec chmod 644 {} \;
+            echo "=== Current version ==="
+            git log -1 --oneline
 
             echo "=== Deployment completed ==="
-            git log -1 --oneline
