@@ -323,9 +323,9 @@ class Auth
                 ['label' => 'Documents officiels', 'path' => 'documents', 'icon' => 'bi-file-earmark-check', 'roles' => ['administrateur', 'direction', 'agent-pont-bascule', 'agent-silo', 'agent-production', 'agent-emballage', 'agent-distribution']],
                 ['label' => 'Annulations & corrections', 'path' => 'cancellations', 'icon' => 'bi-arrow-counterclockwise', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Alertes', 'path' => 'alerts', 'icon' => 'bi-bell', 'roles' => ['administrateur', 'direction'], 'badge' => 'unread_alerts'],
-                ['label' => 'Journal d’activité', 'path' => 'activity-logs', 'icon' => 'bi-clock-history', 'roles' => ['administrateur', 'direction']],
             ]],
             ['label' => 'Administration', 'icon' => 'bi-sliders', 'items' => [
+                ['label' => 'Audit du système', 'path' => 'activity-logs', 'icon' => 'bi-shield-check', 'roles' => ['administrateur']],
                 ['label' => 'Gestion des silos', 'path' => 'silo-administration', 'icon' => 'bi-database-gear', 'roles' => ['administrateur']],
                 ['label' => 'Utilisateurs', 'path' => 'users', 'icon' => 'bi-people', 'roles' => ['administrateur']],
                 ['label' => 'Sites & structures', 'path' => 'sites', 'icon' => 'bi-diagram-3', 'roles' => ['administrateur']],
@@ -338,6 +338,7 @@ class Auth
         $legacySlugs = ['administrateur','direction','agent-pont-bascule','agent-silo','agent-production','agent-emballage','agent-distribution'];
         foreach ($groups as $group) {
             $items = array_values(array_filter($group['items'], function ($item) use ($roleSlug, $legacySlugs) {
+                if ($item['path'] === 'activity-logs') { return $roleSlug === 'administrateur'; }
                 if ($item['path'] === 'silo-administration') { return self::can('silos', 'administer'); }
                 if (in_array($roleSlug, $legacySlugs, true)) { return in_array($roleSlug, $item['roles'], true); }
                 $permission = self::menuPermission($item['path']);

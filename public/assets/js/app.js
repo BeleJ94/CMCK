@@ -804,6 +804,7 @@
         if(window.initProduction)window.initProduction(root);
         if(window.initWaste)window.initWaste(root);
         if(window.initPelletization)window.initPelletization(root);
+        if(window.initAudit)window.initAudit(root);
         if (window.initWorkDirectory) window.initWorkDirectory(root);
         if (window.initCampaignDirectory) window.initCampaignDirectory(root);
         if (window.initPlotDirectory) window.initPlotDirectory(root);
@@ -1775,7 +1776,7 @@
             return;
         }
         if (!response.ok || !payload || payload.ok === false) {
-            if(pendingForm&&pendingForm.matches('[data-feed-form],[data-machine-form],[data-prod-form],[data-waste-sale-form],[data-pellet-form]')){var feedError=qs('[data-feed-error]',pendingForm);feedError.textContent=payload&&payload.message?payload.message:'L’alimentation n’a pas été enregistrée.';feedError.hidden=false;feedError.scrollIntoView({block:'nearest'});}
+            if(pendingForm&&pendingForm.matches('[data-feed-form],[data-machine-form],[data-prod-form],[data-waste-sale-form],[data-waste-process-form],[data-pellet-form],[data-audit-review]')){var feedError=qs('[data-feed-error]',pendingForm);feedError.textContent=payload&&payload.message?payload.message:'L’alimentation n’a pas été enregistrée.';feedError.hidden=false;feedError.scrollIntoView({block:'nearest'});}
             showToast('Opération refusée', payload && payload.message ? payload.message : 'Le serveur a refusé cette opération.', 'error');
             return;
         }
@@ -1920,7 +1921,7 @@
             form.classList.remove('is-submitting');
             form.removeAttribute('aria-busy');
         }
-        if(form&&document.contains(form)&&form.matches('[data-feed-form],[data-machine-form],[data-prod-form],[data-waste-sale-form],[data-pellet-form]')&&form.closest('.is-open'))document.body.classList.add('workspace-modal-open');
+        if(form&&document.contains(form)&&form.matches('[data-feed-form],[data-machine-form],[data-prod-form],[data-waste-sale-form],[data-waste-process-form],[data-pellet-form],[data-audit-review]')&&form.closest('.is-open'))document.body.classList.add('workspace-modal-open');
         pendingForm = null;
         pendingSubmitter = null;
         if (dialogReturnFocus && document.contains(dialogReturnFocus)) {

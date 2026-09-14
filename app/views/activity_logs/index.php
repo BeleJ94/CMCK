@@ -1,108 +1,20 @@
 <?php
-if (!function_exists('activity_value')) {
-function activity_value($value) {
-    if ($value === null || $value === '') {
-        return '-';
-    }
-
-    $decoded = json_decode($value, true);
-
-    if (json_last_error() === JSON_ERROR_NONE) {
-        return json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-    }
-
-    return $value;
-}
-}
+$labels=['login'=>'Connexion','logout'=>'Déconnexion','login_failed'=>'Connexion refusée','access_denied'=>'Accès refusé','request_failed'=>'Requête en erreur','request_received'=>'Requête reçue','export_requested'=>'Demande d’export','audit_export'=>'Export du journal','audit_review'=>'Examen administrateur','create'=>'Création','update'=>'Modification','delete'=>'Suppression'];
+$url=function(array $changes)use($filters){return base_url('activity-logs?'.http_build_query(array_merge($filters,$changes)));};
+$display=function($v){return is_array($v)?json_encode($v,JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT):($v===null?'—':(is_bool($v)?($v?'Oui':'Non'):(string)$v));};
 ?>
-
-<section class="dashboard-hero">
-    <span class="hero-icon"><i class="bi bi-clock-history"></i></span>
-    <div>
-        <p class="section-label">Audit</p>
-        <h2>Journal d activite</h2>
-        <p>Historique des connexions, operations metier, validations et mouvements de stock.</p>
-    </div>
-</section>
-
-<section class="metric-grid">
-    <article class="metric-card"><div class="metric-card-top"><span>Total traces</span><span class="metric-icon tone-blue"><i class="bi bi-list-check"></i></span></div><strong><?= e($stats['total']) ?></strong></article>
-    <article class="metric-card"><div class="metric-card-top"><span>Aujourd hui</span><span class="metric-icon tone-green"><i class="bi bi-calendar-check"></i></span></div><strong><?= e($stats['today']) ?></strong></article>
-    <article class="metric-card"><div class="metric-card-top"><span>Connexions</span><span class="metric-icon tone-orange"><i class="bi bi-box-arrow-in-right"></i></span></div><strong><?= e($stats['logins']) ?></strong></article>
-    <article class="metric-card"><div class="metric-card-top"><span>Operations</span><span class="metric-icon tone-red"><i class="bi bi-activity"></i></span></div><strong><?= e($stats['operations']) ?></strong></article>
-</section>
-
-<section class="table-panel">
-    <div class="panel-heading">
-        <span class="panel-icon"><i class="bi bi-funnel"></i></span>
-        <div><h3>Filtres</h3><p>Filtrer par periode, action et module.</p></div>
-    </div>
-    <form method="get" action="<?= e(base_url('activity-logs')) ?>" class="enterprise-form">
-        <div class="form-grid">
-            <label><span>Date debut</span><input type="date" name="start_date" value="<?= e($filters['start_date']) ?>"></label>
-            <label><span>Date fin</span><input type="date" name="end_date" value="<?= e($filters['end_date']) ?>"></label>
-            <label>
-                <span>Action</span>
-                <select name="action">
-                    <option value="">Toutes</option>
-                    <?php foreach ($actions as $key => $label): ?>
-                        <option value="<?= e($key) ?>" <?= $filters['action'] === $key ? 'selected' : '' ?>><?= e($label) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-            <label>
-                <span>Module</span>
-                <select name="module">
-                    <option value="">Tous</option>
-                    <?php foreach ($modules as $module): ?>
-                        <option value="<?= e($module['module']) ?>" <?= $filters['module'] === $module['module'] ? 'selected' : '' ?>><?= e($module['module']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-        </div>
-        <div class="form-actions">
-            <a class="btn-secondary" href="<?= e(base_url('activity-logs')) ?>"><i class="bi bi-arrow-counterclockwise"></i><span>Reinitialiser</span></a>
-            <button class="btn-primary" type="submit"><i class="bi bi-search"></i><span>Filtrer</span></button>
-        </div>
-    </form>
-</section>
-
-<section class="table-panel">
-    <div class="panel-heading">
-        <span class="panel-icon"><i class="bi bi-table"></i></span>
-        <div><h3>Traces recentes</h3><p><?= e(count($logs)) ?> ligne(s), limitees aux 300 dernieres traces.</p></div>
-    </div>
-    <div class="table-responsive">
-        <table class="enterprise-table activity-log-table">
-            <thead>
-                <tr>
-                    <th>Date / heure</th>
-                    <th>Utilisateur</th>
-                    <th>Action</th>
-                    <th>Module</th>
-                    <th>Description</th>
-                    <th>Ancienne valeur</th>
-                    <th>Nouvelle valeur</th>
-                    <th>IP</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (empty($logs)): ?>
-                    <tr><td colspan="8">Aucune trace ne correspond aux filtres.</td></tr>
-                <?php endif; ?>
-                <?php foreach ($logs as $log): ?>
-                    <tr>
-                        <td><?= e($log['created_at']) ?></td>
-                        <td><strong><?= e($log['user_name'] ?: 'Systeme') ?></strong><br><small><?= e($log['user_email'] ?: '-') ?></small></td>
-                        <td><span class="status-badge status-active"><?= e($actions[$log['action']] ?? $log['action']) ?></span></td>
-                        <td><?= e($log['module'] ?: '-') ?></td>
-                        <td><?= e($log['description'] ?: '-') ?></td>
-                        <td><pre class="activity-value"><?= e(activity_value($log['old_values'] ?? null)) ?></pre></td>
-                        <td><pre class="activity-value"><?= e(activity_value($log['new_values'] ?? null)) ?></pre></td>
-                        <td><?= e($log['ip_address'] ?: '-') ?></td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-</section>
+<div data-audit-directory class="audit-directory">
+<header class="campaign-heading"><div><p class="page-kicker">ADMINISTRATION</p><h2>Audit du système</h2><p>Qui a fait quoi, quand, et sur quelles données ? Périmètre : tous les sites.</p></div><div class="waste-actions"><a class="btn-secondary" href="<?=e($url(['export'=>'excel']))?>" download>Excel</a><a class="btn-secondary" href="<?=e($url(['export'=>'pdf']))?>" download>PDF</a></div></header>
+<div class="waste-overview"><article><div><small>Événements aujourd’hui</small><strong><?=e($stats['today']??0)?></strong></div></article><article><div><small>Échecs et refus aujourd’hui</small><strong><?=e($stats['failures']??0)?></strong></div></article><article><div><small>Accès refusés aujourd’hui</small><strong><?=e($stats['denied']??0)?></strong></div></article></div>
+<nav class="pellet-tabs" aria-label="Espaces d’audit"><?php foreach([''=>'Activité','security'=>'Sécurité','attention'=>'Points à examiner']as$k=>$label):?><a class="btn-secondary <?=$filters['space']===$k?'audit-active':''?>" data-audit-link href="<?=e($url(['space'=>$k,'page'=>1]))?>" <?=$filters['space']===$k?'aria-current="page"':''?>><?=e($label)?></a><?php endforeach;?></nav>
+<details class="audit-coverage"><summary>Couverture et limites du journal</summary><p>Ce journal conserve les traces existantes et les nouvelles requêtes POST, demandes d’export, connexions, déconnexions et accès refusés. Une requête reçue ne prouve pas une opération réussie. Les valeurs avant/après sont disponibles uniquement lorsque le module les enregistre.</p><p>« Points à examiner » sélectionne les modifications, annulations, suppressions, refus et événements contenant un état antérieur. Ce classement n’établit aucune anomalie. Les anciens événements ne disposent pas forcément du rôle ou d’un identifiant de requête.</p><p>Première trace : <?=e($stats['first_event']?:'Aucune')?>. Aucune purge automatique configurée. Aucun événement ne peut être modifié ou supprimé depuis cette interface. Les exports sont limités à 2 000 événements ; leurs détails restent consultables dans l’application.</p></details>
+<form method="get" action="<?=e(base_url('activity-logs'))?>" data-audit-filters class="audit-filters"><input type="hidden" name="space" value="<?=e($filters['space'])?>"><label>Du<input type="date" name="from" value="<?=e($filters['from'])?>"></label><label>Au<input type="date" name="to" value="<?=e($filters['to'])?>"></label>
+<?php foreach(['user_id'=>'Utilisateur','module'=>'Module','site_id'=>'Site','action'=>'Action']as$k=>$label):?><label><?=e($label)?><select name="<?=e($k)?>"><option value="">Tous</option><?php foreach($options[$k]as$o):?><option value="<?=e($o['value'])?>" <?=$filters[$k]===(string)$o['value']?'selected':''?>><?=e($o['label']??($labels[$o['value']]??$o['value']))?></option><?php endforeach;?></select></label><?php endforeach;?>
+<label>Résultat<select name="result"><?php foreach([''=>'Tous','confirmed'=>'Confirmé','failed'=>'Échec / refus','unspecified'=>'Non précisé']as$k=>$v):?><option value="<?=e($k)?>" <?=$filters['result']===$k?'selected':''?>><?=e($v)?></option><?php endforeach;?></select></label><label>Examen<select name="review"><option value="">Tous</option><option value="pending" <?=$filters['review']==='pending'?'selected':''?>>Non examiné</option></select></label><label>Recherche<input name="search" value="<?=e($filters['search'])?>" placeholder="Description, utilisateur, entité #ID"></label><button class="btn-primary">Filtrer</button><a class="btn-secondary" data-audit-link href="<?=e(base_url('activity-logs'))?>">Réinitialiser</a></form>
+<p data-audit-error class="app-alert app-alert-error" hidden role="alert"></p>
+<div class="table-panel"><div class="table-responsive"><table class="enterprise-table" data-datatable="false"><thead><tr><th>Date et heure</th><th>Utilisateur / site</th><th>Module</th><th>Action / référence</th><th>Description</th><th>Résultat</th><th>Examen</th><th>Actions</th></tr></thead><tbody><?php foreach($listing['rows']as$r):?><tr><td><?=e($r['created_at'])?></td><td><?=e($r['user_name']?:'Non attribué')?><small><?=e($r['site_code']?:'Global / non précisé')?></small></td><td><?=e($r['module']?:'Non précisé')?></td><td><?=e($labels[$r['action']]??$r['action'])?><small><?=e(($r['entity_type']??'').' '.($r['entity_id']?'#'.$r['entity_id']:''))?></small></td><td class="audit-description"><?=e($r['description']?:'—')?></td><td><span class="campaign-status <?=SystemAudit::result($r)==='Échec / refus'?'audit-failure':''?>"><?=e(SystemAudit::result($r))?></span></td><td><?=$r['reviewed']?'Examiné':'—'?></td><td><button class="btn-secondary" type="button" data-workspace-modal-open="auditDetail<?=e($r['id'])?>">Consulter</button></td></tr><?php endforeach;?><?php if(!$listing['rows']):?><tr><td colspan="8">Aucun événement pour cette sélection.</td></tr><?php endif;?></tbody></table></div><footer class="campaign-pagination"><span><?=e($listing['count'])?> événements · Page <?=e($listing['page'])?> / <?=max(1,ceil($listing['count']/50))?></span><div><?php if($listing['page']>1):?><a data-audit-link class="btn-secondary" href="<?=e($url(['page'=>$listing['page']-1]))?>">Précédent</a><?php endif;?><?php if($listing['page']*50<$listing['count']):?><a data-audit-link class="btn-secondary" href="<?=e($url(['page'=>$listing['page']+1]))?>">Suivant</a><?php endif;?></div></footer></div>
+<?php foreach($listing['rows']as$r):$before=$r['old_values'];$after=$r['new_values'];$meta=$after['_audit']??[];unset($before['_audit'],$after['_audit']);$keys=array_unique(array_merge(array_keys($before),array_keys($after)));?>
+<section id="auditDetail<?=e($r['id'])?>" class="entity-modal workspace-entity-modal feed-editor audit-editor" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Détail de l’événement"><header><div><p class="page-kicker">ÉVÉNEMENT #<?=e($r['id'])?></p><h2><?=e($labels[$r['action']]??$r['action'])?></h2><p><?=e($r['created_at'])?> · <?=e($r['user_name']?:'Non attribué')?></p></div><button class="modal-close" type="button" data-workspace-modal-close aria-label="Fermer">×</button></header><div class="feed-form-body"><p><?=e($r['description']?:'Aucune description enregistrée.')?></p><p>Rôle lors de l’action : <?=e($meta['role']??'Non enregistré')?> · Résultat : <?=e(SystemAudit::result($r))?></p><?php $targets=['production_batches'=>['production/'.$r['entity_id'],'production'],'agricultural_harvests'=>['agriculture/harvests','agriculture'],'machines'=>['machines','machines'],'waste_stocks'=>['waste','waste'],'pellet_orders'=>['pelletization','pelletization']];$target=$targets[$r['entity_type']??'']??null;if($target&&Auth::can($target[1],'read',$r['site_id'])):?><a class="btn-secondary" href="<?=e(base_url($target[0]))?>">Ouvrir le module concerné</a><?php endif;?><h3>Données enregistrées</h3><?php if(!$keys):?><p>Aucune valeur avant/après disponible.</p><?php else:?><div class="table-responsive"><table class="enterprise-table" data-datatable="false"><thead><tr><th>Champ</th><th>Avant</th><th>Après / contexte</th></tr></thead><tbody><?php foreach($keys as$key):if(array_key_exists($key,$before)&&array_key_exists($key,$after)&&$before[$key]===$after[$key])continue;?><tr><td><?=e($key)?></td><td><pre><?=e($display($before[$key]??null))?></pre></td><td><pre><?=e($display($after[$key]??null))?></pre></td></tr><?php endforeach;?></tbody></table></div><?php endif;?><details><summary>Informations techniques</summary><p>Requête : <?=e($meta['request_id']??'Non enregistrée')?></p><p>IP : <?=e($r['ip_address']?:'Non enregistrée')?></p><p>Navigateur : <?=e($r['user_agent']?:'Non enregistré')?></p></details>
+<?php if($r['reviews']):?><h3>Examens enregistrés</h3><?php foreach($r['reviews'] as$note):?><p><strong><?=e($note['user_name']?:'Non attribué')?> · <?=e($note['created_at'])?></strong><br><?=e($note['description'])?></p><?php endforeach;endif;?>
+<form class="enterprise-form" method="post" action="<?=e(base_url('activity-logs/'.$r['id'].'/review'))?>" data-audit-review data-confirm="Enregistrer cet examen ? La note sera conservée dans le journal d’audit."><?=csrf_field()?><p class="app-alert app-alert-error" data-feed-error hidden role="alert"></p><label>Note d’examen *<textarea name="note" rows="3" maxlength="2000" required placeholder="Résultat du contrôle ou explication"></textarea></label><button class="btn-primary">Marquer comme examiné</button></form></div><footer><button class="btn-secondary" type="button" data-workspace-modal-close>Fermer</button></footer></section>
+<?php endforeach;?><div class="entity-modal-backdrop workspace-modal-backdrop" data-workspace-modal-close></div></div>

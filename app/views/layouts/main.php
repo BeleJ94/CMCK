@@ -81,6 +81,7 @@
     <script src="<?= e(asset_url('js/production.js')) ?>"></script>
     <script src="<?= e(asset_url('js/waste.js')) ?>"></script>
     <script src="<?= e(asset_url('js/pelletization.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/audit.js')) ?>"></script>
     <script src="<?= e(asset_url('js/app.js')) ?>"></script>
 </body>
 </html>

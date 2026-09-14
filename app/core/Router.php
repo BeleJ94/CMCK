@@ -47,6 +47,8 @@ class Router
 
                 $permission = $route['permission'] ?: $this->inferPermission($route, $method);
                 if ($route['auth'] && $permission && !Auth::can($permission[0], $permission[1])) {
+                    require_once dirname(__DIR__).'/services/AuditService.php';
+                    AuditService::record('access_denied','security','Accès refusé par les permissions.',['path'=>$requestPath,'permission'=>$permission]);
                     http_response_code(403); echo '403 - Acces refuse'; return null;
                 }
 

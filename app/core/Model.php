@@ -37,6 +37,11 @@ abstract class Model
     protected function logActivity($action, $module, $entityType = null, $entityId = null, $description = null, ?array $oldValues = null, ?array $newValues = null, ?array $user = null)
     {
         $user = $user ?: (class_exists('Auth') ? Auth::user() : null);
+        require_once dirname(__DIR__).'/services/AuditService.php';
+        $oldValues = AuditService::sanitize($oldValues);
+        $newValues = AuditService::sanitize($newValues);
+        $newValues = $newValues ?? [];
+        $newValues['_audit'] = ['request_id'=>AuditService::requestId(), 'role'=>$user['role_slug']??null];
 
         $this->query(
             "INSERT INTO activity_logs (

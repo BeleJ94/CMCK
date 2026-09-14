@@ -39,6 +39,8 @@ class AuthController extends Controller
         $user = $userModel->findByEmail($email);
 
         if (!$user || !password_verify($password, $user['password'])) {
+            require_once dirname(__DIR__).'/services/AuditService.php';
+            AuditService::record('login_failed','auth','Tentative de connexion refusée.');
             flash('error', 'Identifiants invalides.');
             redirect('login');
         }
@@ -73,6 +75,7 @@ class AuthController extends Controller
             redirect(Auth::homePathFor(Auth::user()));
         }
 
+        $this->model('ActivityLog')->record('logout','auth','users',Auth::user()['id'],'Déconnexion utilisateur.');
         Auth::logout();
         redirect('login');
     }

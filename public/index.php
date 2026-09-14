@@ -239,6 +239,7 @@ $router->get('/alerts', 'Alert@index', ['auth' => true, 'roles' => ['direction',
 $router->post('/alerts/mark-all-read', 'Alert@markAllRead', ['auth' => true, 'roles' => ['direction', 'administrateur']]);
 $router->post('/alerts/{id}/read', 'Alert@markRead', ['auth' => true, 'roles' => ['direction', 'administrateur']]);
 $router->post('/alerts/{id}/resolve', 'Alert@resolve', ['auth' => true, 'permission' => ['alerts','validate']]);
+$router->post('/activity-logs/{id}/review', 'ActivityLog@review', ['auth'=>true,'permission'=>['activity-logs','read']]);
 $router->get('/activity-logs', 'ActivityLog@index', ['auth' => true, 'roles' => ['direction', 'administrateur']]);
 $router->get('/users', 'User@index', ['auth' => true, 'permission' => ['users', 'administer']]);
 $router->post('/users', 'User@store', ['auth' => true, 'permission' => ['users', 'administer']]);
@@ -281,4 +282,6 @@ $router->post('/transfers/{id}/returns/{returnId}/dispatch', 'Transfer@dispatchR
 $router->post('/transfers/{id}/returns/{returnId}/receive', 'Transfer@receiveReturn', ['auth' => true, 'permission' => ['transfers', 'update']]);
 $router->post('/transfers/{id}/close', 'Transfer@close', ['auth' => true, 'permission' => ['transfers', 'update']]);
 
+require_once dirname(__DIR__).'/app/services/AuditService.php';
+AuditService::watchRequest();
 $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);

@@ -10,6 +10,7 @@ class WasteController extends Controller
             'title' => 'Déchets et coproduits',
             'availableStock' => $model->totalAvailable(),
             'stockLines' => $model->stockLines(),
+            'machines' => $model->wasteMachines(),
             'history' => $model->history(),
             'success' => flash('success'),
             'error' => flash('error'),
@@ -56,6 +57,18 @@ class WasteController extends Controller
 
     public function store()
     {
+        if (strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest') {
+            $this->stockAction(function () {
+                Auth::requireCurrentSite();
+                $model = $this->model('Waste');
+                $data = $this->input();
+                $errors = $this->validate($data, $model);
+                if ($errors) throw new RuntimeException(implode(' ', array_values($errors)));
+                $model->processWaste($data, Auth::user());
+            }, 'Traitement validé. Les stocks de déchets et d’aliment pour bétail sont actualisés.');
+            return;
+        }
+
         $this->ensureCsrf('waste/process');
 
         $model = $this->model('Waste');

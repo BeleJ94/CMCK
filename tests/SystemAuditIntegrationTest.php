@@ -1,0 +1,14 @@
+<?php
+if(!preg_match('/_(test|testing)$/',getenv('DAGRIL_DB_DATABASE')?:''))exit('Test database required');
+require __DIR__.'/../app/helpers/functions.php';require __DIR__.'/../app/core/Database.php';require __DIR__.'/../app/core/Model.php';require __DIR__.'/../app/core/Auth.php';require __DIR__.'/../app/core/Controller.php';require __DIR__.'/../app/models/ActivityLog.php';require __DIR__.'/../app/models/SystemAudit.php';require __DIR__.'/../app/controllers/ActivityLogController.php';
+Auth::start();ob_start();$db=Database::getInstance()->connection();$user=$db->query("SELECT u.*,r.slug role_slug FROM users u JOIN roles r ON r.id=u.role_id WHERE r.slug='administrateur' AND u.status='active' LIMIT 1")->fetch();Auth::login($user);Auth::selectSite('all');$tag='AuditTest-'.bin2hex(random_bytes(5));$_SERVER['HTTP_USER_AGENT']=$tag;$check=function($ok,$label){if(!$ok)throw new RuntimeException($label);echo 'OK : '.$label.PHP_EOL;};
+try{
+ $db->beginTransaction();$log=new ActivityLog();$log->record('update_test','audit_test','test',12,'Test audit', ['password'=>'SECRET_A','quantity'=>10],['quantity'=>8,'nested'=>['api_key'=>'SECRET_B']]);$id=$db->lastInsertId();
+ $raw=$db->query('SELECT * FROM activity_logs WHERE id='.(int)$id)->fetch();$check(strpos($raw['old_values'].$raw['new_values'],'SECRET_')===false,'Secrets masqués avant écriture');
+ $data=json_decode($raw['new_values'],true);$check(strlen($data['_audit']['request_id'])===32&&$data['_audit']['role']==='administrateur','Identifiant et rôle historisés');
+ $f=array_fill_keys(['module','action','user_id','site_id','from','to','search','space','result','review'],'');$f['module']='audit_test';$m=new SystemAudit();$list=$m->listing($f);$check($list['count']===1,'Filtrage serveur exact');$check($list['rows'][0]['old_values']['quantity']===10&&$list['rows'][0]['new_values']['quantity']===8,'Comparaison avant/après préservée');
+ $m->review($id,'Vérifié en test');$list=$m->listing($f);$check($list['rows'][0]['reviewed']==1&&count($list['rows'][0]['reviews'])===1,'Examen append-only visible');$check($db->query('SELECT description FROM activity_logs WHERE id='.(int)$id)->fetchColumn()==='Test audit','Événement original inchangé');
+ $f['review']='pending';$check($m->listing($f)['count']===0,'Filtre non examiné');$check(SystemAudit::result($raw)==='Non précisé','Aucun succès inventé pour trace historique');
+ $nonadmin=$db->query("SELECT u.*,r.slug role_slug FROM users u JOIN roles r ON r.id=u.role_id WHERE r.slug='direction' AND u.status='active' LIMIT 1")->fetch();if(!$nonadmin)throw new RuntimeException('Utilisateur direction requis');Auth::login($nonadmin);ob_start();(new ActivityLogController())->index();ob_end_clean();$check(http_response_code()===403,'Direction refusée par le contrôleur');Auth::login($user);
+ echo 'Audit : vérifications réussies.'.PHP_EOL;
+}finally{if($db->inTransaction())$db->rollBack();ob_end_flush();}
