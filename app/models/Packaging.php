@@ -9,7 +9,7 @@ class Packaging extends Model
         $params = [];
         $siteClause = Auth::siteClause('production_batches.site_id', $params);
         return $this->query(
-            "SELECT production_batches.id,
+            "SELECT production_batches.id, production_batches.site_id,
                     production_batches.batch_number,
                     production_batches.product_id,
                     production_batches.output_quantity_kg,
@@ -33,6 +33,16 @@ class Packaging extends Model
              HAVING available_quantity_kg > 0
              ORDER BY production_batches.ended_at ASC, production_batches.id ASC", $params
         )->fetchAll();
+    }
+
+    public function workshopStocks(): array
+    {
+        $params = [];
+        $scope = Auth::siteClause('s.site_id', $params);
+        return $this->query("SELECT s.site_id, s.packaging_item_id, s.operational_quantity,
+            s.physical_quantity, s.reserved_quantity, sites.name AS site_name
+            FROM empty_packaging_stocks s JOIN sites ON sites.id=s.site_id
+            WHERE s.deleted_at IS NULL{$scope}", $params)->fetchAll();
     }
 
     public function bagFormats()
@@ -129,7 +139,7 @@ class Packaging extends Model
             $totalWeight = (float) $format['weight_kg'] * $bags;
 
             $emptyStock=null;
-            if($packagingItem){$product=$this->query('SELECT code FROM products WHERE id=:id',['id'=>$batch['product_id']])->fetch();if(!$product||$product['code']!==$packagingItem['target_product_code']){throw new RuntimeException('Format d’emballage incompatible avec le produit.');}$emptyStock=$this->query('SELECT * FROM empty_packaging_stocks WHERE site_id=:site AND packaging_item_id=:item AND deleted_at IS NULL FOR UPDATE',['site'=>$batch['site_id'],'item'=>$packagingItem['id']])->fetch();if(!$emptyStock||(int)$emptyStock['operational_quantity']<$bags){throw new RuntimeException('Stock de sacs vides délivrés à l’atelier insuffisant.');}}
+            if($packagingItem){$product=$this->query('SELECT code FROM products WHERE id=:id',['id'=>$batch['product_id']])->fetch();if(!$product||$product['code']!==$packagingItem['target_product_code']){throw new RuntimeException('Format d’emballage incompatible avec le produit.');}$emptyStock=$this->query('SELECT * FROM empty_packaging_stocks WHERE site_id=:site AND packaging_item_id=:item AND deleted_at IS NULL FOR UPDATE',['site'=>$batch['site_id'],'item'=>$packagingItem['id']])->fetch();if(!$emptyStock||(int)$emptyStock['operational_quantity']<$bags){throw new RuntimeException(sprintf('Conditionnement non enregistré : %d sacs demandés au format %s, mais seulement %d disponibles à l’atelier du site de ce lot. Il manque %d sacs. Dans Emballages vides → Atelier, créez une demande, faites-la approuver puis délivrer. Les sacs au magasin ne sont pas encore utilisables à l’atelier. Réduisez la quantité ou réapprovisionnez l’atelier, puis réessayez.', $bags, $packagingItem['code'], (int)($emptyStock['operational_quantity'] ?? 0), $bags - (int)($emptyStock['operational_quantity'] ?? 0)));}}
 
             $bulkStock = $this->query("SELECT * FROM bulk_flour_stocks WHERE production_batch_id=:batch AND deleted_at IS NULL FOR UPDATE", ['batch'=>$batch['id']])->fetch();
             if (!$bulkStock || (float)$bulkStock['quantity_kg'] < $totalWeight) {

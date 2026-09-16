@@ -34,7 +34,7 @@ abstract class Model
         return $statement;
     }
 
-    protected function logActivity($action, $module, $entityType = null, $entityId = null, $description = null, ?array $oldValues = null, ?array $newValues = null, ?array $user = null)
+    protected function logActivity($action, $module, $entityType = null, $entityId = null, $description = null, ?array $oldValues = null, ?array $newValues = null, ?array $user = null, ?int $auditSiteId = null)
     {
         $user = $user ?: (class_exists('Auth') ? Auth::user() : null);
         require_once dirname(__DIR__).'/services/AuditService.php';
@@ -53,7 +53,7 @@ abstract class Model
              )",
             [
                 'user_id' => $user['id'] ?? null,
-                'site_id' => class_exists('Auth') ? Auth::currentSiteId() : null,
+                'site_id' => $auditSiteId ?? (class_exists('Auth') ? Auth::currentSiteId() : null),
                 'action' => $action,
                 'module' => $module,
                 'entity_type' => $entityType,

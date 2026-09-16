@@ -13,7 +13,14 @@ class EmptyPackagingController extends Controller
  public function minimum($id){$this->csrf();$this->act(function($m,$d,$u)use($id){$m->setMinimum($id,$_POST['minimum_quantity']??0,$u);});}
  public function approveTransfer($id){$this->csrf();$this->act(function($m,$d,$u)use($id){$m->approveTransfer($id,$u);});}
  public function receiveTransfer($id){$this->csrf();$this->act(function($m,$d,$u)use($id){$m->receiveTransfer($id,$u);});}
- private function input(){return['supplier_id'=>trim($_POST['supplier_id']??''),'packaging_item_id'=>trim($_POST['packaging_item_id']??''),'quantity'=>trim($_POST['quantity']??''),'unit_cost'=>trim($_POST['unit_cost']??'0'),'needed_at'=>trim($_POST['needed_at']??date('Y-m-d H:i:s')),'justification'=>trim($_POST['justification']??''),'reason'=>trim($_POST['reason']??''),'destination_site_id'=>trim($_POST['destination_site_id']??'')];}
- private function act($fn,$data=[]){try{$fn($this->model('EmptyPackaging'),$data,Auth::user());flash('success','Opération d’emballages enregistrée.');}catch(Exception$e){flash('error',$e->getMessage());}redirect('empty-packaging');}
- private function csrf(){if(!verify_csrf($_POST['_token']??'')){flash('error','Session expirée.');redirect('empty-packaging');}}
+ private function input(){return['site_id'=>trim($_POST['site_id']??''),'supplier_id'=>trim($_POST['supplier_id']??''),'packaging_item_id'=>trim($_POST['packaging_item_id']??''),'quantity'=>trim($_POST['quantity']??''),'unit_cost'=>trim($_POST['unit_cost']??'0'),'needed_at'=>trim($_POST['needed_at']??date('Y-m-d H:i:s')),'justification'=>trim($_POST['justification']??''),'reason'=>trim($_POST['reason']??''),'destination_site_id'=>trim($_POST['destination_site_id']??'')];}
+ private function act($fn,$data=[]){
+  $ajax=strtolower($_SERVER['HTTP_X_REQUESTED_WITH']??'')==='xmlhttprequest';
+  try{
+   if(isset($data['quantity'])&&(!ctype_digit((string)$data['quantity'])||(int)$data['quantity']<1))throw new RuntimeException('La quantité doit être un nombre entier supérieur à zéro.');
+   $fn($this->model('EmptyPackaging'),$data,Auth::user());
+   if($ajax)return $this->json(['ok'=>true,'message'=>'Opération d’emballages enregistrée.','refresh_url'=>base_url('empty-packaging')]);flash('success','Opération d’emballages enregistrée.');
+  }catch(Exception$e){$message=$e instanceof PDOException?'Enregistrement impossible. Vérifiez les données et le site sélectionné.':$e->getMessage();if($ajax)return $this->json(['ok'=>false,'message'=>$message],422);flash('error',$message);}redirect('empty-packaging');
+ }
+ private function csrf(){if(!verify_csrf($_POST['_token']??'')){if(strtolower($_SERVER['HTTP_X_REQUESTED_WITH']??'')==='xmlhttprequest'){$this->json(['ok'=>false,'message'=>'Session expirée. Rechargez la page puis réessayez.'],419);exit;}flash('error','Session expirée.');redirect('empty-packaging');}}
 }

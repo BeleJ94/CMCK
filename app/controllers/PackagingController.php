@@ -7,7 +7,11 @@ class PackagingController extends Controller
         $model = $this->model('Packaging');
 
         $this->view('packaging.index', [
-            'title' => 'Emballage',
+            'title' => 'Conditionnement',
+            'bagFormats' => $model->bagFormats(),
+            'workshopStocks' => $model->workshopStocks(),
+            'packaging' => $this->old(),
+            'errors' => [],
             'availableBatches' => $model->availableBatches(),
             'history' => $model->history(),
             'success' => flash('success'),
@@ -23,6 +27,7 @@ class PackagingController extends Controller
             'title' => 'Nouvel emballage',
             'availableBatches' => $model->availableBatches(),
             'bagFormats' => $model->bagFormats(),
+            'workshopStocks' => $model->workshopStocks(),
             'packaging' => $this->old(),
             'errors' => flash('errors') ?: [],
             'error' => flash('error'),
@@ -38,6 +43,7 @@ class PackagingController extends Controller
         $errors = $this->validate($data, $model);
 
         if (!empty($errors)) {
+            if ($this->isAjax()) return $this->json(['ok'=>false,'message'=>implode(' ', $errors)], 422);
             flash('errors', $errors);
             $_SESSION['old_packaging'] = $data;
             redirect('packaging/create');
@@ -45,9 +51,11 @@ class PackagingController extends Controller
 
         try {
             $model->createPackaging($data, Auth::user());
+            if ($this->isAjax()) return $this->json(['ok'=>true,'message'=>'Conditionnement enregistré. Les stocks ont été mis à jour.','refresh_url'=>base_url('packaging')]);
             flash('success', 'Emballage valide avec succes.');
             redirect('packaging/history');
         } catch (Exception $exception) {
+            if ($this->isAjax()) return $this->json(['ok'=>false,'message'=>$exception instanceof PDOException ? 'Enregistrement impossible. Vérifiez les données puis réessayez.' : $exception->getMessage()], 422);
             flash('error', $exception->getMessage());
             $_SESSION['old_packaging'] = $data;
             redirect('packaging/create');
@@ -93,8 +101,9 @@ class PackagingController extends Controller
             $errors['bags_count'] = 'Le nombre de sacs est obligatoire et positif.';
         }
 
-        if ($data['packaged_at'] === '') {
-            $errors['packaged_at'] = 'La date emballage est obligatoire.';
+        $date = DateTime::createFromFormat('!Y-m-d\TH:i', $data['packaged_at']);
+        if (!$date || $date->format('Y-m-d\TH:i') !== $data['packaged_at']) {
+            $errors['packaged_at'] = 'Saisissez une date et une heure valides pour le conditionnement.';
         }
 
         if (empty($errors['production_batch_id']) && empty($errors['packaging_item_id']) && empty($errors['bags_count'])) {
@@ -135,9 +144,15 @@ class PackagingController extends Controller
         ];
     }
 
+    private function isAjax(): bool
+    {
+        return strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest';
+    }
+
     private function ensureCsrf($redirect)
     {
         if (!verify_csrf($_POST['_token'] ?? '')) {
+            if ($this->isAjax()) { $this->json(['ok'=>false,'message'=>'Session expirée. Rechargez la page puis réessayez.'],419); exit; }
             flash('error', 'Session expiree. Veuillez reessayer.');
             redirect($redirect);
         }

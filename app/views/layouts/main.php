@@ -82,6 +82,9 @@
     <script src="<?= e(asset_url('js/waste.js')) ?>"></script>
     <script src="<?= e(asset_url('js/pelletization.js')) ?>"></script>
     <script src="<?= e(asset_url('js/audit.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/empty-packaging.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/packaging.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/finished-stocks.js')) ?>"></script>
     <script src="<?= e(asset_url('js/app.js')) ?>"></script>
 </body>
 </html>
