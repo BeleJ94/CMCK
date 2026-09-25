@@ -87,6 +87,7 @@
     <script src="<?= e(asset_url('js/finished-stocks.js')) ?>"></script>
     <script src="<?= e(asset_url('js/livestock.js')) ?>"></script>
     <script src="<?= e(asset_url('js/butchery.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/budgets.js')) ?>"></script>
     <script src="<?= e(asset_url('js/fuel-logistics.js')) ?>"></script>
     <script src="<?= e(asset_url('js/distributions.js')) ?>"></script>
     <script src="<?= e(asset_url('js/transfers.js')) ?>"></script>

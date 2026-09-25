@@ -167,7 +167,7 @@ class ReportModel extends Model
         $machineClause .= Auth::siteClause('waste_processings.site_id', $params);
 
         return $this->query(
-            "SELECT waste_processings.processed_at,
+            "SELECT waste_processings.processed_at, waste_processings.status,
                     machines.name AS machine_name,
                     production_batches.batch_number,
                     waste_processings.input_quantity_kg,
@@ -293,6 +293,13 @@ class ReportModel extends Model
         $waste = $this->waste($filters);
         $packaging = $this->packaging($filters);
         $distribution = $this->distribution($filters);
+
+        $validated = static function($row) { return ($row['status'] ?? '') === 'validated'; };
+        $reception = array_values(array_filter($reception, $validated));
+        $production = array_values(array_filter($production, $validated));
+        $packaging = array_values(array_filter($packaging, static function($row){return in_array($row['status']??'', ['validated','active'], true);}));
+        $waste = array_values(array_filter($waste, $validated));
+        $distribution = array_values(array_filter($distribution, $validated));
 
         $packagedKg = array_sum(array_map(function ($row) { return (float) $row['total_weight_kg']; }, $packaging));
         $distributedKg = array_sum(array_map(function ($row) { return (float) $row['total_weight_kg']; }, $distribution));

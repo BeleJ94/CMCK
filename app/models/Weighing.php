@@ -345,6 +345,10 @@ class Weighing extends Model
             (new DocumentService($this->db))->register('BRS', $weighing['site_id'], 'weighings', $id, 'validated', date('Y-m-d H:i:s'), $user);
             if($weighing['transport_id']){$this->query("UPDATE weighbridge_transports SET status='completed',completed_at=NOW() WHERE id=:id",['id'=>$weighing['transport_id']]);}
 
+            if (!empty($weighing['transport_id'])) {
+                $this->query("UPDATE agricultural_transports a JOIN weighbridge_transports t ON t.agricultural_transport_id=a.id SET a.status='received',a.received_at=NOW() WHERE t.id=:id AND a.status='in_transit' AND a.deleted_at IS NULL", ['id'=>$weighing['transport_id']]);
+            }
+
             $this->logActivity(
                 'validate_weighing',
                 'pont-bascule',

@@ -813,6 +813,7 @@
         if(window.initTransfers)window.initTransfers(root);
         if(window.initDistributions)window.initDistributions(root);
         if(window.initFuelLogistics)window.initFuelLogistics(root);
+        if(window.initBudgets)window.initBudgets(root);
         if (window.initWorkDirectory) window.initWorkDirectory(root);
         if (window.initCampaignDirectory) window.initCampaignDirectory(root);
         if (window.initPlotDirectory) window.initPlotDirectory(root);
@@ -1523,6 +1524,7 @@
                 if(historyKind==='distributions')historyStatuses=[['','Tous les statuts'],['validated','Validée'],['cancelled','Annulée'],['draft','Brouillon']];
                 if(historyKind==='fuel-orders')historyStatuses=[['','Tous les statuts'],['draft','Brouillon'],['submitted','À valider'],['approved','Approuvé'],['partially_received','Réception partielle'],['received','Reçu'],['cancelled','Annulé']];
                 if(historyKind==='fuel-missions')historyStatuses=[['','Tous les statuts'],['submitted','À valider'],['approved','Approuvé'],['in_progress','En cours'],['completed','Terminé'],['justification_pending','À justifier'],['settled','Soldé'],['cancelled','Annulé']];
+                if(historyKind==='budgets')historyStatuses=[['','Tous les statuts'],['preparation','En préparation'],['submitted','Soumis'],['pending_df','À valider · DF'],['pending_dg','À valider · DG'],['active','Actif'],['rejected','Refusé'],['replaced','Remplacé'],['cancelled','Annulé']];
                 if(historyKind==='recipes')historyStatuses=[['','Tous les statuts'],['active','Active'],['retired','Ancienne version'],['inactive','Fiche inactive']];
                 addFilter('status', 'Statut', historyStatuses);
                 if(historyKind==='stocks'){addFilter('type','Type',[['','Tous les types'],['raw','Matières premières'],['finished','Produits et coproduits']]);addFilter('dlc','Échéance',[['','Toutes les DLC'],['soon','Sous 3 jours'],['expired','Dépassée'],['valid','Plus de 3 jours']]);}

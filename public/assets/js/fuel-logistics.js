@@ -1,5 +1,5 @@
 (function(){'use strict';window.initFuelLogistics=function(root){
-(root||document).querySelectorAll('.fuel-tabs').forEach(function(nav){if(nav.dataset.ready)return;nav.dataset.ready='true';var tabs=Array.from(nav.querySelectorAll('[data-fuel-tab]')),workspace=nav.closest('.fuel-workspace');
+(root||document).querySelectorAll('.fuel-tabs').forEach(function(nav){if(nav.dataset.ready||!nav.querySelector('[data-fuel-tab]'))return;nav.dataset.ready='true';var tabs=Array.from(nav.querySelectorAll('[data-fuel-tab]')),workspace=nav.closest('.fuel-workspace');
 function select(tab){tabs.forEach(function(t){var active=t===tab;t.setAttribute('aria-selected',String(active));t.tabIndex=active?0:-1;});workspace.querySelectorAll('[data-fuel-panel]').forEach(function(panel){panel.hidden=panel.dataset.fuelPanel!==tab.dataset.fuelTab;});}
 tabs.forEach(function(tab,index){tab.addEventListener('click',function(){select(tab);});tab.addEventListener('keydown',function(e){var next;if(e.key==='ArrowRight')next=(index+1)%tabs.length;if(e.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;if(e.key==='Home')next=0;if(e.key==='End')next=tabs.length-1;if(next!==undefined){e.preventDefault();select(tabs[next]);tabs[next].focus();}});});
 });

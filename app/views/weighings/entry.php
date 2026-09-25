@@ -35,7 +35,7 @@ $context=$entryContext($selectedTransport);
 <label for="entryTransport" data-entry-select-fallback><span>BT en transit *</span><select id="entryTransport" name="transport_id" required data-entry-transport aria-describedby="entryTransportHelp<?=!empty($errors['transport_id'])?' entryTransportError':''?>" <?=!empty($errors['transport_id'])?'aria-invalid="true"':''?>>
 <option value="">Sélectionner un bon de transport</option>
 <?php foreach($transports as$transport):$details=$entryContext($transport);?>
-<option value="<?=e($transport['id'])?>" <?=(string)$entry['transport_id']===(string)$transport['id']?'selected':''?> <?php foreach($details as$key=>$value):?> data-entry-<?=e($key)?>="<?=e($value)?>"<?php endforeach;?>><?=e(($transport['bt_number']?:$transport['transport_reference']).' — '.$transport['plate_number'])?></option>
+<option value="<?=e($transport['id'])?>" <?=(string)$entry['transport_id']===(string)$transport['id']?'selected':''?> <?php foreach($details as$key=>$value):?> data-entry-<?=e($key)?>="<?=e($value)?>"<?php endforeach;?>><?=e(($transport['bt_number']?:$transport['transport_reference']).(!empty($transport['agricultural_reference'])?' — '.$transport['agricultural_reference']:'').' — '.$transport['plate_number'])?></option>
 <?php endforeach;?>
 </select><small id="entryTransportHelp">Les BT des fermes sont transmis automatiquement après expédition.</small>
 <?php if(!empty($errors['transport_id'])):?><small id="entryTransportError" class="weighing-entry-error"><?=e($errors['transport_id'])?></small><?php endif;?></label>
@@ -67,7 +67,7 @@ $context=$entryContext($selectedTransport);
 <?php foreach($transports as$transport):$details=$entryContext($transport);?>
 <button type="button" class="entry-bt-option" data-entry-choice="<?=e($transport['id'])?>" aria-pressed="false">
 <span class="entry-bt-option-top"><strong><?=e($transport['bt_number']?:$transport['transport_reference'])?></strong><span class="entry-bt-selected" hidden>✓ Sélectionné</span></span>
-<span class="entry-bt-option-details"><span><small>Camion</small><?=e($details['plate'])?></span><span><small>Origine</small><?=e($details['origin'])?></span><span><small>Produit</small><?=e($details['product'])?></span><span><small>Quantité annoncée</small><?=e($details['quantity'])?></span></span>
+<?php if(!empty($transport['agricultural_reference'])):?><span class="weighing-entry-supplier"><?=e($transport['agricultural_reference'])?></span><?php endif;?><span class="entry-bt-option-details"><span><small>Camion</small><?=e($details['plate'])?></span><span><small>Origine</small><?=e($details['origin'])?></span><span><small>Produit</small><?=e($details['product'])?></span><span><small>Quantité annoncée</small><?=e($details['quantity'])?></span></span>
 </button>
 <?php endforeach;?>
 <p class="entry-bt-no-results" data-entry-picker-empty hidden>Aucun BT ne correspond à votre recherche. Essayez une autre référence, plaque ou origine.</p>

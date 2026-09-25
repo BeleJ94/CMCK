@@ -7,14 +7,20 @@ class ReportController extends Controller
         $model = $this->model('ReportModel');
         $filters = $this->filters();
         $summary = $model->globalSummary($filters);
+        $days = (int)(new DateTime($filters['start_date']))->diff(new DateTime($filters['end_date']))->days + 1;
+        $previousFilters = $filters;
+        $previousFilters['end_date'] = (new DateTime($filters['start_date']))->modify('-1 day')->format('Y-m-d');
+        $previousFilters['start_date'] = (new DateTime($filters['start_date']))->modify('-'.$days.' days')->format('Y-m-d');
+        $previousSummary = $model->globalSummary($previousFilters);
 
         $this->render('reports.index', [
-            'title' => 'Rapport periodique global',
+            'title' => 'Synthèse de direction',
             'filters' => $filters,
             'references' => $model->referenceData(),
             'summary' => $summary,
-            'executiveSummary' => $model->executiveSummary($filters, $summary),
-            'highlights' => $model->reportHighlights($filters),
+            'previousSummary' => $previousSummary,
+            'previousFilters' => $previousFilters,
+            'periodDays' => $days,
             'directionRows' => $this->directionRows($summary),
         ], 'rapport-periodique-global');
     }
