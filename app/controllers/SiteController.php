@@ -109,12 +109,13 @@ class SiteController extends Controller
 
     public function selectContext()
     {
-        $this->ensureCsrf(Auth::homePathFor(Auth::user()));
+        $returnPath = site_context_return_path($_POST['_return_to'] ?? '', Auth::homePathFor(Auth::user()));
+        $this->ensureCsrf($returnPath);
         try {
             Auth::selectSite(trim($_POST['site_id'] ?? ''));
             flash('success', 'Contexte de site mis a jour.');
         } catch (Exception $exception) { flash('error', $exception->getMessage()); }
-        redirect(($_POST['_return_to'] ?? '') === 'weighings/entry' ? 'weighings/entry' : Auth::homePathFor(Auth::user()));
+        redirect($returnPath);
     }
 
     private function siteInput()

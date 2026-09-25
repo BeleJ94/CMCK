@@ -808,6 +808,11 @@
         if(window.initEmptyPackaging)window.initEmptyPackaging(root);
         if(window.initPackaging)window.initPackaging(root);
         if(window.initFinishedStocks)window.initFinishedStocks(root);
+        if(window.initLivestock)window.initLivestock(root);
+        if(window.initButchery)window.initButchery(root);
+        if(window.initTransfers)window.initTransfers(root);
+        if(window.initDistributions)window.initDistributions(root);
+        if(window.initFuelLogistics)window.initFuelLogistics(root);
         if (window.initWorkDirectory) window.initWorkDirectory(root);
         if (window.initCampaignDirectory) window.initCampaignDirectory(root);
         if (window.initPlotDirectory) window.initPlotDirectory(root);
@@ -1472,6 +1477,108 @@
             renderTable(state, body, meta, pageInfo, pageActions, headings.length);
         });
 
+        if (table.hasAttribute('data-daily-table')) {
+            state.rowFilter = function (row) { return row.dataset.batch === table.dataset.selectedBatch; };
+            table.addEventListener('daily-filter', function () {
+                state.page = 1;
+                state.query = '';
+                searchInput.value = '';
+                renderTable(state, body, meta, pageInfo, pageActions, headings.length);
+            });
+        }
+        if (table.hasAttribute('data-conversion-filters') || table.hasAttribute('data-butchery-history')) {
+            var historyKind = table.getAttribute('data-butchery-history');
+            toolbar.classList.add('conversion-filterbar');
+            searchInput.placeholder = historyKind ? 'Référence, origine…' : 'Référence, lot ou site…';
+            searchInput.setAttribute('aria-label', historyKind ? 'Rechercher dans l’historique' : 'Rechercher une conversion');
+            var filterFields = {};
+            function addFilter(name, title, options) {
+                var label = document.createElement('label');
+                label.className = 'conversion-filter';
+                var caption = document.createElement('span');
+                caption.textContent = title;
+                var field = document.createElement(options ? 'select' : 'input');
+                field.dataset.conversionFilter = name;
+                if (options) options.forEach(function (item) { field.add(new Option(item[1], item[0])); });
+                else field.type = 'date';
+                label.appendChild(caption);
+                label.appendChild(field);
+                toolbar.appendChild(label);
+                filterFields[name] = field;
+                field.addEventListener('change', applyFilters);
+            }
+            if (historyKind) {
+                var historyStatuses = historyKind === 'receipts'
+                    ? [['','Tous les statuts'],['draft','Brouillon'],['sanitary_pending','À contrôler'],['accepted','Acceptée'],['rejected','Refusée'],['cancelled','Annulée']]
+                    : [['','Tous les statuts'],['submitted','À valider'],['validated','Validé'],['cancelled','Annulé']];
+                if(historyKind==='production')historyStatuses=[['','Tous les statuts'],['in_progress','En cours'],['results_submitted','À valider'],['validated','Validé'],['cancelled','Annulé']];
+                if(historyKind==='stocks')historyStatuses=[['','Tous les statuts'],['available','Disponible'],['reserved','Réservé'],['expired','DLC dépassée'],['depleted','Épuisé'],['quarantine','Quarantaine'],['rejected','Refusé'],['cancelled','Annulé'],['in_transit','En transit']];
+                if(historyKind==='sales')historyStatuses=[['','Tous les statuts'],['validated','Validée'],['cancelled','Annulée']];
+                if(historyKind==='transfers')historyStatuses=[['','Tous les statuts'],['draft','Brouillon'],['approved','Approuvé'],['in_transit','En transit'],['received','Reçu'],['cancelled','Annulé']];
+                if(historyKind==='inter-site') {
+                    historyStatuses=[['','Tous les statuts']];
+                    try { historyStatuses=historyStatuses.concat(JSON.parse(table.getAttribute('data-status-options') || '[]')); } catch (e) {}
+                    addFilter('type','Type',[['','Tous les types'],['inter_site','Inter-site'],['internal','Interne']]);
+                }
+                if(historyKind==='distributions')historyStatuses=[['','Tous les statuts'],['validated','Validée'],['cancelled','Annulée'],['draft','Brouillon']];
+                if(historyKind==='fuel-orders')historyStatuses=[['','Tous les statuts'],['draft','Brouillon'],['submitted','À valider'],['approved','Approuvé'],['partially_received','Réception partielle'],['received','Reçu'],['cancelled','Annulé']];
+                if(historyKind==='fuel-missions')historyStatuses=[['','Tous les statuts'],['submitted','À valider'],['approved','Approuvé'],['in_progress','En cours'],['completed','Terminé'],['justification_pending','À justifier'],['settled','Soldé'],['cancelled','Annulé']];
+                if(historyKind==='recipes')historyStatuses=[['','Tous les statuts'],['active','Active'],['retired','Ancienne version'],['inactive','Fiche inactive']];
+                addFilter('status', 'Statut', historyStatuses);
+                if(historyKind==='stocks'){addFilter('type','Type',[['','Tous les types'],['raw','Matières premières'],['finished','Produits et coproduits']]);addFilter('dlc','Échéance',[['','Toutes les DLC'],['soon','Sous 3 jours'],['expired','Dépassée'],['valid','Plus de 3 jours']]);}
+                if (historyKind === 'receipts') addFilter('type', 'Origine', [['','Toutes les origines'],['internal_btr','Élevage'],['external_bra','Fournisseur']]);
+            } else {
+                addFilter('status', 'Statut', [['','Tous les statuts'],['submitted','À valider'],['validated','Validé']]);
+                addFilter('type', 'Opération', [['','Toutes les opérations'],['slaughter','Abattage'],['fish_catch','Pêche'],['formal_weighing','Pesée de conversion']]);
+            }
+            addFilter('from', historyKind==='stocks'?'DLC du':'Du', null);
+            addFilter('to', historyKind==='stocks'?'DLC au':'Au', null);
+            var reset = document.createElement('button');
+            reset.type = 'button';
+            reset.className = 'btn-secondary conversion-filter-reset';
+            reset.appendChild(icon('bi-arrow-counterclockwise'));
+            reset.appendChild(escapeText('Réinitialiser'));
+            toolbar.appendChild(reset);
+            var periodError = document.createElement('p');
+            periodError.className = 'conversion-filter-error';
+            periodError.setAttribute('role', 'status');
+            periodError.hidden = true;
+            toolbar.appendChild(periodError);
+            // Display preferences belong immediately above the table.
+            var displayBar = document.createElement('div');
+            displayBar.className = 'conversion-displaybar';
+            displayBar.appendChild(meta);
+            sizeLabel.className = 'conversion-page-size';
+            sizeLabel.textContent = 'Lignes à afficher';
+            sizeLabel.appendChild(size);
+            displayBar.appendChild(sizeLabel);
+            container.insertBefore(displayBar, scroll);
+            // The compact layout is fixed here, so no extra density control is needed.
+            density.remove();
+            container.classList.add('dagril-table-compact');
+            function applyFilters() {
+                var status = filterFields.status.value, type = filterFields.type ? filterFields.type.value : '';
+                var from = filterFields.from.value, to = filterFields.to.value;
+                var invalid = !!(from && to && from > to);
+                periodError.hidden = !invalid;
+                periodError.textContent = invalid ? 'La date de fin doit être égale ou postérieure à la date de début.' : '';
+                filterFields.to.setAttribute('aria-invalid', String(invalid));
+                state.rowFilter = function (row) {
+                    return !invalid && (!filterFields.dlc || !filterFields.dlc.value || row.dataset.dlc === filterFields.dlc.value) && (!status || row.dataset.status === status) &&
+                        (!type || row.dataset.type === type) &&
+                        (!from || row.dataset.date >= from) && (!to || row.dataset.date <= to);
+                };
+                state.page = 1;
+                renderTable(state, body, meta, pageInfo, pageActions, headings.length);
+            }
+            reset.addEventListener('click', function () {
+                Object.keys(filterFields).forEach(function (key) { filterFields[key].value = ''; });
+                searchInput.value = '';
+                state.query = '';
+                applyFilters();
+                searchInput.focus();
+            });
+        }
         renderTable(state, body, meta, pageInfo, pageActions, headings.length);
     }
 
@@ -1482,7 +1589,7 @@
         state.emptyRow = null;
 
         var filtered = state.rows.filter(function (row) {
-            return !state.query || normalize(row.textContent).indexOf(state.query) !== -1;
+            return (!state.rowFilter || state.rowFilter(row)) && (!state.query || normalize(row.textContent).indexOf(state.query) !== -1);
         });
 
         if (state.sortIndex !== null) {
@@ -1512,7 +1619,7 @@
             emptyCell.colSpan = Math.max(1, columnCount);
             emptyCell.className = 'dagril-table-empty';
             emptyCell.appendChild(icon('bi-search'));
-            emptyCell.appendChild(escapeText(' Aucun resultat ne correspond a votre recherche.'));
+            emptyCell.appendChild(escapeText(body.closest('table').hasAttribute('data-daily-table') && !state.query ? ' Aucun enregistrement pour ce lot.' : ' Aucun resultat ne correspond a votre recherche.'));
             state.emptyRow.appendChild(emptyCell);
             body.appendChild(state.emptyRow);
         }
@@ -1779,7 +1886,7 @@
             return;
         }
         if (!response.ok || !payload || payload.ok === false) {
-            if(pendingForm&&pendingForm.matches('[data-feed-form],[data-machine-form],[data-prod-form],[data-waste-sale-form],[data-waste-process-form],[data-pellet-form],[data-audit-review],[data-empty-form],[data-pack-editor-form]')){var feedError=qs('[data-feed-error]',pendingForm);feedError.textContent=payload&&payload.message?payload.message:'L’alimentation n’a pas été enregistrée.';feedError.hidden=false;feedError.scrollIntoView({block:'nearest'});}
+            if(pendingForm&&pendingForm.matches('[data-feed-form],[data-machine-form],[data-prod-form],[data-waste-sale-form],[data-waste-process-form],[data-pellet-form],[data-audit-review],[data-empty-form],[data-pack-editor-form],[data-livestock-form],[data-butchery-form]')){var feedError=qs('[data-feed-error]',pendingForm);feedError.textContent=payload&&payload.message?payload.message:'L’alimentation n’a pas été enregistrée.';feedError.hidden=false;feedError.scrollIntoView({block:'nearest'});}
             showToast('Opération refusée', payload && payload.message ? payload.message : 'Le serveur a refusé cette opération.', 'error');
             return;
         }
@@ -1924,7 +2031,7 @@
             form.classList.remove('is-submitting');
             form.removeAttribute('aria-busy');
         }
-        if(form&&document.contains(form)&&form.matches('[data-feed-form],[data-machine-form],[data-prod-form],[data-waste-sale-form],[data-waste-process-form],[data-pellet-form],[data-audit-review],[data-empty-form],[data-pack-editor-form]')&&form.closest('.is-open'))document.body.classList.add('workspace-modal-open');
+        if(form&&document.contains(form)&&form.matches('[data-feed-form],[data-machine-form],[data-prod-form],[data-waste-sale-form],[data-waste-process-form],[data-pellet-form],[data-audit-review],[data-empty-form],[data-pack-editor-form],[data-livestock-form],[data-butchery-form]')&&form.closest('.is-open'))document.body.classList.add('workspace-modal-open');
         pendingForm = null;
         pendingSubmitter = null;
         if (dialogReturnFocus && document.contains(dialogReturnFocus)) {

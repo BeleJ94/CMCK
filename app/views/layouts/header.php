@@ -35,9 +35,9 @@ foreach ($pageIcons as $prefix => $icon) {
     <div class="user-menu">
         <?php if ($contextSites): ?>
             <form method="post" action="<?= e(base_url('context/site')) ?>" class="site-context-form" data-ajax="false">
-                <?= csrf_field() ?>
+                <?= csrf_field() ?><input type="hidden" name="_return_to" value="<?= e($_SERVER['REQUEST_URI'] ?? '') ?>">
                 <label><span class="sr-only">Site courant</span><i class="bi bi-geo-alt"></i>
-                    <select name="site_id" onchange="this.form.submit()" aria-label="Site courant">
+                    <select name="site_id" onchange="this.form.elements._return_to.value=window.location.pathname+window.location.search+window.location.hash;this.form.submit()" aria-label="Site courant">
                         <?php if (Auth::canViewConsolidated()): ?><option value="all" <?= $currentSiteId === null ? 'selected' : '' ?>>Tous les sites</option><?php endif; ?>
                         <?php foreach ($contextSites as $contextSite): ?><option value="<?= e($contextSite['id']) ?>" <?= (int) $currentSiteId === (int) $contextSite['id'] ? 'selected' : '' ?>><?= e($contextSite['code']) ?></option><?php endforeach; ?>
                     </select><i class="bi bi-chevron-down"></i>

@@ -307,9 +307,20 @@ class Auth
                 ['label' => 'Conditionnement', 'path' => 'packaging', 'icon' => 'bi-box-seam', 'roles' => ['administrateur', 'direction', 'agent-emballage']],
                 ['label' => 'Produits finis', 'path' => 'finished-stocks', 'icon' => 'bi-boxes', 'roles' => ['administrateur', 'direction', 'agent-emballage', 'agent-distribution'], 'badge' => 'finished_stock_alerts'],
             ]],
-            ['label' => 'Élevage & boucherie', 'icon' => 'bi-heart-pulse', 'items' => [
-                ['label' => 'Élevages MUTALA', 'path' => 'livestock', 'icon' => 'bi-heart-pulse', 'roles' => ['administrateur', 'direction']],
-                ['label' => 'Boucherie', 'path' => 'butchery', 'icon' => 'bi-shop', 'roles' => ['administrateur', 'direction']],
+            ['label' => 'Élevage', 'icon' => 'bi-heart-pulse', 'items' => [
+                ['label' => 'Élevage par espèce', 'path' => 'livestock', 'icon' => 'bi-heart-pulse', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Suivi quotidien', 'path' => 'livestock/daily', 'icon' => 'bi-calendar-check', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Conversions pesées', 'path' => 'livestock/conversions', 'icon' => 'bi-arrow-repeat', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Transferts boucherie', 'path' => 'livestock/transfers', 'icon' => 'bi-truck', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Bâtiments et étangs', 'path' => 'livestock/facilities', 'icon' => 'bi-building', 'roles' => ['administrateur', 'direction']],
+            ]],
+            ['label' => 'Boucherie', 'icon' => 'bi-shop', 'items' => [
+                ['label' => 'Réceptions', 'path' => 'butchery/receipts', 'icon' => 'bi-box-arrow-in-down', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Abattage', 'path' => 'butchery/slaughters', 'icon' => 'bi-clipboard-check', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Fabrication', 'path' => 'butchery/production', 'icon' => 'bi-gear', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Stocks et DLC', 'path' => 'butchery/stocks', 'icon' => 'bi-boxes', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Ventes et transferts', 'path' => 'butchery/outgoing', 'icon' => 'bi-truck', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Recettes', 'path' => 'butchery/recipes', 'icon' => 'bi-journal-text', 'roles' => ['administrateur', 'direction']],
             ]],
             ['label' => 'Distribution & logistique', 'icon' => 'bi-send-check', 'items' => [
                 ['label' => 'Transferts inter-sites', 'path' => 'transfers', 'icon' => 'bi-arrow-left-right', 'roles' => ['administrateur', 'direction', 'agent-distribution']],
@@ -339,6 +350,7 @@ class Auth
         foreach ($groups as $group) {
             $items = array_values(array_filter($group['items'], function ($item) use ($roleSlug, $legacySlugs) {
                 if ($item['path'] === 'activity-logs') { return $roleSlug === 'administrateur'; }
+                if (strpos($item['path'], 'butchery/') === 0) { return self::can('butchery', 'read') && ($item['path'] !== 'butchery/recipes' || self::can('butchery', 'administer')); }
                 if ($item['path'] === 'silo-administration') { return self::can('silos', 'administer'); }
                 if (in_array($roleSlug, $legacySlugs, true)) { return in_array($roleSlug, $item['roles'], true); }
                 $permission = self::menuPermission($item['path']);
@@ -365,7 +377,7 @@ class Auth
         $first = explode('/', trim($path, '/'))[0];
         $map = ['dashboard'=>'dashboard','direction'=>'dashboard','terrain'=>'dashboard','reports'=>'reports','analytics'=>'analytics','traceability'=>'traceability','cancellations'=>'cancellations','documents'=>'documents','transfers'=>'transfers','agriculture'=>'agriculture','livestock'=>'livestock','butchery'=>'butchery','budgets'=>'budgets','fuel-logistics'=>'fuel-logistics','suppliers'=>'suppliers','trucks'=>'trucks','weighings'=>'weighings','silos'=>'silos','machines'=>'machines','machine-feeds'=>'machine-feeds','production'=>'production','waste'=>'waste','pelletization'=>'pelletization','packaging'=>'packaging','empty-packaging'=>'empty-packaging','finished-stocks'=>'finished-stocks','distributions'=>'distributions','alerts'=>'alerts','activity-logs'=>'activity-logs','sites'=>'sites','users'=>'users','access-control'=>'rbac'];
         if (!isset($map[$first])) { return null; }
-        $action = in_array($path, ['weighings/entry','machine-feeds/create','production/create','waste/process','packaging/create','distributions/create'], true) ? 'create' : 'read';
+        $action = $path === 'livestock/facilities' ? 'administer' : (in_array($path, ['weighings/entry','machine-feeds/create','production/create','waste/process','packaging/create','distributions/create'], true) ? 'create' : 'read');
         if (in_array($first, ['sites','users','access-control'], true)) { $action='administer'; }
         return [$map[$first],$action];
     }

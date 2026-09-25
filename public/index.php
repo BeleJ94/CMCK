@@ -111,6 +111,13 @@ $router->post('/agriculture/transports','Agriculture@transport',['auth'=>true,'p
 $router->post('/agriculture/transports/{id}/approve','Agriculture@approveTransport',['auth'=>true,'permission'=>['agriculture','validate']]);
 $router->post('/agriculture/transports/{id}/dispatch','Agriculture@dispatchTransport',['auth'=>true,'permission'=>['agriculture','update']]);
 $router->get('/livestock','Livestock@index',['auth'=>true,'permission'=>['livestock','read']]);
+$router->get('/livestock/lots','Livestock@lots',['auth'=>true,'permission'=>['livestock','read']]);
+$router->get('/livestock/species/{id}','Livestock@speciesLots',['auth'=>true,'permission'=>['livestock','read']]);
+$router->get('/livestock/daily','Livestock@daily',['auth'=>true,'permission'=>['livestock','read']]);
+$router->get('/livestock/conversions','Livestock@conversionsPage',['auth'=>true,'permission'=>['livestock','read']]);
+$router->get('/livestock/transfers','Livestock@transfersPage',['auth'=>true,'permission'=>['livestock','read']]);
+$router->get('/livestock/facilities','Livestock@facilitiesPage',['auth'=>true,'permission'=>['livestock','administer']]);
+$router->post('/livestock/facilities/{id}/update','Livestock@updateFacility',['auth'=>true,'permission'=>['livestock','administer']]);
 $router->post('/livestock/facilities','Livestock@facility',['auth'=>true,'permission'=>['livestock','administer']]);
 $router->post('/livestock/batches','Livestock@batch',['auth'=>true,'permission'=>['livestock','create']]);
 $router->post('/livestock/feedings','Livestock@feed',['auth'=>true,'permission'=>['livestock','update']]);
@@ -123,6 +130,7 @@ $router->post('/livestock/transfers','Livestock@transfer',['auth'=>true,'permiss
 $router->post('/livestock/transfers/{id}/approve','Livestock@approveTransfer',['auth'=>true,'permission'=>['livestock','validate']]);
 $router->post('/livestock/transfers/{id}/dispatch','Livestock@dispatchTransfer',['auth'=>true,'permission'=>['livestock','update']]);
 $router->get('/butchery','Butchery@index',['auth'=>true,'permission'=>['butchery','read']]);
+$router->get('/butchery/{section}','Butchery@index',['auth'=>true,'permission'=>['butchery','read']]);
 $router->post('/butchery/receipts','Butchery@receipt',['auth'=>true,'permission'=>['butchery','create']]);
 $router->post('/butchery/receipts/{id}/control','Butchery@control',['auth'=>true,'permission'=>['butchery','validate']]);
 $router->post('/butchery/slaughters','Butchery@slaughter',['auth'=>true,'permission'=>['butchery','create']]);

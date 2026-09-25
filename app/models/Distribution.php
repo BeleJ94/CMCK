@@ -9,7 +9,7 @@ class Distribution extends Model
         $params = [];
         $siteClause = Auth::siteClause('finished_stocks.site_id', $params);
         return $this->query(
-            "SELECT finished_stocks.id,
+            "SELECT finished_stocks.id, sites.code AS site_code,
                     finished_stocks.product_id,
                     finished_stocks.bag_format_id,
                     finished_stocks.quantity_bags - finished_stocks.reserved_bags AS quantity_bags,
@@ -19,6 +19,7 @@ class Distribution extends Model
                     bag_formats.name AS format_name,
                     bag_formats.weight_kg
              FROM finished_stocks
+             INNER JOIN sites ON sites.id=finished_stocks.site_id
              INNER JOIN products ON products.id = finished_stocks.product_id
              INNER JOIN bag_formats ON bag_formats.id = finished_stocks.bag_format_id
              WHERE finished_stocks.deleted_at IS NULL
@@ -35,7 +36,7 @@ class Distribution extends Model
         $params = [];
         $siteClause = Auth::siteClause('distributions.site_id', $params);
         return $this->query(
-            "SELECT distributions.*,
+            "SELECT distributions.*, sites.code AS site_code,
                     products.name AS product_name,
                     products.code AS product_code,
                     bag_formats.name AS format_name,
@@ -44,6 +45,7 @@ class Distribution extends Model
                     validators.name AS validator_name,
                     official_document.document_number AS official_document_number
              FROM distributions
+             INNER JOIN sites ON sites.id=distributions.site_id
              INNER JOIN products ON products.id = distributions.product_id
              INNER JOIN bag_formats ON bag_formats.id = distributions.bag_format_id
              LEFT JOIN users ON users.id = distributions.created_by
@@ -59,7 +61,7 @@ class Distribution extends Model
         $params = ['id' => $id];
         $siteClause = Auth::siteClause('distributions.site_id', $params);
         return $this->query(
-            "SELECT distributions.*,
+            "SELECT distributions.*, sites.code AS site_code,
                     products.name AS product_name,
                     products.code AS product_code,
                     bag_formats.name AS format_name,
@@ -68,6 +70,7 @@ class Distribution extends Model
                     validators.name AS validator_name,
                     official_document.document_number AS official_document_number
              FROM distributions
+             INNER JOIN sites ON sites.id=distributions.site_id
              INNER JOIN products ON products.id = distributions.product_id
              INNER JOIN bag_formats ON bag_formats.id = distributions.bag_format_id
              LEFT JOIN users ON users.id = distributions.created_by

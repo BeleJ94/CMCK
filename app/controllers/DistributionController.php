@@ -30,6 +30,8 @@ class DistributionController extends Controller
 
     public function store()
     {
+        $ajax=($_SERVER['HTTP_X_REQUESTED_WITH']??'')==='XMLHttpRequest';
+        if($ajax&&!verify_csrf($_POST['_token']??'')){$this->jsonResult(false,'Session expirée. Rechargez la page.',null,419);return;}
         $this->ensureCsrf('distributions/create');
 
         $model = $this->model('Distribution');
@@ -37,6 +39,7 @@ class DistributionController extends Controller
         $errors = $this->validate($data, $model);
 
         if (!empty($errors)) {
+            if($ajax){$this->jsonResult(false,implode(' ',array_values($errors)));return;}
             flash('errors', $errors);
             $_SESSION['old_distribution'] = $data;
             redirect('distributions/create');
@@ -45,8 +48,10 @@ class DistributionController extends Controller
         try {
             $id = $model->createDistribution($data, Auth::user());
             flash('success', 'Sortie stock creee avec succes.');
+            if($ajax){$this->jsonResult(true,'Sortie enregistrée.',$id);return;}
             redirect('distributions/' . $id);
         } catch (Exception $exception) {
+            if($ajax){$this->jsonResult(false,$exception->getMessage());return;}
             flash('error', $exception->getMessage());
             $_SESSION['old_distribution'] = $data;
             redirect('distributions/create');
@@ -92,6 +97,12 @@ class DistributionController extends Controller
             'title' => 'Bon de sortie',
             'distribution' => $distribution,
         ]);
+    }
+
+    private function jsonResult($ok,$message,$id=null,$status=422)
+    {
+        http_response_code($ok?200:$status);header('Content-Type: application/json');
+        echo json_encode(['success'=>$ok,'ok'=>$ok,'message'=>$message,'redirect'=>base_url('distributions/'.$id),'redirect_url'=>$ok?base_url('distributions/'.$id):null]);
     }
 
     private function slug($value)

@@ -4438,3 +4438,410 @@ body:has(.work-editor[open]),body:has(.work-detail[open]) { overflow:hidden; }
 .finished-format-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:10px;padding:12px;background:#f5f8fa;border:1px solid #dce5ea;border-radius:8px}.finished-format-filters label{display:grid;gap:5px;font-size:11px;color:#526c7b;min-width:0}.finished-format-filters select{height:35px;width:100%;min-width:0;padding:6px 8px;border:1px solid #cbd9e1;border-radius:6px;background:white;font:inherit;font-size:12px}.finished-format-filters button{align-self:end;min-height:35px;font-size:12px;padding:6px 10px}.finished-format-cards{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.finished-format-cards .finished-stock-overview{padding:8px 12px 16px}.finished-format-cards .finished-stock-quantity>strong{font-size:24px}.finished-format-cards .finished-stock-card>header{padding:16px;flex-wrap:wrap}.finished-format-cards .finished-stock-card>footer{padding:12px 16px;flex-wrap:wrap}
 @media(max-width:1200px){.finished-format-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){.finished-format-cards{grid-template-columns:1fr}.finished-format-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.finished-format-filters select{font-size:16px}.finished-format-filters button{white-space:normal}}
+
+.content-area>.livestock-directory{animation:none!important;transform:none!important}.livestock-directory [hidden]{display:none!important}.livestock-guide{font-size:13px;line-height:1.6;color:#536e7e;background:#edf5f7;padding:12px 15px;border-radius:7px}.livestock-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.livestock-directory .form-panel{padding:18px;margin-bottom:16px}.livestock-directory .form-panel>button{margin:8px 8px 8px 0}.livestock-directory .table-panel>h3{padding:16px;margin:0}.livestock-directory table{min-width:750px}.livestock-directory .dagril-table-toolbar{padding:10px 12px}.livestock-editor{--primary-panel-width:700px}.livestock-editor .form-grid{margin:0}.livestock-editor label{display:grid;gap:6px;min-width:0}.livestock-editor :is(input,select){width:100%;min-width:0}.livestock-warning{background:#fff3dc;color:#79571b}.livestock-directory h3{font-size:16px}.livestock-editor h2{font-size:21px}
+@media(max-width:650px){.livestock-actions{grid-template-columns:1fr}.livestock-editor .form-grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.livestock-editor,.livestock-editor *{animation:none!important;transition:none!important}}
+.livestock-directory .pellet-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:8px}.livestock-directory .pellet-tabs button>.bi{font-size:16px;flex-shrink:0}.livestock-section-title,.livestock-editor h2{display:flex;align-items:center;gap:10px}.livestock-heading-icon{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 34px;border-radius:8px;background:#e7f2ed;color:#287251;font-size:18px}.livestock-directory [data-livestock-space=conversions] .livestock-heading-icon{background:#edf2fc;color:#4a67a0}.livestock-directory [data-livestock-space=transfers] .livestock-heading-icon{background:#fff2df;color:#906527}.livestock-directory .btn-secondary>.bi,.livestock-directory .btn-primary>.bi{flex-shrink:0;font-size:15px}.livestock-editor>header>div{min-width:0}.livestock-editor h2>span:last-child{min-width:0;overflow-wrap:anywhere}.livestock-editor .modal-close{flex-shrink:0}
+@media(max-width:450px){.livestock-editor h2{font-size:19px;gap:8px}.livestock-heading-icon{width:30px;height:30px;flex-basis:30px;font-size:16px}}
+.livestock-editor.is-open .bi::before{visibility:visible!important;transition:none!important}
+.livestock-lot-actions{display:grid;gap:12px}.livestock-lot-actions .btn-secondary{justify-content:flex-start;padding:12px}.livestock-editor>.feed-form-body{flex:1;min-height:0}
+.livestock-code-field{display:grid;align-content:start;gap:8px;min-width:0}.livestock-code-field small{font-size:12px;color:#607387;line-height:1.5}.livestock-code-field>button{justify-self:start;font-size:12px}
+
+.lot-toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px}.lot-view-switch{display:flex;gap:6px;flex-shrink:0}.lot-view-switch [aria-pressed=true]{background:#e7f3ec;color:#246044;border-color:#8bb8a0}.lot-filters{display:grid;grid-template-columns:1.5fr repeat(4,minmax(0,1fr)) auto;gap:10px;background:#f5f8fa;padding:12px;border:1px solid #dce5ea;border-radius:8px}.lot-filters label{display:grid;gap:5px;font-size:11px;min-width:0}.lot-filters :is(input,select){height:35px;width:100%;min-width:0;border:1px solid #ccd9e1;border-radius:6px;padding:6px 8px;background:white;font-size:12px}.lot-filters button{align-self:end;padding:7px;font-size:12px}.lot-card-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.lot-card{background:white;border:1px solid #d9e4e9;border-radius:10px;overflow:hidden;min-width:0}.lot-card header{padding:14px;display:flex;gap:10px;justify-content:space-between;align-items:center}.lot-card header>strong{font-size:12px;overflow-wrap:anywhere}.lot-card-visual{display:flex;align-items:center;gap:12px;background:#f0f6f3;padding:10px 16px}.lot-animal{width:55%;max-width:200px;flex-shrink:0}.lot-card-visual small,.lot-card-visual span{display:block;color:#587567;font-size:12px}.lot-card-visual strong{display:block;font-size:30px;color:#28654a;margin:5px 0}.lot-card dl{padding:14px;margin:0}.lot-card dl>div{display:flex;gap:12px;justify-content:space-between;margin:9px 0;font-size:12px}.lot-card dt{color:#647789}.lot-card dd{margin:0;text-align:right;font-weight:600;overflow-wrap:anywhere}.lot-card footer{padding:12px 14px;border-top:1px solid #e3eaee;display:flex;justify-content:flex-end}.lot-pagination{display:flex;gap:14px;align-items:center;justify-content:flex-end;margin:18px 0;font-size:12px}
+@media(max-width:1200px){.lot-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lot-filters{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:650px){.lot-card-grid{grid-template-columns:1fr}.lot-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.lot-filters :is(input,select){font-size:16px}.lot-toolbar{display:block}.lot-pagination{justify-content:center;gap:8px}}
+
+/* Continuous grid: species no longer force a new row. */
+.lot-card{display:flex;flex-direction:column}.lot-card footer{margin-top:auto}.lot-card-heading{min-width:0}.lot-card-heading h3{margin:0 0 4px;font-size:16px}.lot-card-heading strong{display:block;font-size:11px;color:#607387;overflow-wrap:anywhere}.lot-card header{padding:12px 14px;align-items:flex-start}.lot-card-visual{padding:6px 14px;min-height:112px}.lot-animal{height:110px;width:48%;object-fit:contain}.lot-card dl{padding:8px 14px}.lot-card dl>div{margin:7px 0}.lot-card footer{padding:10px 14px}
+
+/* Monochrome species markers keep the real headcount visually dominant. */
+.lot-card-visual{background:#f5f7f8;gap:20px;padding:12px 18px;min-height:108px}.lot-card-visual .lot-animal{width:38%;max-width:128px;height:80px;color:#50656a}.lot-card-visual>div{min-width:0}.lot-card-visual strong{font-size:34px;color:#253e43;font-variant-numeric:tabular-nums}.lot-card-visual small,.lot-card-visual span{color:#62747a}
+
+/* Cattle style sample: natural coat colours with restrained emphasis. */
+.lot-card-cattle .lot-card-visual{background:#f5f2ea}.lot-card-cattle .lot-card-visual .lot-animal{width:46%;max-width:152px;height:96px}.lot-card{position:relative;transition:border-color .16s ease,box-shadow .16s ease}.lot-card footer button::after{content:"";position:absolute;inset:0;cursor:pointer;z-index:1}.lot-card footer button{position:static}.lot-card:hover{border-color:#8da99a;box-shadow:0 3px 12px #203e3210}.lot-card:focus-within{outline:2px solid #38765a;outline-offset:3px}.lot-card .lot-card-visual{min-height:120px}
+@media(prefers-reduced-motion:reduce){.lot-card{transition:none}}
+
+/* Natural muted tones extend the cattle sample to the other species. */
+.lot-card:not(.lot-card-cattle) .lot-card-visual{background:#f5f1ef}.lot-card[data-animal-category=poultry] .lot-card-visual{background:#f6f3eb}.lot-card[data-animal-category=fish] .lot-card-visual{background:#edf3f4}.lot-card .lot-card-visual .lot-animal{width:46%;max-width:152px;height:96px}
+
+.species-card-caption{padding:4px 16px;font-size:12px;color:#607387}.species-card .lot-card-heading small{color:#607387;font-size:12px}.species-card footer a::after{content:"";position:absolute;inset:0;z-index:1}.species-card footer a{position:static}.lot-toolbar>a{flex-shrink:0}
+
+.livestock-species-detail{--primary-panel-width:1060px}.livestock-species-detail .feed-form-body{padding:18px}.livestock-species-detail table{min-width:760px}.livestock-species-detail td .btn-secondary{white-space:nowrap;padding:7px 10px;font-size:12px}.livestock-species-detail .dagril-table-toolbar{flex-wrap:wrap}
+.livestock-species-detail .dagril-table-search{display:flex;align-items:center;gap:8px}.livestock-species-detail .dagril-table-search input{padding:6px 0;height:34px}.livestock-species-detail select.dagril-table-size{width:auto;min-width:95px;flex:0 0 auto}
+/* Livestock conversion workflow */
+.conversion-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.conversion-heading p{color:#64748b;margin:6px 0 0}
+.conversion-muted{display:block;font-size:12px;color:#64748b;margin-top:3px}
+.conversion-status{display:inline-flex;border-radius:6px;padding:5px 9px;font-size:12px;font-weight:700}
+.conversion-status.is-pending{color:#92400e;background:#fef3c7}
+.conversion-status.is-validated{color:#065f46;background:#d1fae5}
+.conversion-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:20px 0}
+.conversion-facts dt{font-size:12px;color:#64748b}
+.conversion-facts dd{margin:5px 0 0;font-weight:600;overflow-wrap:anywhere}
+.conversion-weight{display:flex;gap:16px;justify-content:space-between;padding:16px;border-radius:10px;background:#eff6ff;color:#1e40af;margin:16px 0;flex-wrap:wrap}
+.conversion-weight strong{display:block;font-size:20px;margin-top:5px}
+.livestock-editor footer form{margin:0;display:block}
+@media(max-width:600px){.conversion-facts{grid-template-columns:1fr}.conversion-heading>.btn-primary{width:100%}}
+
+
+/* Compact conversion page; operational details stay in the drawer. */
+.livestock-conversions-page .dashboard-hero{padding:14px 18px;gap:12px;margin-bottom:14px}
+.livestock-conversions-page .dashboard-hero .hero-icon{width:36px;height:36px;font-size:18px}
+.livestock-conversions-page .dashboard-hero h2{font-size:22px;margin:0}
+.livestock-conversions-page .dashboard-hero .section-label,.livestock-conversions-page .dashboard-hero h2+p{display:none}
+.conversion-workspace{padding:16px}
+.conversion-heading{gap:10px;margin-bottom:12px}
+.conversion-heading h3{font-size:15px;margin:0}
+.conversion-workspace :is(.btn-primary,.btn-secondary){min-height:34px;padding:7px 11px;font-size:12px}
+.conversion-workspace .enterprise-table :is(th,td){padding:9px 10px;font-size:13px}
+.conversion-workspace .dagril-table-toolbar{padding:8px 0;gap:8px}
+.conversion-workspace .dagril-table-search input{height:34px}
+.conversion-workspace .conversion-status{padding:4px 7px}
+.conversion-editor>header{padding:16px 20px}
+.conversion-editor>header .page-kicker{display:none}
+.conversion-editor h2{font-size:20px}
+.conversion-editor .feed-form-body{padding:16px 20px}
+.conversion-editor .form-grid{gap:12px}
+.conversion-editor label{gap:5px;font-size:12px}
+.conversion-editor :is(input:not([type=hidden]),select){min-height:38px;padding:8px 10px;font-size:14px}
+.conversion-editor footer{padding:12px 20px;gap:8px}
+.conversion-editor .livestock-guide{padding:10px 12px;margin:10px 0;font-size:12px}
+.conversion-editor .livestock-guide:empty{display:none}
+.conversion-editor .conversion-weight{padding:10px 12px;margin:12px 0;gap:12px}
+.conversion-editor .conversion-weight strong{font-size:18px;margin-top:3px}
+.conversion-editor .conversion-facts{gap:12px;margin:14px 0;font-size:13px}
+.conversion-help{margin:0 0 12px;font-size:12px;color:#526477}
+.conversion-help summary{cursor:pointer;padding:6px 0;width:fit-content}
+.conversion-help p{margin:8px 0;line-height:1.5}
+@media(max-width:600px){
+.livestock-conversions-page .dashboard-hero{padding:12px}
+.conversion-workspace{padding:12px}
+.conversion-editor :is(input:not([type=hidden]),select){font-size:16px;min-height:42px}
+.conversion-editor .feed-form-body,.conversion-editor>header{padding:14px}
+.conversion-editor footer{padding:12px 14px}
+}
+
+/* Compact filters followed by display preferences above the table. */
+.conversion-workspace .conversion-filterbar{display:grid;grid-template-columns:minmax(170px,1.4fr) repeat(2,minmax(125px,1fr)) repeat(2,minmax(125px,.85fr)) auto;align-items:end;gap:8px;padding:0 0 12px;background:transparent;border:0;border-bottom:1px solid #e2e8f0;border-radius:0;margin-bottom:0}
+.conversion-filterbar .conversion-filter{display:grid;gap:4px;min-width:0;font-size:11px;font-weight:600;color:#526477}
+.conversion-filterbar .conversion-filter :is(input,select){width:100%;min-width:0;height:34px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;padding:5px 8px;font-size:12px;color:#263849}
+.conversion-filterbar .dagril-table-search{min-width:0;width:100%;height:34px;margin:0}
+.conversion-filterbar .dagril-table-search input{min-width:0;width:100%;font-size:12px}
+.conversion-filterbar .conversion-filter-reset{white-space:nowrap;height:34px}
+.conversion-filterbar .conversion-filter-error{grid-column:1/-1;margin:2px 0;color:#b42318;font-size:12px}
+.conversion-workspace .dagril-table-pagination{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.conversion-workspace .dagril-table-pagination .dagril-page-info{margin-right:auto}
+@media(max-width:1200px){.conversion-workspace .conversion-filterbar{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.conversion-workspace .conversion-filterbar{grid-template-columns:repeat(2,minmax(0,1fr))}.conversion-filterbar .dagril-table-search{grid-column:1/-1}.conversion-filterbar .conversion-filter :is(input,select),.conversion-filterbar .dagril-table-search input{font-size:16px}.conversion-filterbar .conversion-filter-reset{grid-column:1/-1;justify-self:end}}
+
+.conversion-displaybar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 0}
+.conversion-displaybar .dagril-table-meta{font-size:12px;color:#64748b}
+.conversion-page-size{display:flex;align-items:center;gap:8px;font-size:12px;color:#526477;margin:0}
+.conversion-page-size select.dagril-table-size{width:auto;min-width:90px;height:32px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-size:12px;margin:0}
+.conversion-filterbar .conversion-filter-reset{background:transparent;box-shadow:none;border-color:transparent;color:#526477}
+.conversion-filterbar .conversion-filter-reset:hover{background:#f1f5f9;border-color:#cbd5e1}
+@media(max-width:600px){.conversion-page-size select.dagril-table-size{font-size:16px;min-height:38px}}
+.daily-workspace{padding:16px}
+.daily-selectors{display:grid;grid-template-columns:minmax(160px,1fr) minmax(220px,2fr);gap:12px;max-width:850px}
+.daily-selectors label{display:grid;gap:5px;font-size:12px;font-weight:600;color:#526477}
+.daily-selectors select{width:100%;min-width:0;height:38px;padding:7px 10px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-size:13px}
+.daily-context{padding:10px 12px;background:#f1f6f3;border-radius:6px;color:#365c48;font-size:13px;margin:12px 0}
+.daily-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.daily-workspace .btn-secondary{padding:7px 11px;font-size:12px;min-height:34px}
+.daily-workspace h3{font-size:15px;margin:16px 0 8px}
+.daily-workspace td,.daily-workspace th{padding:9px 10px}
+@media(max-width:600px){.daily-selectors{grid-template-columns:1fr;gap:8px}.daily-selectors select{font-size:16px}.daily-workspace{padding:12px}}
+
+.transfer-lot-summary{padding:12px;border:1px solid #d9e6df;border-radius:8px;background:#f5f9f6;min-width:0}
+.transfer-lot-summary>strong{font-size:14px;color:#315d45}
+.transfer-lot-summary dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px;margin:10px 0}
+.transfer-lot-summary dt{font-size:11px;color:#64748b}
+.transfer-lot-summary dd{margin:3px 0 0;font-size:13px;font-weight:600;overflow-wrap:anywhere}
+.transfer-lot-summary p{font-size:12px;color:#526477;margin:8px 0 0;line-height:1.5}
+@media(max-width:450px){.transfer-lot-summary dl{grid-template-columns:1fr}}
+
+.transfer-destination{margin:0 0 16px;font-size:12px;color:#526477}
+.transfer-section{border:0;padding:0;margin:0 0 16px;min-width:0}
+.transfer-section legend{font-size:13px;font-weight:700;color:#334155;padding:0;margin-bottom:10px}
+.transfer-transport{border-top:1px solid #e2e8f0;padding-top:12px;margin-bottom:12px}
+.transfer-transport summary{font-size:13px;font-weight:600;cursor:pointer;padding:4px 0}
+.transfer-transport summary span{font-weight:400;color:#64748b}
+.transfer-transport .form-grid{margin-top:12px}
+.transfer-review{border-top:1px solid #e2e8f0;padding-top:12px;font-size:13px}
+.transfer-review>strong{color:#315d45}
+.transfer-review p{font-size:12px;color:#64748b;line-height:1.5;margin:6px 0 0}
+.transfer-editor .transfer-lot-summary{padding:10px}
+.content-area>.butchery-workspace{animation:none!important;transform:none!important}
+.butchery-workspace .dashboard-hero{padding:14px 18px;margin-bottom:14px}
+.butchery-workspace .dashboard-hero h2{font-size:22px}
+.butchery-nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;border-bottom:1px solid #dce3e9;padding-bottom:10px}
+.butchery-nav button{border:1px solid transparent;background:transparent;border-radius:6px;padding:9px 12px;font-size:13px;color:#526477}
+.butchery-nav button[aria-pressed=true]{background:#eaf3ed;border-color:#bdd4c5;color:#28563b;font-weight:600}
+.butchery-workspace :is(.form-panel,.table-panel){padding:16px;margin-bottom:14px}
+.butchery-workspace h3{font-size:15px;margin:0 0 12px}
+.butchery-workspace .btn-secondary{padding:7px 10px;font-size:12px;min-height:34px}
+.butchery-receipt-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.butchery-workspace td,.butchery-workspace th{padding:9px 10px;font-size:13px}
+.butchery-editor .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.butchery-editor .form-grid label{min-width:0}
+@media(max-width:600px){.butchery-receipt-grid,.butchery-editor .form-grid{grid-template-columns:1fr}.butchery-nav button{flex:1 1 40%}}
+.butchery-empty{font-size:13px;color:#64748b;margin:10px 0}
+.butchery-workspace .dashboard-hero .section-label{display:none}
+.butchery-editor form{display:flex;flex-direction:column;flex:1;min-height:0}
+
+/* Boucherie : une activité par page, actions et files de travail compactes. */
+.butchery-workspace [hidden]{display:none!important}
+.butchery-heading{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.butchery-heading-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:#eaf3ed;color:#28563b;font-size:22px;flex-shrink:0}
+.butchery-heading p{margin:0 0 3px;color:#64748b;font-size:12px}
+.butchery-heading h2{margin:0;font-size:24px;line-height:1.2;letter-spacing:-.5px}
+.butchery-site{margin-left:auto;border:1px solid #dce5e1;border-radius:20px;padding:5px 10px;font-size:11px;color:#536a5b}
+.butchery-nav{gap:4px;padding-bottom:8px;margin-bottom:12px}
+.butchery-nav a{display:inline-flex;align-items:center;gap:7px;padding:9px 10px;border:1px solid transparent;border-radius:7px;color:#526477;text-decoration:none;font-size:13px;line-height:1.3}
+.butchery-nav a:hover{background:#f0f4f2;color:#28563b}
+.butchery-nav a[aria-current=page]{background:#eaf3ed;border-color:#bdd4c5;color:#28563b;font-weight:600}
+.butchery-guide{margin:0 0 14px;font-size:13px;color:#607080;line-height:1.6}
+.butchery-metrics{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:18px}
+.butchery-metrics>div{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fff;border:1px solid #e1e7ed;border-radius:9px}
+.butchery-metrics strong{font-size:20px;color:#234e38;font-variant-numeric:tabular-nums}
+.butchery-metrics span{font-size:12px;color:#607080}
+.butchery-workspace .form-panel,.butchery-workspace .table-panel{box-shadow:none;border:1px solid #e1e7ed;border-radius:10px}
+.butchery-workspace h3 .bi{color:#3e7556;margin-right:6px}
+.butchery-workspace .form-panel>button{margin:4px 6px 10px 0}
+.butchery-receipt-grid .form-panel{margin-bottom:0}
+.butchery-receipt-grid{margin-bottom:14px}
+.butchery-workspace .table-responsive{max-width:100%;overflow-x:auto}
+.butchery-workspace table{min-width:560px}
+.butchery-workspace .dagril-table-toolbar{flex-wrap:wrap;gap:8px}
+.butchery-workspace .dagril-table-search{min-width:0}
+.butchery-transfer-list{margin-top:18px;border-top:1px solid #e1e7ed;padding-top:16px}
+.butchery-queue-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0;border-top:1px solid #eef1f4}
+.butchery-queue-row>div{flex:1;min-width:180px}
+.butchery-queue-row strong{font-size:13px;overflow-wrap:anywhere}
+.butchery-queue-row small{display:block;color:#64748b;font-size:12px;margin-top:5px}
+.butchery-status{font-size:11px;white-space:nowrap;border-radius:20px;padding:5px 9px;background:#eef3f6;color:#526477}
+.butchery-editor>header h2{font-size:19px}
+.butchery-editor .feed-form-body{padding:18px}
+.butchery-editor label>span{font-size:12px;font-weight:600;color:#44546a}
+.butchery-editor footer{gap:8px;padding:12px 18px}
+@media(max-width:600px){
+ .butchery-heading h2{font-size:21px}.butchery-site{display:none}
+ .butchery-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .butchery-nav a{font-size:12px;padding:9px 7px}
+ .butchery-metrics{gap:8px}.butchery-metrics>div{flex:1 1 110px;align-items:flex-start;flex-direction:column;gap:4px;padding:10px}
+ .butchery-metrics strong{font-size:18px}
+ .butchery-workspace :is(.form-panel,.table-panel){padding:12px}
+ .butchery-editor footer button{white-space:normal}
+ .butchery-queue-row>div{flex-basis:100%}
+}
+.butchery-optional{grid-column:1/-1;border:1px solid #e1e7ed;border-radius:8px;padding:10px 12px}
+.butchery-optional summary{cursor:pointer;font-size:12px;font-weight:600;color:#536477}
+.butchery-optional[open] summary{margin-bottom:12px}
+.butchery-workspace .form-panel>.btn-primary{padding:8px 12px;font-size:12px;min-height:34px}
+
+.butchery-transfer-select,.butchery-transfer-preview{grid-column:1/-1;min-width:0}
+.butchery-transfer-help{font-size:12px;line-height:1.6;color:#64748b;margin:0}
+.butchery-transfer-summary{border:1px solid #cfe0d6;border-radius:10px;background:#f5faf7;overflow:hidden}
+.butchery-transfer-summary>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid #dce9e0}
+.butchery-transfer-summary header small{display:block;color:#607567;font-size:11px;margin-bottom:4px}
+.butchery-transfer-summary header strong{font-size:14px;color:#28563b;overflow-wrap:anywhere}
+.butchery-transfer-summary dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:14px;margin:0}
+.butchery-transfer-summary dt{color:#64748b;font-size:11px;margin-bottom:4px}
+.butchery-transfer-summary dd{margin:0;font-size:13px;font-weight:600;color:#334155;overflow-wrap:anywhere}
+.butchery-transfer-summary .butchery-transfer-quantity dd{font-size:18px;color:#28563b}
+.butchery-transfer-summary>p{font-size:12px;color:#607567;line-height:1.5;margin:0;padding:0 14px 14px}
+@media(max-width:380px){.butchery-transfer-summary dl{grid-template-columns:1fr;gap:10px}.butchery-transfer-summary>header{align-items:flex-start}}
+
+.butchery-history-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.butchery-history-heading h3{margin-bottom:5px}
+.butchery-history-heading p{margin:0;font-size:12px;color:#64748b}
+.butchery-history td{vertical-align:middle;font-variant-numeric:tabular-nums}
+.butchery-history td small{display:block;font-size:11px;color:#64748b;margin-top:3px}
+.butchery-history td:first-child,.butchery-history td:nth-child(4){white-space:nowrap}
+.butchery-status-success{background:#e7f4eb;color:#24633f}
+.butchery-status-pending{background:#fff3dc;color:#805b18}
+.butchery-status-muted{background:#f2e9e9;color:#80504f}
+.butchery-history-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px;margin:0}
+.butchery-history-details>div{padding:12px 0;border-bottom:1px solid #edf0f3;min-width:0}
+.butchery-history-details dt{font-size:11px;color:#64748b;margin-bottom:5px}
+.butchery-history-details dd{font-size:13px;font-weight:600;color:#334155;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:450px){.butchery-history-details{grid-template-columns:1fr}.butchery-history-heading{flex-wrap:wrap}}
+
+.butchery-history .conversion-filterbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px;padding:8px 0 10px}
+.butchery-history .conversion-filterbar .dagril-table-search{flex:1 1 170px;min-width:140px;margin:0;height:34px}
+.butchery-history .conversion-filter{display:flex;flex-direction:column;gap:4px;flex:0 1 145px;min-width:120px}
+.butchery-history .conversion-filter>span{font-size:10px;color:#64748b;font-weight:600}
+.butchery-history .conversion-filter :is(input,select){height:34px;padding:5px 8px;font-size:12px;border:1px solid #dce3e9;border-radius:6px;min-width:0;width:100%;background:#fff}
+.butchery-history .conversion-filter-reset{height:34px;margin:0;white-space:nowrap}
+.butchery-history .conversion-displaybar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 0 8px;font-size:11px}
+.butchery-history .conversion-page-size{display:flex;align-items:center;gap:8px;font-size:11px;color:#64748b}
+.butchery-history .conversion-page-size select{width:auto;min-width:90px;height:30px;font-size:11px}
+.butchery-history .conversion-filter-error{flex-basis:100%;margin:0;font-size:12px;color:#a13c32}
+@media(max-width:600px){.butchery-history .conversion-filterbar .dagril-table-search{flex-basis:100%}.butchery-history .conversion-filter{flex:1 1 calc(50% - 8px);min-width:0}.butchery-history .conversion-displaybar{flex-wrap:wrap}}
+
+.butchery-kpi{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fff;border:1px solid #d6e3db;border-radius:9px;text-align:left;cursor:pointer;font:inherit}
+.butchery-kpi:hover{background:#f1f8f4;border-color:#8cb69b}
+.butchery-kpi>.bi{font-size:12px;color:#4a765b}
+.butchery-kpi-modal{--primary-panel-width:960px}
+.butchery-kpi-modal td small{display:block;font-size:11px;color:#64748b;margin-top:3px}
+.butchery-kpi-modal :is(td,th){padding:7px 9px;font-size:12px}
+.butchery-kpi-modal .dagril-table-toolbar{gap:8px;padding:8px 0}
+.butchery-kpi-modal .dagril-table-search{min-width:0;flex:1 1 180px}
+.butchery-kpi-modal .dagril-table-size{width:auto;min-width:90px}
+@media(max-width:600px){.butchery-kpi{flex:1 1 120px;flex-wrap:wrap;gap:6px;padding:10px}.butchery-kpi span{flex-basis:100%}.butchery-kpi>.bi{display:none}}
+
+.butchery-workspace .butchery-slaughter-actions{padding:12px 16px}
+.butchery-slaughter-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.butchery-workspace .butchery-slaughter-toolbar h3{margin:0;font-size:15px}
+.butchery-slaughter-toolbar .btn-primary{font-size:12px;padding:7px 11px;min-height:34px}
+.butchery-slaughter-actions .butchery-transfer-list{margin-top:10px;padding-top:10px}
+.butchery-slaughter-actions h4{display:flex;align-items:center;gap:7px;font-size:12px;color:#64748b;margin:0 0 4px}
+.butchery-slaughter-actions h4 .butchery-status{padding:2px 7px;font-size:10px}
+.butchery-slaughter-actions .butchery-queue-row{padding:8px 0;gap:12px}
+.butchery-slaughter-actions .butchery-queue-row:first-of-type{border-top:0}
+.butchery-slaughter-actions .butchery-queue-row:last-child{padding-bottom:0}
+.butchery-slaughter-actions .butchery-queue-row small{margin-top:3px}
+.butchery-slaughter-actions .butchery-empty{margin:6px 0 0;font-size:12px}
+@media(max-width:600px){.butchery-slaughter-toolbar{flex-wrap:wrap;gap:8px}.butchery-slaughter-actions .butchery-queue-row>div{flex:1 1 150px;min-width:0}.butchery-slaughter-actions .butchery-queue-row strong{font-size:12px}}
+
+/* Barre d’action abattage : la file de validation est dans le panneau KPI. */
+.butchery-workspace .butchery-slaughter-actions{padding:8px 12px;background:#fff}
+.butchery-slaughter-toolbar{justify-content:flex-start;gap:8px;min-height:32px}
+.butchery-workspace .butchery-slaughter-toolbar h3{font-size:13px;margin:0 auto 0 0}
+.butchery-slaughter-toolbar :is(.btn-primary,.btn-secondary){min-height:30px;padding:6px 10px;font-size:12px;line-height:1.3;margin:0;box-shadow:none}
+.butchery-pending-action{display:inline-flex;align-items:center;gap:7px}
+.butchery-pending-action span{background:#fff0d6;color:#805b18;border-radius:10px;padding:1px 6px;font-size:11px;font-weight:600}
+.butchery-pending-action .bi{font-size:10px}
+@media(max-width:450px){.butchery-slaughter-toolbar{flex-wrap:wrap}.butchery-workspace .butchery-slaughter-toolbar h3{display:none}.butchery-slaughter-toolbar>.btn-primary{flex:1}.butchery-slaughter-toolbar>.btn-secondary{flex:0 0 auto}}
+
+.butchery-validation-summary{border:1px solid #dce7e0;background:#f7faf8;border-radius:9px;padding:14px;margin-bottom:16px}
+.butchery-validation-reference{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.butchery-validation-reference>strong{font-size:13px;overflow-wrap:anywhere}
+.butchery-validation-summary>p{font-size:12px;color:#64748b;margin:6px 0 12px}
+.butchery-validation-summary dl{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin:0 0 12px}
+.butchery-validation-summary dt,.butchery-validation-weights span{display:block;font-size:11px;color:#64748b;margin-bottom:4px}
+.butchery-validation-summary dd{margin:0;font-size:12px;font-weight:600;overflow-wrap:anywhere}
+.butchery-validation-weights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;border-top:1px solid #dce7e0;padding-top:12px}
+.butchery-validation-weights strong{font-size:13px;overflow-wrap:anywhere}
+.butchery-validation-weights>div:last-child strong{color:#24633f;font-size:16px}
+.butchery-validation-fields small{font-size:11px;color:#64748b;line-height:1.5}
+.butchery-validation-total{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;margin-top:8px;border-bottom:1px solid #e4e9ee;font-size:13px}
+.butchery-validation-total small{display:block;font-size:11px;color:#64748b;margin-top:4px}
+.butchery-validation-total strong{font-size:18px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.butchery-validation-note{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.6;color:#607080;margin:12px 0 0}
+@media(max-width:400px){.butchery-validation-reference{flex-wrap:wrap}.butchery-validation-summary dl{grid-template-columns:1fr}.butchery-validation-weights{grid-template-columns:1fr 1fr}.butchery-validation-weights>div:last-child{grid-column:1/-1}}
+
+.butchery-detail-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.butchery-detail-banner small{display:block;font-size:11px;color:#64748b;margin-bottom:4px}
+.butchery-detail-banner strong{font-size:14px;overflow-wrap:anywhere}
+.butchery-detail-balance{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.butchery-detail-balance>div{border:1px solid #e0e7e3;border-radius:8px;padding:10px 12px;background:#f8faf9}
+.butchery-detail-balance span{display:block;color:#64748b;font-size:11px;margin-bottom:5px}
+.butchery-detail-balance strong{font-size:15px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.butchery-detail-balance>div:last-child{background:#edf7f0;border-color:#c7dfd0;color:#24633f}
+.butchery-workspace .butchery-detail-section h3{font-size:13px;margin:16px 0 0;padding-bottom:8px;border-bottom:1px solid #dce4e9;color:#345e4a}
+.butchery-detail-section .butchery-history-details>div{padding:9px 0}
+.butchery-detail-note{font-size:12px;color:#64748b;line-height:1.6;background:#f4f7f9;border-radius:7px;padding:10px 12px;margin:14px 0 0}
+@media(max-width:400px){.butchery-detail-banner{flex-wrap:wrap}.butchery-detail-balance strong{font-size:13px}}
+.butchery-create-recipe{justify-self:start;grid-column:1/-1;margin-top:-4px}
+.butchery-plan-recipe{grid-column:1/-1;margin:0;font-size:12px;color:#356247;background:#f0f7f2;border-radius:6px;padding:9px 11px;line-height:1.5}
+[data-production-plan]>.feed-form-body>[data-plan-balance]{margin-top:12px}
+.butchery-production-actions{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:150px}
+.butchery-production-actions .btn-secondary{white-space:nowrap}
+.butchery-kpi-modal .butchery-detail-balance{margin-top:14px}
+.butchery-results-balance{padding:10px 16px;font-size:12px;line-height:1.6;color:#28563b;background:#eef7f1;border-top:1px solid #dce7e0}
+.butchery-results-balance.is-invalid{color:#9b3535;background:#fff0ee}
+.butchery-stock-expired{color:#a53939;font-weight:600}
+.butchery-stock-soon{color:#8a601a;font-weight:600}
+[data-butchery-history=stocks]{min-width:980px!important}
+[data-butchery-history=stocks] td:nth-child(4){white-space:normal}
+PHP
+php -l app/views/butchery/stocks.php
+php -l app/views/butchery/stock_table.php
+php -l app/views/butchery/index.php
+php -l app/models/Butchery.php
+node --check public/assets/js/app.js
+php scripts/test_ui_experience.php | tail -2
+git diff --check[data-outgoing-form] [data-outgoing-balance]{margin-top:12px}
+[data-outgoing-history] table{min-width:900px}
+.butchery-workspace .butchery-recipe-composition-title{font-size:13px;color:#345e4a;margin:18px 0 8px}
+#butchery-recipe-editor label small{font-size:11px;line-height:1.5;color:#64748b;font-weight:400}
+PHP
+php -l app/views/butchery/index.php
+php -l app/views/butchery/recipes.php
+php -l app/models/Butchery.php
+node --check public/assets/js/app.js
+php scripts/test_ui_experience.php | tail -2
+git diff --check
+/* Compact inter-site transfer directory. */
+.transfer-workspace .butchery-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.transfer-workspace .table-panel{min-width:0}
+.transfer-workspace .enterprise-table small{display:block;color:#64748b;font-size:11px;margin-top:3px}
+.transfer-workspace .enterprise-table td{vertical-align:middle}
+.transfer-workspace .transfer-notes{font-size:12px;overflow-wrap:anywhere}
+.transfer-workspace .transfer-notes p{margin:4px 0 0}
+.transfer-workspace .butchery-history-details dd{overflow-wrap:anywhere}
+@media(max-width:700px){.transfer-workspace .butchery-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.transfer-stock-preview{border:1px solid #dce7df;background:#f6faf7;border-radius:8px;padding:12px;margin:10px 0 14px;font-size:13px}
+.transfer-stock-preview .butchery-history-details{margin:8px 0 0;grid-template-columns:repeat(2,minmax(0,1fr))}
+#transfer-create textarea{min-height:64px;resize:vertical}
+#transfer-create .butchery-detail-note{margin-top:0}
+#transfer-create .form-grid{gap:12px}
+#transfer-create .transfer-stock-preview{padding:8px 12px;margin:10px 0}
+#transfer-create .transfer-stock-preview .butchery-history-details{margin:0}
+#transfer-create .transfer-stock-preview .butchery-history-details>div{padding:0;border:0}
+#transfer-create .transfer-optional{margin-top:12px;font-size:12px}
+#transfer-create .transfer-optional summary{cursor:pointer;color:#52677c;width:fit-content}
+#transfer-create .transfer-optional textarea{width:100%;margin-top:8px}
+#transfer-create .transfer-site-balances{margin:0 0 14px;border:1px solid #dce3e9;border-radius:8px;padding:10px 12px}
+#transfer-create .transfer-site-balances summary{cursor:pointer;font-size:13px;font-weight:600}
+#transfer-create .transfer-site-balances summary small{font-weight:400;color:#64748b;margin-left:5px}
+#transfer-create .transfer-stock-filter{display:block;margin:8px 0}
+#transfer-create .transfer-stock-filter select{width:100%;height:34px;font-size:12px}
+#transfer-create .transfer-balance-scroll{max-height:160px;overflow:auto}
+#transfer-create .transfer-balance-scroll table{width:100%;min-width:0;font-size:12px;border-collapse:collapse}
+#transfer-create .transfer-balance-scroll :is(th,td){padding:6px 5px;text-align:right;white-space:nowrap}
+#transfer-create .transfer-balance-scroll :is(th,td):first-child{text-align:left}
+#transfer-create .transfer-balance-scroll th{position:sticky;top:0;background:#f7f9fa;font-size:11px}
+#transfer-create [data-select-source]{border:0;background:transparent;color:#2563a5;font-weight:600;cursor:pointer;padding:4px;border-radius:4px}
+#transfer-create [data-select-source][aria-pressed=true]{background:#e7f1eb;color:#23603c}
+.transfer-dossier .butchery-heading h2{overflow-wrap:anywhere}
+.transfer-dossier .butchery-slaughter-toolbar form{margin:0}
+.transfer-dossier .butchery-history-heading h3 small{font-size:11px;font-weight:400;color:#64748b}
+.transfer-dossier [data-transfer-operation] input[type=number]{min-width:75px;width:90px}
+.transfer-dossier [data-transfer-operation] .table-responsive{margin-top:12px}
+.transfer-dossier [data-transfer-operation] input{font-size:12px;padding:7px}
+.transfer-dossier .table-panel{padding:12px}
+.transfer-dossier .transfer-notes{overflow-wrap:anywhere}
+.distribution-workspace .butchery-history-details dd{overflow-wrap:anywhere}
+.distribution-workspace .table-panel{padding:12px}
+.distribution-stock-summary{font-size:12px;border-radius:6px;padding:9px 12px;background:#f0f7f2;color:#27613e;margin:12px 0}
+PHP
+php -l app/views/distributions/modal_create.php
+php -l app/views/distributions/index.php
+php -l app/models/Distribution.php
+php -l app/controllers/DistributionController.php
+node --check public/assets/js/distributions.js
+node --check public/assets/js/app.js
+php scripts/test_ui_experience.php | tail -2
+ git diff --check.fuel-workspace .fuel-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.fuel-workspace .fuel-action-panel{padding:10px 12px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:10px}
+.fuel-workspace .fuel-action-panel h3{font-size:13px;margin:0;padding:0;background:none;border:0}
+.fuel-workspace .fuel-reference{padding:10px 12px;border:1px solid #dde5ec;border-radius:8px;margin-bottom:12px;background:#fff;font-size:13px}
+.fuel-workspace .fuel-reference summary{cursor:pointer;font-weight:600}
+.fuel-workspace .fuel-reference .fuel-actions{margin-top:10px}
+.fuel-workspace .table-panel{padding:12px;min-width:0}
+.fuel-workspace .table-panel>h3{font-size:14px;margin:0 0 10px}
+.fuel-workspace .enterprise-table td{font-size:12px;vertical-align:middle}
+.fuel-workspace .enterprise-table .btn-secondary{font-size:11px;padding:5px 8px;margin:3px}
+.fuel-workspace .form-grid label{min-width:0}
+.fuel-tabs{display:flex;gap:4px;border-bottom:1px solid #dce3e9;margin:6px 0 14px;overflow-x:auto}
+.fuel-tabs button{border:0;border-bottom:2px solid transparent;background:transparent;padding:10px 14px;white-space:nowrap;color:#64748b;font-size:13px;cursor:pointer}
+.fuel-tabs button[aria-selected=true]{color:#235d47;border-color:#358161;font-weight:600;background:#f0f7f3}
+.fuel-tabs button:focus-visible{outline:2px solid #358161;outline-offset:-2px}
+.fuel-workspace [data-fuel-panel][hidden]{display:none!important}
+.fuel-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.fuel-section-heading h3{font-size:14px;margin:0}
+.fuel-section-heading small{font-size:11px;color:#64748b}
+.fuel-workspace .enterprise-table td>small{display:block;color:#64748b;font-size:11px;margin-top:3px}

@@ -1,0 +1,2 @@
+<?php
+$transferLabels=['draft'=>'Brouillon','submitted'=>'À valider','approved'=>'Approuvé','reserved'=>'Réservé','partially_shipped'=>'Partiellement expédié','in_transit'=>'En transit','partially_received'=>'Partiellement reçu','quality_control'=>'Contrôle qualité','partially_accepted'=>'Partiellement accepté','accepted'=>'Accepté','rejected'=>'Refusé','return_pending'=>'Retour à traiter','returned'=>'Retourné','closed'=>'Clôturé','cancelled'=>'Annulé'];

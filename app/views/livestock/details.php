@@ -1,0 +1,11 @@
+<?php foreach($batches as $batch): ?>
+<section id="livestock-detail-<?=e($batch['id'])?>" class="entity-modal workspace-entity-modal feed-editor livestock-editor" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="livestock-detail-title-<?=e($batch['id'])?>">
+<header><div><p class="page-kicker">LOT D’ÉLEVAGE</p><h2 id="livestock-detail-title-<?=e($batch['id'])?>"><?=e($batch['batch_number'])?></h2></div><button type="button" class="modal-close" data-workspace-modal-close aria-label="Fermer">×</button></header>
+<div class="feed-form-body"><h3><?=e($batch['species_name'])?> · <?=e($batch['facility_name'])?></h3><p class="livestock-guide"><strong><?=e($batch['current_heads'])?> têtes vivantes</strong><br>Poids moyen : <?=e($batch['current_average_weight_kg']??'Non renseigné')?> <?=isset($batch['current_average_weight_kg'])?'kg':''?><br>Début du lot : <?=e($batch['started_at'])?></p>
+<h3>Que souhaitez-vous enregistrer ?</h3><div class="livestock-lot-actions">
+<?php if(Auth::can('livestock','update')): foreach(['feedings'=>['basket','Alimenter'],'weighings'=>['speedometer2','Peser'],'poultry'=>['egg','Production avicole']] as $kind=>$action): if($kind==='poultry'&&$batch['category']!=='poultry')continue; ?>
+<button type="button" class="btn-secondary" data-workspace-modal-open="livestock-<?=e($kind)?>" data-livestock-batch="<?=e($batch['id'])?>"><i class="bi bi-<?=e($action[0])?>" aria-hidden="true"></i> <?=e($action[1])?></button>
+<?php endforeach; endif; ?>
+<?php if(Auth::can('livestock','create')): ?><a class="btn-secondary" href="<?=e(base_url('livestock/conversions').'?batch='.(int)$batch['id'])?>"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Préparer une conversion</a><a class="btn-secondary" href="<?=e(base_url('livestock/transfers').'?batch='.(int)$batch['id'])?>"><i class="bi bi-truck" aria-hidden="true"></i> Préparer un transfert</a><?php endif; ?></div></div>
+<footer><?php if($space==='species'): ?><button type="button" class="btn-secondary" data-workspace-modal-open="livestock-species-<?=e($batch['species_id'])?>"><i class="bi bi-arrow-left" aria-hidden="true"></i> Retour aux lots</button><?php endif; ?><button type="button" class="btn-secondary" data-workspace-modal-close>Fermer</button></footer></section>
+<?php endforeach; ?>

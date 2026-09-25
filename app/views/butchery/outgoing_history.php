@@ -1,0 +1,27 @@
+<?php
+$outgoingActions=[];$outgoingDate=static function($v){return $v?date('d/m/Y H:i',strtotime($v)):'—';};
+$outgoingStatuses=$butcheryStatuses+['received'=>'Reçu'];
+foreach($transfers as $transfer){
+ if(!in_array($transfer['status'],['draft','approved'],true))continue;
+ $approving=$transfer['status']==='draft';ob_start(); ?>
+ <form data-butchery-form data-confirm="<?=$approving?'Approuver ce transfert et réserver le stock ?':'Confirmer l’expédition et déduire le stock ?'?>" method="post" action="<?=e(base_url('butchery/transfers/'.$transfer['id'].($approving?'/approve':'/dispatch')))?>">
+ <?=csrf_field()?><input type="hidden" name="_section" value="outgoing"><div class="feed-form-body"><p data-feed-error class="app-alert app-alert-error" role="alert" hidden></p>
+ <div class="butchery-detail-banner"><strong><?=e($transfer['transfer_number'])?></strong><span class="butchery-status"><?=e($outgoingStatuses[$transfer['status']])?></span></div>
+ <dl class="butchery-history-details"><?php foreach(['Produit'=>$transfer['item_name'],'Lot'=>$transfer['lot_number'],'Destination'=>$transfer['destination_name'],'Quantité'=>number_format((float)$transfer['quantity_kg'],3,',',' ').' kg'] as $name=>$value):?><div><dt><?=e($name)?></dt><dd><?=e($value)?></dd></div><?php endforeach;?></dl>
+ <p class="butchery-detail-note"><?=$approving?'L’approbation réserve la quantité de ce lot pour le transfert.':'L’expédition retire la quantité réservée du stock physique et passe le transfert en transit.'?></p></div><footer><button class="btn-secondary" type="button" data-workspace-modal-close>Annuler</button><button class="btn-primary" type="submit"><?=$approving?'Approuver et réserver':'Confirmer l’expédition'?></button></footer></form>
+ <?php $form=ob_get_clean();ob_start();$butcheryDrawer(($approving?'Approuver':'Expédier').' · '.$transfer['transfer_number'],$form,$approving?'validate':'update',$approving?'Approuver':'Expédier');$outgoingActions[$transfer['id']]=ob_get_clean();
+}
+foreach(['sales'=>$sales,'transfers'=>$transfers] as $kind=>$entries):?>
+<section class="table-panel butchery-history" data-outgoing-history="<?=e($kind)?>"><header class="butchery-history-heading"><div><h3><?=$kind==='sales'?'Historique des ventes':'Historique des transferts'?></h3><p><?=$kind==='sales'?'Les 100 ventes les plus récentes · Filtres sur la date de vente':'Tous les statuts · Filtres sur la date de création'?></p></div><span class="butchery-status"><?=count($entries)?> opérations</span></header>
+<?php if(!$entries):?><p class="butchery-empty">Aucune opération enregistrée.</p><?php else:$outgoingRows=$entries;$withFilters=true;require __DIR__.'/outgoing_table.php';endif;?>
+</section>
+<?php foreach($entries as $entry):
+$isSale=$kind==='sales';$reference=$isSale?$entry['sale_number']:$entry['transfer_number'];$id='outgoing-'.$kind.'-'.$entry['id'];
+$fields=['Référence'=>$reference,'Statut'=>$outgoingStatuses[$entry['status']]??$entry['status'],'Date'=>$outgoingDate($isSale?$entry['sold_at']:$entry['created_at']),'Produit'=>$entry['item_name'],'Lot'=>$entry['lot_number'],'Quantité'=>number_format((float)$entry['quantity_kg'],3,',',' ').' kg','Enregistré par'=>$entry['creator_name']?:'—'];
+if($isSale)$fields+=['Client'=>$entry['customer_name'],'Prix unitaire / kg'=>number_format((float)$entry['unit_price'],2,',',' '),'Montant de la vente'=>number_format((float)$entry['quantity_kg']*(float)$entry['unit_price'],2,',',' ')];
+else $fields+=['Destination'=>$entry['destination_name'],'Approuvé par'=>$entry['approver_name']?:'—','Expédié le'=>$outgoingDate($entry['dispatched_at']),'Reçu le'=>$outgoingDate($entry['received_at'])];
+?>
+<section id="<?=e($id)?>" class="entity-modal workspace-entity-modal feed-editor livestock-editor conversion-editor butchery-editor" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="<?=e($id)?>-title"><header><h2 id="<?=e($id)?>-title"><?=$isSale?'Détail de la vente':'Détail du transfert'?></h2><button class="modal-close" type="button" data-workspace-modal-close aria-label="Fermer">×</button></header><div class="feed-form-body"><dl class="butchery-history-details"><?php foreach($fields as $name=>$value):?><div><dt><?=e($name)?></dt><dd><?=e($value??'—')?></dd></div><?php endforeach;?></dl></div><footer><button class="btn-secondary" type="button" data-workspace-modal-close>Fermer</button></footer></section>
+<?php endforeach;endforeach;?>
+<?php foreach(['draft'=>'Transferts à approuver','approved'=>'Transferts à expédier'] as $state=>$title):$index=$state==='draft'?0:1;$outgoingRows=array_filter($transfers,static function($t)use($state){return $t['status']===$state;});?>
+<section id="butchery-outgoing-kpi-<?=$index?>" class="entity-modal workspace-entity-modal feed-editor livestock-editor conversion-editor butchery-editor butchery-kpi-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="outgoing-kpi-title-<?=$index?>"><header><h2 id="outgoing-kpi-title-<?=$index?>"><?=e($title)?></h2><button class="modal-close" type="button" data-workspace-modal-close aria-label="Fermer">×</button></header><div class="feed-form-body"><?php if(!$outgoingRows):?><p class="butchery-empty">Aucun transfert à cette étape.</p><?php else:$kind='transfers';$withFilters=false;require __DIR__.'/outgoing_table.php';endif;?></div><footer><button class="btn-secondary" type="button" data-workspace-modal-close>Fermer</button></footer></section><?php endforeach;?>

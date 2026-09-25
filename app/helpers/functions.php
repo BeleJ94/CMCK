@@ -134,3 +134,19 @@ if (!function_exists('flash')) {
         return $message;
     }
 }
+
+/** Keep site switches inside this application, including installations in a subdirectory. */
+function site_context_return_path($target, $fallback)
+{
+    if (!is_string($target) || strlen($target) > 4000) return $fallback;
+    $decoded = rawurldecode($target);
+    if (preg_match('/[\x00-\x1f\x7f\\\\]/', $decoded) || strpos($decoded, '//') === 0) return $fallback;
+    $parts = parse_url($target);
+    if ($parts === false || isset($parts['scheme']) || isset($parts['host'])) return $fallback;
+    $path = rawurldecode($parts['path'] ?? '');
+    $base = rtrim((string) parse_url(base_url(), PHP_URL_PATH), '/');
+    if ($base !== '' && strpos($path, $base . '/') === 0) $path = substr($path, strlen($base));
+    $path = ltrim($path, '/');
+    if (!preg_match('~^[a-zA-Z0-9][a-zA-Z0-9/_-]*$~', $path) || strpos($path, 'context/') === 0 || in_array($path, ['login','logout'], true)) return $fallback;
+    return $path . (isset($parts['query']) ? '?' . $parts['query'] : '') . (isset($parts['fragment']) ? '#' . $parts['fragment'] : '');
+}

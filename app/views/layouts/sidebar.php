@@ -7,6 +7,7 @@ $currentPath = $requestPath;
 if ($basePath !== '' && ($requestPath === $basePath || strpos($requestPath, $basePath . '/') === 0)) {
     $currentPath = ltrim(substr($requestPath, strlen($basePath)), '/');
 }
+if ($currentPath === 'butchery') { $currentPath = 'butchery/receipts'; }
 $roleName = $user['role_name'] ?? 'Utilisateur';
 $canSearch = in_array($user['role_slug'] ?? '', ['administrateur', 'direction'], true);
 $contextSites = Auth::sites();
@@ -43,9 +44,9 @@ foreach ($menuGroups as $groupIndex => $menuGroup) {
 
     <?php if ($contextSites): ?>
         <form method="post" action="<?= e(base_url('context/site')) ?>" class="sidebar-site-form" data-ajax="false">
-            <?= csrf_field() ?>
+            <?= csrf_field() ?><input type="hidden" name="_return_to" value="<?= e($_SERVER['REQUEST_URI'] ?? '') ?>">
             <label for="sidebarSiteContext"><i class="bi bi-geo-alt"></i><span class="sidebar-text">Site courant</span></label>
-            <select id="sidebarSiteContext" name="site_id" onchange="this.form.submit()">
+            <select id="sidebarSiteContext" name="site_id" onchange="this.form.elements._return_to.value=window.location.pathname+window.location.search+window.location.hash;this.form.submit()">
                 <?php if (Auth::canViewConsolidated()): ?><option value="all" <?= $currentSiteId === null ? 'selected' : '' ?>>Tous les sites</option><?php endif; ?>
                 <?php foreach ($contextSites as $contextSite): ?><option value="<?= e($contextSite['id']) ?>" <?= (int) $currentSiteId === (int) $contextSite['id'] ? 'selected' : '' ?>><?= e($contextSite['code'] . ' — ' . $contextSite['name']) ?></option><?php endforeach; ?>
             </select>

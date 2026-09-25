@@ -1,0 +1,5 @@
+<?php
+require __DIR__.'/../app/helpers/functions.php';class Auth{public static function start(){}}
+$success=$error=null;$availableStocks=[['id'=>1,'site_code'=>'SRC','product_name'=>'Farine','format_name'=>'25 kg','quantity_bags'=>30,'total_weight_kg'=>750,'weight_kg'=>25]];
+$distributions=[];for($i=1;$i<=12;$i++)$distributions[]=['id'=>$i,'site_code'=>'SRC','product_name'=>'Farine','format_name'=>'25 kg','quantity_bags'=>2,'total_weight_kg'=>50,'status'=>$i%2?'validated':'cancelled','distributed_at'=>sprintf('2026-09-%02d 10:00:00',$i),'recipient_name'=>'Client test','exit_voucher'=>'BS-TEST-'.$i,'official_document_number'=>null,'finished_stock_id'=>1,'transporter'=>'<script>unsafe</script>','agent_name'=>'Agent','validator_name'=>'Responsable'];
+ob_start();require __DIR__.'/../app/views/distributions/index.php';$html=ob_get_clean();if(strpos($html,'<script>unsafe</script>')!==false)throw new RuntimeException('Unsafe text');if(strpos($html,'300,000 kg')===false)throw new RuntimeException('Cancelled distributions counted');file_put_contents(sys_get_temp_dir().'/dagril-distributions.html',$html);echo "OK : totaux hors annulations, détails et échappement.\n";

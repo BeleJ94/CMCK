@@ -85,6 +85,11 @@
     <script src="<?= e(asset_url('js/empty-packaging.js')) ?>"></script>
     <script src="<?= e(asset_url('js/packaging.js')) ?>"></script>
     <script src="<?= e(asset_url('js/finished-stocks.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/livestock.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/butchery.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/fuel-logistics.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/distributions.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/transfers.js')) ?>"></script>
     <script src="<?= e(asset_url('js/app.js')) ?>"></script>
 </body>
 </html>

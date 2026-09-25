@@ -67,10 +67,10 @@ ui_check(strpos($main, 'data-response-flash') !== false && strpos($helpers, 'dag
 ui_check(strpos($analytics, 'data-analytics-modal') !== false && strpos($analytics, 'data-analytics-mini') !== false, 'Le dashboard expose les mini-graphiques et le modal analytique.');
 ui_check(strpos($analyticsJavascript, "event.key === 'Escape'") !== false, 'Le modal analytique se ferme au clavier.');
 ui_check(strpos($analyticsJavascript, 'devicePixelRatio') !== false, 'Les graphiques restent nets sur les écrans haute densité.');
-foreach (['Ferme agricole','Approvisionnements & matières','Production industrielle','Conditionnement & stocks','Élevage & boucherie','Distribution & logistique','Pilotage & conformité','Administration'] as $menuGroup) {
+foreach (['Ferme agricole','Approvisionnements & matières','Production industrielle','Conditionnement & stocks','Élevage','Boucherie','Distribution & logistique','Pilotage & conformité','Administration'] as $menuGroup) {
     ui_check(strpos($auth, "'label' => '" . $menuGroup . "'") !== false, 'Parcours menu disponible : ' . $menuGroup . '.');
 }
-$menuPaths = ['dashboard','agriculture','suppliers','trucks','weighings','silos','machine-feeds','machines','production','waste','pelletization','empty-packaging','packaging','finished-stocks','livestock','butchery','transfers','distributions','fuel-logistics','budgets','reports','traceability','documents','cancellations','alerts','activity-logs','users','sites','access-control'];
+$menuPaths = ['dashboard','agriculture','suppliers','trucks','weighings','silos','machine-feeds','machines','production','waste','pelletization','empty-packaging','packaging','finished-stocks','livestock','butchery/receipts','butchery/slaughters','butchery/production','butchery/stocks','butchery/outgoing','butchery/recipes','transfers','distributions','fuel-logistics','budgets','reports','traceability','documents','cancellations','alerts','activity-logs','users','sites','access-control'];
 foreach ($menuPaths as $menuPath) {
     ui_check(substr_count($auth, "'path' => '" . $menuPath . "'") === 1, 'Destination menu unique : ' . $menuPath . '.');
 }
