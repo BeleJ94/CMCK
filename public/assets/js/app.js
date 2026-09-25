@@ -1931,6 +1931,8 @@
                         if(next&&previous){previous.replaceWith(next);hydrate(next);}
                     });
                 }
+                var nextAgricultureStats=incomingAgriculture.querySelector('.agriculture-stat-grid'),currentAgricultureStats=currentAgriculture.querySelector('.agriculture-stat-grid');
+                if(nextAgricultureStats&&currentAgricultureStats){currentAgricultureStats.replaceWith(nextAgricultureStats);}
                 currentDirectory.replaceWith(incomingDirectory);incomingDirectory.hidden=false;hydrate(incomingDirectory);syncShell(parsed,response.url);if(responseKind==='error'){showToast('Opération refusée',responseMessage||'Le serveur a refusé cette opération.','error');}else{showToast('Opération réussie',responseMessage||'Le tableau a été actualisé sans recharger la page.','success');}return;}
         }
 
