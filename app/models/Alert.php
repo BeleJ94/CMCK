@@ -50,13 +50,18 @@ class Alert extends Model
         if(!empty($filters['start_date'])){$where.=' AND DATE(created_at)>=:start_date';$params['start_date']=$filters['start_date'];}
         if(!empty($filters['end_date'])){$where.=' AND DATE(created_at)<=:end_date';$params['end_date']=$filters['end_date'];}
 
+        if (($filters['state'] ?? '') === 'active') $where .= " AND status = 'active' AND resolved_at IS NULL";
+        if (($filters['state'] ?? '') === 'resolved') $where .= " AND resolved_at IS NOT NULL";
+        if (($filters['state'] ?? '') === 'unread') $where .= " AND status = 'active' AND resolved_at IS NULL AND read_at IS NULL";
+
         $rows = $this->query(
             "SELECT *
              FROM alerts
              {$where}
              ORDER BY
-                CASE WHEN read_at IS NULL THEN 0 ELSE 1 END,
+                CASE WHEN status = 'active' AND resolved_at IS NULL THEN 0 ELSE 1 END,
                 FIELD(severity, 'danger', 'warning', 'info', 'success'),
+                CASE WHEN read_at IS NULL THEN 0 ELSE 1 END,
                 created_at DESC",
             $params
         )->fetchAll();

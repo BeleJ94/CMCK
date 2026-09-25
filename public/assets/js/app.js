@@ -814,6 +814,7 @@
         if(window.initDistributions)window.initDistributions(root);
         if(window.initFuelLogistics)window.initFuelLogistics(root);
         if(window.initBudgets)window.initBudgets(root);
+        if(window.initCancellations)window.initCancellations(root);
         if (window.initWorkDirectory) window.initWorkDirectory(root);
         if (window.initCampaignDirectory) window.initCampaignDirectory(root);
         if (window.initPlotDirectory) window.initPlotDirectory(root);
@@ -1525,6 +1526,12 @@
                 if(historyKind==='fuel-orders')historyStatuses=[['','Tous les statuts'],['draft','Brouillon'],['submitted','À valider'],['approved','Approuvé'],['partially_received','Réception partielle'],['received','Reçu'],['cancelled','Annulé']];
                 if(historyKind==='fuel-missions')historyStatuses=[['','Tous les statuts'],['submitted','À valider'],['approved','Approuvé'],['in_progress','En cours'],['completed','Terminé'],['justification_pending','À justifier'],['settled','Soldé'],['cancelled','Annulé']];
                 if(historyKind==='budgets')historyStatuses=[['','Tous les statuts'],['preparation','En préparation'],['submitted','Soumis'],['pending_df','À valider · DF'],['pending_dg','À valider · DG'],['active','Actif'],['rejected','Refusé'],['replaced','Remplacé'],['cancelled','Annulé']];
+                if(historyKind==='documents'){
+                    historyStatuses=[['','Tous les statuts'],['draft','Brouillon'],['submitted','Soumis'],['pending_approval','À approuver'],['pending_validation','À valider'],['approved','Approuvé'],['validated','Validé'],['in_progress','En cours'],['received','Reçu'],['rejected','Refusé'],['cancelled','Annulé'],['closed','Clôturé']];
+                    var documentTypes=[['','Tous les types']];try{documentTypes=documentTypes.concat(JSON.parse(table.getAttribute('data-document-types')||'[]'));}catch(e){}
+                    addFilter('type','Type',documentTypes);
+                }
+                if(historyKind==='cancellations')historyStatuses=[['','Tous les statuts'],['pending_approval','À approuver'],['approved','Approuvée'],['completed','Exécutée'],['rejected','Refusée']];
                 if(historyKind==='recipes')historyStatuses=[['','Tous les statuts'],['active','Active'],['retired','Ancienne version'],['inactive','Fiche inactive']];
                 addFilter('status', 'Statut', historyStatuses);
                 if(historyKind==='stocks'){addFilter('type','Type',[['','Tous les types'],['raw','Matières premières'],['finished','Produits et coproduits']]);addFilter('dlc','Échéance',[['','Toutes les DLC'],['soon','Sous 3 jours'],['expired','Dépassée'],['valid','Plus de 3 jours']]);}

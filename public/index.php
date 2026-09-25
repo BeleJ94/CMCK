@@ -160,6 +160,7 @@ $router->get('/fuel-logistics','FuelLogistics@index',['auth'=>true,'permission'=
 $router->get('/cancellations','Cancellation@index',['auth'=>true,'permission'=>['cancellations','read']]);
 $router->get('/traceability','Traceability@index',['auth'=>true,'permission'=>['traceability','read']]);
 $router->get('/traceability/{chain}/{id}','Traceability@show',['auth'=>true,'permission'=>['traceability','read']]);
+$router->get('/cancellations/operations','Cancellation@operations',['auth'=>true,'permission'=>['cancellations','create']]);
 $router->post('/cancellations','Cancellation@store',['auth'=>true,'permission'=>['cancellations','create']]);
 $router->post('/cancellations/{id}/approve','Cancellation@approve',['auth'=>true,'permission'=>['cancellations','validate']]);
 $router->post('/cancellations/{id}/reject','Cancellation@reject',['auth'=>true,'permission'=>['cancellations','validate']]);
