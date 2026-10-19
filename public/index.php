@@ -151,6 +151,7 @@ $router->get('/butchery/counters','PorcineFlow@counters',['auth'=>true,'permissi
 $router->get('/butchery/pos/tickets/{id}','PorcineFlow@posReceipt',['auth'=>true,'permission'=>['butchery','read']]);
 $router->get('/butchery/pos/catalog','PorcineFlow@posCatalog',['auth'=>true,'permission'=>['butchery','read']]);
 $router->get('/butchery/pos/history','PorcineFlow@posHistory',['auth'=>true,'permission'=>['butchery','read']]);
+$router->get('/butchery/pos/report','PorcineFlow@posReport',['auth'=>true,'permission'=>['butchery','read']]);
 $router->post('/butchery/pos/checkout','PorcineFlow@posCheckout',['auth'=>true,'permission'=>['butchery','create']]);
 $router->post('/butchery/pos/prices','PorcineFlow@posPrice',['auth'=>true,'permission'=>['butchery','update']]);
 $router->post('/butchery/pos/tickets/{id}/cancel','PorcineFlow@posCancel',['auth'=>true,'permission'=>['butchery','delete']]);

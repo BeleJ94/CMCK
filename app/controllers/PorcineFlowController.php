@@ -50,6 +50,19 @@ class PorcineFlowController extends Controller
         $flow=new PorcineFlowService();if(!$flow->posAvailable()){http_response_code(503);echo 'La caisse doit être mise à niveau.';return;}
         $this->view('porcine_flow/pos_history',array_merge($flow->butcheryDirectory(),$flow->posDirectory(),['title'=>'Boucherie · reçus et ventes','success'=>flash('success'),'error'=>flash('error')]),'layouts.main');
     }
+    public function posReport()
+    {
+        $flow=new PorcineFlowService();if(!$flow->posAvailable()){http_response_code(503);echo 'La caisse doit être mise à niveau.';return;}
+        $export=$_GET['export']??'';
+        if(!is_string($export)||!in_array($export,['','xlsx','pdf'],true)){http_response_code(400);echo 'Format d’export invalide.';return;}
+        try{$report=$flow->posSalesReport($_GET);}catch(InvalidArgumentException $e){http_response_code(400);echo e($e->getMessage());return;}
+        header('Cache-Control: private, no-store');$filename='ventes-boucherie-'.$report['filters']['from'].'-'.$report['filters']['to'];
+        if($export==='xlsx'){
+            $bytes=(new ButcherySalesReportService())->spreadsheet($report);header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');header('Content-Disposition: attachment; filename="'.$filename.'.xlsx"');echo $bytes;return;
+        }
+        if($export==='pdf'){$html=$this->renderViewToString('porcine_flow/pos_report_pdf',['report'=>$report]);(new PdfService())->stream('Rapport de ventes · Boucherie',$html,$filename.'.pdf','landscape');return;}
+        $this->view('porcine_flow/pos_report',['title'=>'Boucherie · rapport de ventes','report'=>$report],'layouts.main');
+    }
     public function posReceipt($id)
     {
         $flow=new PorcineFlowService();if(!$flow->posAvailable()){http_response_code(503);echo 'La caisse doit être mise à niveau.';return;}

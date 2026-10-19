@@ -366,6 +366,13 @@ class PorcineFlowService extends Model
             'posLegacySales'=>$this->query('SELECT s.*,i.name item_name FROM butchery_sales s LEFT JOIN butchery_finished_lots l ON l.id=s.finished_lot_id LEFT JOIN butchery_items i ON i.id=l.item_id WHERE s.site_id=? AND NOT EXISTS(SELECT 1 FROM butchery_pos_allocations a WHERE a.sale_id=s.id) ORDER BY s.id DESC LIMIT 100',[$site])->fetchAll(),
         ];
     }
+    public function posSalesReport(array $query): array
+    {
+        $site=$this->butcher('read');
+        require_once __DIR__.'/ButcherySalesReportService.php';
+        $counters=$this->query('SELECT id,name FROM butchery_counters WHERE site_id=? ORDER BY name',[$site])->fetchAll();
+        return (new ButcherySalesReportService())->report($this->db,$site,$query,$counters,$this->posSettings());
+    }
     public function posPrice(array $data,array $user): int
     {
         $site=$this->butcher('update');$item=$this->integer($data['item_id']??'');$currency=$this->posCurrency($data['currency']??'');$price=$this->posUnits($data['price']??'',2);

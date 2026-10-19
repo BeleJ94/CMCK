@@ -1436,6 +1436,7 @@
         var searchInput = document.createElement('input');
         searchInput.type = 'search';
         searchInput.placeholder = table.getAttribute('data-search-placeholder') || 'Rechercher dans le tableau';
+        if(table.getAttribute('data-searchable')==='false'){search.hidden=true;toolbar.setAttribute('role','group');}
         searchInput.setAttribute('aria-label', searchInput.placeholder);
         search.appendChild(searchInput);
 

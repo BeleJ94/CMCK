@@ -1,7 +1,29 @@
 <?php
 class SpreadsheetExportService
 {
-    public function build(array $rows, array $widths): string
+    public function workbook(array $sheets): string
+    {
+        if(!$sheets)throw new InvalidArgumentException('Ajoutez une feuille au classeur.');
+        $files=[];$names='';$relations='';$types='';$xml=static fn($s)=>htmlspecialchars($s,ENT_XML1|ENT_QUOTES,'UTF-8');
+        foreach(array_values($sheets)as$index=>$sheet){
+            $path=tempnam(sys_get_temp_dir(),'dagril-sheet-');
+            try{
+                file_put_contents($path,$this->build($sheet['rows'],$sheet['widths'],$sheet['formats']??[]));$zip=new ZipArchive();if($zip->open($path)!==true)throw new RuntimeException('Lecture du classeur impossible.');
+                if(!$index)foreach(['_rels/.rels','xl/styles.xml']as$entry)$files[$entry]=$zip->getFromName($entry);
+                $body=$zip->getFromName('xl/worksheets/sheet1.xml');$zip->close();$n=$index+1;
+                $files['xl/worksheets/sheet'.$n.'.xml']=str_replace('<row r="2" ht="24"','<row r="2" ht="60"',$body);
+                $names.='<sheet name="'.$xml($sheet['name']).'" sheetId="'.$n.'" r:id="rId'.$n.'"/>';
+                $relations.='<Relationship Id="rId'.$n.'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'.$n.'.xml"/>';
+                $types.='<Override PartName="/xl/worksheets/sheet'.$n.'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+            }finally{if(is_file($path))unlink($path);}
+        }
+        $files['xl/workbook.xml']='<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'.$names.'</sheets></workbook>';
+        $files['xl/_rels/workbook.xml.rels']='<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'.$relations.'<Relationship Id="rId'.(count($sheets)+1).'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>';
+        $files['[Content_Types].xml']='<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'.$types.'</Types>';
+        $path=tempnam(sys_get_temp_dir(),'dagril-workbook-');
+        try{$zip=new ZipArchive();if($zip->open($path,ZipArchive::OVERWRITE)!==true)throw new RuntimeException('Création du classeur impossible.');foreach($files as$name=>$body)$zip->addFromString($name,$body);$zip->close();return file_get_contents($path);}finally{if(is_file($path))unlink($path);}
+    }
+    public function build(array $rows, array $widths, array $formats = []): string
     {
         $end=chr(64+count($widths));
         $last=count($rows)-1;
@@ -12,7 +34,7 @@ class SpreadsheetExportService
         foreach ($rows as $i=>$row) {
             $n=$i+1;$sheet.='<row r="'.$n.'" ht="'.($n===3?36:24).'" customHeight="1">';
             foreach ($row as $j=>$value) {
-                $style=is_float($value)?2:($n===1||$n===5||$n===count($rows)?1:0);
+                $style=is_float($value)?(($formats[$j]??3)===2?3:(($formats[$j]??3)===0?4:2)):($n===1||$n===5||$n===count($rows)?1:0);
                 $cell='<c r="'.chr(65+$j).$n.'" s="'.$style.'"';
                 // Inline strings prevent user-provided values from becoming spreadsheet formulas.
                 $sheet.=$cell.(is_float($value)?'><v>'.$value.'</v></c>':' t="inlineStr"><is><t xml:space="preserve">'.$xml($value).'</t></is></c>');
@@ -25,7 +47,7 @@ class SpreadsheetExportService
             '_rels/.rels'=>'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
             'xl/workbook.xml'=>'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Export" sheetId="1" r:id="rId1"/></sheets></workbook>',
             'xl/_rels/workbook.xml.rels'=>'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
-            'xl/styles.xml'=>'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.000"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/><color rgb="FF234638"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>',
+            'xl/styles.xml'=>'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0.000"/><numFmt numFmtId="165" formatCode="#,##0.00"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/><color rgb="FF234638"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="1" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>',
             'xl/worksheets/sheet1.xml'=>$sheet,
         ];
         $path=tempnam(sys_get_temp_dir(),'dagril-xlsx-');

@@ -698,6 +698,24 @@ dialog.slaughter-lot-dialog::backdrop { background:rgba(9,17,12,.72); }
 .cold-room-toolbar-actions :is(a,button){width:100%;white-space:normal;}
 }
 
+.pos-sales-report { min-width:0; overflow-wrap:anywhere; }
+.pos-report-filters { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; align-items:end; }
+.pos-report-filters label { min-width:0; }
+.pos-report-filters .pos-report-query { grid-column:span 2; }
+.pos-report-filters :is(input,select,button,a) { min-height:44px; }
+.pos-report-export { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin:18px 0; }
+.pos-report-export p { margin:5px 0 0; color:var(--text-muted); font-size:13px; }
+.pos-report-export > div:last-child { display:flex; flex-wrap:wrap; gap:10px; }
+.pos-report-summary { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin:18px 0; }
+.pos-report-summary > section { padding:18px; border:1px solid var(--border); border-top:3px solid var(--accent); border-radius:var(--radius-lg); background:var(--surface); }
+.pos-report-summary h3 { margin:10px 0; color:var(--accent-hover); font-size:28px; overflow-wrap:anywhere; }
+.pos-report-summary p { margin:6px 0; }
+.pos-report-breakdown { margin:18px 0; border:1px solid var(--border); border-radius:var(--radius); padding:12px; background:var(--surface); }
+.pos-report-breakdown > summary { min-height:44px; align-content:center; font-weight:600; cursor:pointer; }
+.pos-sales-report .dagril-table-search[hidden] { display:none!important; }
+@media(max-width:767px){.pos-report-filters{grid-template-columns:repeat(2,minmax(0,1fr));}.pos-report-summary{grid-template-columns:1fr;}.pos-report-export > div:last-child{width:100%;}.pos-report-export a{flex:1;min-height:44px;}.pos-report-filters :is(button,a){width:100%;white-space:normal;}}
+@media(max-width:420px){.pos-report-filters{grid-template-columns:1fr;}.pos-report-filters .pos-report-query{grid-column:auto;}}
+
 /* Counter point of sale: product catalogue and persistent basket. */
 .butchery-pos { padding-bottom:20px; }
 .pos-controls { display:flex; flex-wrap:wrap; align-items:end; gap:12px; }
