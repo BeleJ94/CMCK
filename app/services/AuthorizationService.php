@@ -56,6 +56,29 @@ class AuthorizationService
         }
     }
 
+    public function canSelfValidate($userId, $component = null, $siteId = null)
+    {
+        if ($component !== null && !$this->can($userId, $component, 'validate', $siteId)) { return false; }
+        $params = ['user'=>(int)$userId];
+        $scope = ' AND a.site_id IS NULL';
+        if ($siteId !== null) { $scope=' AND (a.site_id IS NULL OR a.site_id=:site)'; $params['site']=(int)$siteId; }
+        $statement=$this->db->prepare("SELECT DISTINCT r.slug FROM user_role_assignments a
+            JOIN roles r ON r.id=a.role_id JOIN users u ON u.id=a.user_id
+            WHERE a.user_id=:user AND u.status='active' AND u.deleted_at IS NULL
+              AND a.approval_status='approved' AND a.deleted_at IS NULL AND a.starts_at<=NOW()
+              AND (a.expires_at IS NULL OR a.expires_at>NOW()) AND r.status='active' AND r.deleted_at IS NULL{$scope}");
+        $statement->execute($params);$roles=$statement->fetchAll(PDO::FETCH_COLUMN);
+        if (array_intersect($roles,['administrateur','administrateur-systeme'])) { return true; }
+        // A manager's exception applies only to the named business operation and its site.
+        if ($siteId === null || !in_array($component,['agriculture','livestock','butchery'],true)) { return false; }
+        $statement=$this->db->prepare("SELECT code FROM sites WHERE id=? AND status='active' AND deleted_at IS NULL");
+        $statement->execute([(int)$siteId]);$code=(string)$statement->fetchColumn();
+        if ($component==='butchery') { return $code==='BOUCH' && (bool)array_intersect($roles,['responsable-boucherie','responsable-site']); }
+        if (strpos($code,'FARM-')!==0) { return false; }
+        $allowed=$component==='livestock'?['responsable-elevage','responsable-ferme','responsable-site']:['responsable-ferme','responsable-site'];
+        return (bool)array_intersect($roles,$allowed);
+    }
+
     public function canGlobally($userId, $component, $action)
     {
         list($component,$action)=$this->compatiblePermission($component,$action);
@@ -76,7 +99,7 @@ class AuthorizationService
     {
         $siteId = isset($record['site_id']) ? (int) $record['site_id'] : null;
         $this->assertAllowed($userId, $component, 'validate', $siteId);
-        if (!empty($record[$creatorField]) && (int) $record[$creatorField] === (int) $userId && !Auth::canSelfValidate($userId)) {
+        if (!empty($record[$creatorField]) && (int) $record[$creatorField] === (int) $userId && !Auth::canSelfValidate($userId, $component, $siteId)) {
             throw new RuntimeException('Separation des taches: le createur ne peut pas valider cette operation.');
         }
     }

@@ -15,7 +15,7 @@ class TestAuthorization extends AuthorizationService {
 $service=new TestAuthorization();$record=['created_by'=>7,'site_id'=>2];$checks=0;
 function self_check($condition,$message){global $checks;if(!$condition)throw new RuntimeException($message);$checks++;echo 'OK - '.$message.PHP_EOL;}
 function self_refused($callback){try{$callback();return false;}catch(RuntimeException $e){return true;}}
-self_check(self_refused(function()use($service,$record){$service->assertCanValidateRecord(7,'weighings',$record);}), 'non-administrateur empêché de valider sa création');
+self_check(self_refused(function()use($service,$record){$service->assertCanValidateRecord(7,'weighings',$record);}), 'opérateur ordinaire empêché de valider sa création');
 Auth::$admin=true;
 $service->assertCanValidateRecord(7,'weighings',$record);self_check($service->checkedSite===2,'administrateur autorisé avec contrôle des droits sur le site');
 $service->allow=false;

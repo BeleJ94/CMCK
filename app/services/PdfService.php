@@ -11,12 +11,12 @@ class PdfService
         $dompdf->stream($filename, ['Attachment' => $attachment]);
     }
 
-    public function output($title, $bodyHtml, $orientation = 'landscape')
+    public function output($title, $bodyHtml, $orientation = 'landscape', $paper = 'A4')
     {
-        return $this->render($title, $bodyHtml, $orientation)->output();
+        return $this->render($title, $bodyHtml, $orientation, $paper)->output();
     }
 
-    private function render($title, $bodyHtml, $orientation)
+    private function render($title, $bodyHtml, $orientation, $paper = 'A4')
     {
         if (!class_exists(Dompdf::class)) {
             throw new RuntimeException('La bibliotheque PDF dompdf n est pas installee. Executez composer install.');
@@ -34,7 +34,7 @@ class PdfService
 
         $dompdf = new Dompdf($options);
         $dompdf->loadHtml($this->document($title, $bodyHtml), 'UTF-8');
-        $dompdf->setPaper('A4', $orientation);
+        $dompdf->setPaper($paper, $orientation);
         $dompdf->render();
         return $dompdf;
     }

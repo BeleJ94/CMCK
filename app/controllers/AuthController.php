@@ -58,7 +58,7 @@ class AuthController extends Controller
             $user
         );
 
-        $intendedUrl = Auth::intendedUrl();
+        $intendedUrl = Auth::authorizedIntendedUrl(Auth::intendedUrl());
 
         if ($intendedUrl) {
             header('Location: ' . $intendedUrl);
@@ -66,6 +66,18 @@ class AuthController extends Controller
         }
 
         redirect(Auth::homePathFor(Auth::user()));
+    }
+
+    public function home()
+    {
+        redirect(Auth::homePathFor(Auth::user()));
+    }
+
+    public function accessPending()
+    {
+        $home = Auth::homePathFor(Auth::user());
+        if ($home !== 'access-pending') { redirect($home); return; }
+        $this->view('auth.access_pending', ['title'=>'Accès en attente'], 'layouts.main');
     }
 
     public function logout()

@@ -60,6 +60,18 @@
                     }
                 });
 
+                section.querySelectorAll('[data-menu-subgroup]').forEach(function (subgroup) {
+                    if (query && !subgroup.hasAttribute('data-search-was-open')) {
+                        subgroup.setAttribute('data-search-was-open', String(subgroup.open));
+                    }
+                    var hasMatch = Array.prototype.some.call(subgroup.querySelectorAll('[data-menu-item]'), function (item) { return !item.hidden; });
+                    subgroup.hidden = !hasMatch;
+                    if (query) subgroup.open = hasMatch;
+                    else if (subgroup.hasAttribute('data-search-was-open')) {
+                        subgroup.open = subgroup.getAttribute('data-search-was-open') === 'true';
+                        subgroup.removeAttribute('data-search-was-open');
+                    }
+                });
                 section.hidden = visibleCount === 0;
                 var sectionToggle = section.querySelector('[data-section-toggle]');
                 if (query && visibleCount > 0) {
@@ -770,6 +782,8 @@
     function syncActiveMenuGroup() {
         var activeLink = qs('.sidebar [data-menu-item].active, .sidebar [data-menu-item][aria-current="page"]');
         var activeSection = activeLink ? activeLink.closest('[data-menu-section]') : null;
+        var activeSubgroup = activeLink ? activeLink.closest('[data-menu-subgroup]') : null;
+        if (activeSubgroup) activeSubgroup.open = true;
         qsa('.sidebar [data-menu-section]').forEach(function (section, index) {
             var isCurrent = activeSection ? section === activeSection : index === 0;
             section.classList.toggle('is-current', isCurrent);
@@ -799,6 +813,7 @@
 
     function hydrate(root) {
         root = root || document;
+        if(window.initUIShell)window.initUIShell(root);
         if(window.initMachineFeeds)window.initMachineFeeds(root);
         if(window.initMachines)window.initMachines(root);
         if(window.initProduction)window.initProduction(root);
@@ -809,6 +824,9 @@
         if(window.initPackaging)window.initPackaging(root);
         if(window.initFinishedStocks)window.initFinishedStocks(root);
         if(window.initLivestock)window.initLivestock(root);
+        if(window.initPigs)window.initPigs(root);
+        if(window.initPorcineFlow)window.initPorcineFlow(root);
+        if(window.initButcheryPos)window.initButcheryPos(root);
         if(window.initButchery)window.initButchery(root);
         if(window.initTransfers)window.initTransfers(root);
         if(window.initDistributions)window.initDistributions(root);
@@ -896,16 +914,53 @@
         var editing = Boolean(account && account.id);
         form.action = editing ? modal.getAttribute('data-update-pattern').replace('__id__', String(account.id)) : modal.getAttribute('data-create-action');
         qs('[data-user-modal-title]', modal).textContent = editing ? 'Modifier l’utilisateur' : 'Nouvel utilisateur';
-        qs('[data-user-modal-subtitle]', modal).textContent = editing ? 'Mettez à jour le compte et son périmètre de sites.' : 'Le compte sera créé sans permission métier.';
+        qs('[data-user-modal-subtitle]', modal).textContent = editing ? 'Consultez ses accès et ajoutez un rôle si nécessaire.' : 'Configurez l’identité, les sites et le rôle dans ce formulaire.';
         qs('[data-user-submit-label]', modal).textContent = editing ? 'Enregistrer les modifications' : 'Créer l’utilisateur';
         qs('[data-user-password-label]', modal).textContent = editing ? 'Nouveau mot de passe' : 'Mot de passe temporaire *';
-        qs('[data-user-password-help]', modal).textContent = editing ? 'Laissez vide pour conserver le mot de passe actuel.' : 'Au moins 8 caractères. Aucun rôle métier ne sera attribué automatiquement.';
+        qs('[data-user-password-help]', modal).textContent = editing ? 'Laissez vide pour conserver le mot de passe actuel.' : 'Au moins 8 caractères.';
         var password = qs('[data-user-password]', modal);
         password.required = !editing;
         if (editing) {
             ['name','email','phone','status'].forEach(function (name) { var field=form.elements[name];if(field) field.value=account[name] || ''; });
             (account.site_ids || []).forEach(function (siteId) { var input=qs('input[name="site_ids[]"][value="'+String(siteId).replace(/"/g,'')+'"]',form);if(input)input.checked=true; });
         }
+        var existingAssignments = editing ? (account.assignments || []) : [];
+        var currentAccess=qs('[data-user-current-access]',form), currentRoles=qs('[data-user-current-roles]',form);
+        currentAccess.hidden=!existingAssignments.length;currentRoles.replaceChildren();
+        existingAssignments.forEach(function(assignment){var item=document.createElement('li');item.textContent=assignment.role_name+' · '+assignment.site_name+' · '+(assignment.approval_status==='pending'?'À approuver':'Approuvé / planifié');currentRoles.appendChild(item);});
+        var advanced=qs('[data-user-advanced-access]',form), decisions=qs('[data-user-access-decisions]',form);
+        if(advanced){advanced.open=false;decisions.replaceChildren();
+            if(!existingAssignments.length){var note=document.createElement('p');note.textContent='Aucun accès existant à approuver ou révoquer.';decisions.appendChild(note);}
+            existingAssignments.forEach(function(assignment){
+                var label=document.createElement('label'),caption=document.createElement('span'),field=document.createElement('select');
+                caption.textContent=assignment.role_name+' · '+assignment.site_name+' · '+(assignment.approval_status==='pending'?'À approuver':'Approuvé / planifié');
+                field.name='access_decisions['+assignment.id+']';field.add(new Option('Conserver cet accès',''));
+                if(assignment.approval_status==='pending'){field.add(new Option('Approuver','approve'));field.add(new Option('Refuser','reject'));}
+                field.add(new Option('Révoquer cet accès','revoke'));label.append(caption,field);decisions.appendChild(label);
+            });
+        }
+        var accessMode=form.elements.access_mode;
+        if(accessMode)accessMode.value=editing?'later':'now';
+        function refreshAccountAccess(){
+            var selectedSites=qsa('input[name="site_ids[]"]:checked',form).map(function(input){return input.value;});
+            var role=form.elements.account_role_id,site=form.elements.account_role_site_id;
+            var adding=accessMode&&accessMode.value==='now';
+            qsa('[data-user-role-field]',form).forEach(function(field){field.hidden=!adding;});
+            if(role){role.required=Boolean(adding);role.disabled=!adding;site.required=Boolean(adding);site.disabled=!adding;
+                Array.from(site.options).forEach(function(option){if(option.value){option.hidden=!selectedSites.includes(option.value);option.disabled=option.hidden;}});
+                if(site.selectedOptions[0]&&site.selectedOptions[0].disabled)site.value='';
+                if(selectedSites.length===1)site.value=selectedSites[0];
+                site.options[0].textContent=selectedSites.length?'Choisir le site du rôle…':'Cochez d’abord un site ci-dessus';
+            }
+            if(form.elements.account_assignment_type){
+                ['account_assignment_type','account_starts_at','account_expires_at','account_role_reason'].forEach(function(name){form.elements[name].disabled=!adding;});
+                form.elements.account_expires_at.required=Boolean(adding&&form.elements.account_assignment_type.value==='delegation');
+            }
+            var message=form.elements.status.value!=='active'?'Ce compte ne pourra pas se connecter tant que son statut ne sera pas « Actif ».':adding?(role.value&&site.value?(role.selectedOptions[0].dataset.sensitive==='1'?'Ce rôle nécessite l’approbation d’un autre administrateur avant de devenir utilisable.':'Le compte disposera du rôle « '+role.selectedOptions[0].textContent+' » sur le site choisi.'):'Choisissez un rôle et son site pour rendre les accès utilisables.'):(existingAssignments.length?'Les rôles déjà attribués sont conservés. Vérifiez leurs sites et leur approbation.':'Sans rôle, ce compte affichera « Vos accès sont en attente ».');
+            qs('[data-user-access-preview]',form).textContent=message;
+        }
+        if(form._refreshAccountAccess)form.removeEventListener('change',form._refreshAccountAccess);
+        form._refreshAccountAccess=refreshAccountAccess;form.addEventListener('change',refreshAccountAccess);refreshAccountAccess();
         document.body.classList.add('user-modal-open');
         modal.setAttribute('aria-hidden','false');
         var first = form.elements.name;
@@ -950,7 +1005,15 @@
         closeActionMenus();
         closeWorkspaceModal(false);
         var modal=document.getElementById(id);if(!modal||!modal.classList.contains('workspace-entity-modal'))return;
-        workspaceModalReturnFocus=trigger||document.activeElement;var form=qs('form',modal);if(form){form.reset();var page=qs('[data-agriculture-section]');var returnField=form.elements._return_to;if(page&&returnField&&page.dataset.agricultureSection!=='overview')returnField.value='agriculture/'+page.dataset.agricultureSection;}
+        workspaceModalReturnFocus=trigger||document.activeElement;
+        var returnFocusId=trigger&&trigger.getAttribute('data-workspace-return-focus');
+        if(returnFocusId){var returnFocusTarget=document.getElementById(returnFocusId);if(returnFocusTarget)workspaceModalReturnFocus=returnFocusTarget;}
+        if(trigger&&trigger.closest('#pig-group-detail')){
+            var pigPanel=trigger.closest('[data-pig-directory]');
+            var pigGroup=pigPanel&&pigPanel.dataset.activeFilter;
+            workspaceModalReturnFocus=pigPanel&&(qsa('[data-pig-group-button]',pigPanel).find(function(button){return button.dataset.pigGroupButton===pigGroup;})||qs('[data-pig-consult]',pigPanel))||trigger;
+        }
+        var form=qs('form',modal);if(form){form.reset();var page=qs('[data-agriculture-section]');var returnField=form.elements._return_to;if(page&&returnField&&page.dataset.agricultureSection!=='overview')returnField.value='agriculture/'+page.dataset.agricultureSection;}
         if(id==='harvestModal')prepareHarvestEditor(modal,trigger);
         updateHarvestPlanSummary(qs('[data-harvest-plan]',modal));
         var depotStock=trigger&&trigger.getAttribute('data-depot-stock');if(depotStock){var stockField=qs('[data-farm-transport-stock]',modal);if(stockField)stockField.value=depotStock;}
@@ -961,7 +1024,8 @@
         var planSite=qs('[data-plan-site]',modal);if(planSite){var requestedSite=trigger?trigger.getAttribute('data-plan-site-id'):'';if(requestedSite)planSite.value=requestedSite;syncPlanSite(planSite);var requestedPlot=trigger?trigger.getAttribute('data-plan-plot'):'';var plotSelect=qs('[data-plan-plot-select]',modal);if(requestedPlot&&plotSelect)plotSelect.value=requestedPlot;updatePlotContext(plotSelect);}
         var requestedCampaign=trigger?trigger.getAttribute('data-plan-campaign-id'):null;var campaignSelect=qs('[data-plan-campaign]',modal);if(requestedCampaign&&campaignSelect)campaignSelect.value=requestedCampaign;
         modal.classList.add('is-open');var backdrop=qs('.workspace-modal-backdrop');if(backdrop)backdrop.classList.add('is-open');document.body.classList.add('workspace-modal-open');modal.setAttribute('aria-hidden','false');
-        var first=qs('input:not([type="hidden"]),select,textarea,button',modal);if(first)window.setTimeout(function(){first.focus({preventScroll:true});},0);
+        modal.dispatchEvent(new CustomEvent('workspace:opened',{detail:{trigger:trigger||null}}));
+        var first=qs('input:not([type="hidden"]),select,textarea,button',modal);if(first)window.setTimeout(function(){if(document.contains(modal)&&modal.classList.contains('is-open'))first.focus({preventScroll:true});},0);
     }
 
     document.addEventListener('input',function(event){if(event.target.closest('#harvestModal'))updateHarvestNet(event.target.form);});
@@ -1020,6 +1084,7 @@
         var modal=qs('.workspace-entity-modal.is-open');if(modal){modal.classList.remove('is-open');modal.setAttribute('aria-hidden','true');}
         var backdrop=qs('.workspace-modal-backdrop');if(backdrop)backdrop.classList.remove('is-open');document.body.classList.remove('workspace-modal-open');
         if(restoreFocus&&workspaceModalReturnFocus&&document.contains(workspaceModalReturnFocus))workspaceModalReturnFocus.focus({preventScroll:true});if(restoreFocus)workspaceModalReturnFocus=null;
+        if(modal&&restoreFocus)modal.dispatchEvent(new CustomEvent('workspace:closed'));
     }
 
     function closeActionMenus() {
@@ -1895,7 +1960,7 @@
             return;
         }
         if (!response.ok || !payload || payload.ok === false) {
-            if(pendingForm&&pendingForm.matches('[data-feed-form],[data-machine-form],[data-prod-form],[data-waste-sale-form],[data-waste-process-form],[data-pellet-form],[data-audit-review],[data-empty-form],[data-pack-editor-form],[data-livestock-form],[data-butchery-form]')){var feedError=qs('[data-feed-error]',pendingForm);feedError.textContent=payload&&payload.message?payload.message:'L’alimentation n’a pas été enregistrée.';feedError.hidden=false;feedError.scrollIntoView({block:'nearest'});}
+            if(pendingForm&&pendingForm.matches('[data-feed-form],[data-machine-form],[data-prod-form],[data-waste-sale-form],[data-waste-process-form],[data-pellet-form],[data-audit-review],[data-empty-form],[data-pack-editor-form],[data-livestock-form],[data-butchery-form],[data-pig-form],[data-flow-form]')){var feedError=qs('[data-feed-error]',pendingForm);feedError.textContent=payload&&payload.message?payload.message:'L’alimentation n’a pas été enregistrée.';feedError.hidden=false;feedError.scrollIntoView({block:'nearest'});}
             showToast('Opération refusée', payload && payload.message ? payload.message : 'Le serveur a refusé cette opération.', 'error');
             return;
         }
@@ -1946,6 +2011,9 @@
         var nextProduction=incoming.querySelector('[data-production-directory]'),oldProduction=current.querySelector('[data-production-directory]');
         if(response.ok&&nextProduction&&oldProduction){var productionSaved=pendingForm&&pendingForm.matches('[data-prod-form]');var listScroll=productionSaved?Number(pendingForm.dataset.returnScroll||0):window.scrollY;oldProduction.replaceWith(nextProduction);hydrate(nextProduction);syncShell(parsed,response.url);if(productionSaved&&window.showProductionNext)window.showProductionNext(nextProduction);window.scrollTo({top:listScroll,behavior:'instant'});return;}
 
+        // Preserve a dialog already opened by the user during an AJAX update.
+        var incomingPigs=incoming.querySelector('[data-pig-directory]');
+        if(incomingPigs&&current.querySelector('#pig-group-detail.is-open'))incomingPigs.dataset.restoreDialog='1';
         current.innerHTML = incoming.innerHTML;
         current.removeAttribute('aria-busy');
         document.title = parsed.title || document.title;
@@ -1984,6 +2052,8 @@
         if (incomingTitle && currentTitle) {
             currentTitle.innerHTML = incomingTitle.innerHTML;
         }
+        var incomingAttention=parsed.querySelector('[data-ui-attention]'),currentAttention=qs('[data-ui-attention]');
+        if(incomingAttention&&currentAttention)currentAttention.replaceWith(incomingAttention.cloneNode(true));
         var activeIncoming = parsed.querySelector('.sidebar a.active');
         qsa('.sidebar a.active').forEach(function (link) {
             link.classList.remove('active');
@@ -1995,6 +2065,8 @@
             if (activeCurrent) {
                 activeCurrent.classList.add('active');
                 activeCurrent.setAttribute('aria-current', 'page');
+                var activeSubgroup = activeCurrent.closest('[data-menu-subgroup]');
+                if (activeSubgroup) activeSubgroup.open = true;
             }
         }
         var incomingCurrentSection = activeIncoming ? activeIncoming.closest('[data-menu-section]') : null;
@@ -2042,7 +2114,7 @@
             form.classList.remove('is-submitting');
             form.removeAttribute('aria-busy');
         }
-        if(form&&document.contains(form)&&form.matches('[data-feed-form],[data-machine-form],[data-prod-form],[data-waste-sale-form],[data-waste-process-form],[data-pellet-form],[data-audit-review],[data-empty-form],[data-pack-editor-form],[data-livestock-form],[data-butchery-form]')&&form.closest('.is-open'))document.body.classList.add('workspace-modal-open');
+        if(form&&document.contains(form)&&form.matches('[data-feed-form],[data-machine-form],[data-prod-form],[data-waste-sale-form],[data-waste-process-form],[data-pellet-form],[data-audit-review],[data-empty-form],[data-pack-editor-form],[data-livestock-form],[data-butchery-form],[data-pig-form],[data-flow-form]')&&form.closest('.is-open'))document.body.classList.add('workspace-modal-open');
         pendingForm = null;
         pendingSubmitter = null;
         if (dialogReturnFocus && document.contains(dialogReturnFocus)) {

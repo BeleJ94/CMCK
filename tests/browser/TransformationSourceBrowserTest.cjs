@@ -1,0 +1,45 @@
+const {chromium}=require(process.env.DAGRIL_PLAYWRIGHT_MODULE||'playwright');
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const fixture=JSON.parse(fs.readFileSync(process.env.DAGRIL_TRANSFORM_FIXTURE,'utf8'));
+assert(/^dagril_porcin_[a-f0-9]{12}_test$/.test(fixture.database));
+const base=process.env.DAGRIL_TEST_URL;assert(['127.0.0.1','localhost'].includes(new URL(base).hostname));
+(async()=>{const browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});try{
+ const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(base+'/butchery/production');await page.locator('[data-workspace-modal-open=flow-transform]').click();
+ let form=page.locator('#flow-transform form');
+ assert.equal(await form.locator('[name=raw_lot_id]').count(),0,'Le choix du lot n’est plus obligatoire dans le parcours simple.');
+ await form.locator('[name=source_item_id]').selectOption(String(fixture.sourceItem));await form.locator('[name=quantity_kg]').fill('12');
+ assert.match(await form.locator('[data-transform-available]').innerText(),/15 kg disponibles/);
+ assert(await form.locator('[data-transform-destinations]').isHidden());
+ assert.equal(await form.locator('[name=lot_mode]').inputValue(),'auto');
+ let row=form.locator('[data-flow-output]').first();await row.locator('select').selectOption(String(fixture.item1));await row.locator('[data-output-quantity]').fill('6');await row.locator('[type=date]').fill(fixture.expiry);
+ await form.locator('[data-flow-add-output]').click();row=form.locator('[data-flow-output]').last();await row.locator('select').selectOption(String(fixture.item2));await row.locator('[data-output-quantity]').fill('6');await row.locator('[type=date]').fill(fixture.expiry);
+ assert.match(await form.locator('[data-flow-balance]').innerText(),/12 kg sortis → 12 kg obtenus → 0 kg de pertes/);
+ assert(await form.locator('[data-transform-loss]').isHidden());assert(await form.evaluate(el=>el.checkValidity()));
+ await form.locator('[name=quantity_kg]').fill('13');assert(await form.locator('[name=loss_confirmed]').getAttribute('required')!==null);await form.locator('[name=loss_confirmed]').check();
+ await row.locator('[data-output-quantity]').fill('5');assert(!(await form.locator('[name=loss_confirmed]').isChecked()),'Modifier le bilan impose une nouvelle confirmation.');
+ await row.locator('[data-output-quantity]').fill('7');await form.locator('[name=quantity_kg]').fill('12');assert(!(await form.locator('[name=quantity_kg]').evaluate(el=>el.checkValidity())),'Surproduction bloquée');await row.locator('[data-output-quantity]').fill('6');
+ await form.locator('[data-transform-distribute]').check();await form.locator('[name=counter_id]').selectOption(String(fixture.counter));
+ await form.locator('[data-output-counter]').first().fill('7');assert(!(await form.evaluate(el=>el.checkValidity())),'Répartition supérieure au produit bloquée');
+ await form.locator('[data-output-counter]').first().fill('2');assert.match(await form.locator('[data-flow-balance]').innerText(),/Au froid : 10 kg · Au comptoir : 2 kg/);
+ await form.locator('[data-transform-distribute]').uncheck();assert(await form.locator('[data-output-counter]').first().isDisabled());assert.match(await form.locator('[data-flow-balance]').innerText(),/Au froid : 12 kg · Au comptoir : 0 kg/);
+ await form.locator('.transform-lots > summary').click();await form.locator('[name=lot_mode]').selectOption('manual');
+ for(const check of await form.locator('[name="source_lot_ids[]"]:enabled').all())await check.uncheck();
+ assert(!(await form.locator('[name=quantity_kg]').evaluate(el=>el.checkValidity())),'Choix manuel vide bloqué');
+ await form.locator('[name=lot_mode]').selectOption('auto');assert(await form.evaluate(el=>el.checkValidity()));
+ const preview=await form.locator('[data-transform-lot]:not([hidden]) [data-transform-take]').allTextContents();assert(preview.some(text=>text.includes('5 kg'))&&preview.some(text=>text.includes('7 kg')),'Prévisualisation multi-lots par DLC.');
+ for(const width of [390,320]){await page.setViewportSize({width,height:900});assert(await form.locator('[data-transformation-form]').evaluate(el=>el.scrollWidth<=el.clientWidth+1));assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
+ await page.setViewportSize({width:1440,height:1000});
+ // A refused request must leave all entered products intact.
+ await page.route('**/butchery/flow/transformations',async route=>{const body=route.request().postData();const field=/(name="source_item_id"\r\n\r\n)\d+(\r\n)/;assert(field.test(body),'Champ produit présent dans le formulaire multipart');await route.continue({postData:body.replace(field,(_,prefix,suffix)=>prefix+'99999999'+suffix)});},{times:1});
+ let response=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/butchery/flow/transformations'));
+ await form.locator('[type=submit]').click();await page.locator('[data-action-dialog-confirm]').click();assert.equal((await response).status(),422);
+ await form.locator('[data-feed-error]').waitFor({state:'visible'});assert.equal(await form.locator('[data-flow-output]').count(),2);assert.equal(await form.locator('[name=quantity_kg]').inputValue(),'12');
+ response=page.waitForResponse(r=>r.request().method()==='POST'&&r.url().endsWith('/butchery/flow/transformations'));
+ await form.locator('[type=submit]').click();await page.locator('[data-action-dialog-confirm]').click();assert((await(await response).json()).ok);await page.locator('body.is-loading').waitFor({state:'hidden'});
+ const order=page.locator('[data-order-id]').first();const id=await order.getAttribute('data-order-id');await order.locator('[popovertarget]').click();await page.locator('#production-actions-'+id).getByRole('button',{name:'Détails',exact:true}).click();const detail=page.locator('#production-detail-'+id);assert.match(await detail.innerText(),/MANUEL-A/);assert.match(await detail.innerText(),/MANUEL-B/);await page.keyboard.press('Escape');
+ await page.locator('[data-workspace-modal-open=flow-transform]').click();form=page.locator('#flow-transform form');assert.equal(await form.locator('[data-flow-output]').count(),1);assert.equal(await form.locator('[name=source_item_id]').inputValue(),'');assert(!(await form.locator('[data-transform-distribute]').isChecked()));
+ await form.locator('[name=source_item_id]').selectOption(String(fixture.sourceItem));await form.locator('[data-flow-add-output]').click();await form.locator('[data-flow-output]').last().locator('[data-flow-remove-output]').click();assert.equal(await form.locator('[data-output-allocation]').count(),1,'Retirer un produit retire aussi sa répartition.');
+ await page.keyboard.press('Escape');await page.locator('[data-workspace-modal-open=flow-transform]').click();assert.equal(await form.locator('[data-flow-output]').count(),1);
+ assert.deepEqual(errors,[]);console.log('OK : saisie par produit, proposition multi-lots, destinations progressives, bilan/écarts, contrôles de quantité, refus préservant la saisie, réservation réelle, réouverture et mobile 390/320.');
+}finally{await browser.close();}})().catch(error=>{console.error(error);process.exitCode=1;});

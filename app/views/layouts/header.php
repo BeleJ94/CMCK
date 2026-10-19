@@ -24,7 +24,7 @@ foreach ($pageIcons as $prefix => $icon) {
         <button type="button" class="sidebar-toggle" data-sidebar-toggle aria-label="Ouvrir le menu" aria-expanded="false"><i class="bi bi-list"></i></button>
         <div class="page-title">
             <span class="page-title-icon"><i class="bi <?= e($pageIcon) ?>"></i></span>
-            <div><p class="page-kicker"><?= e($user['role_name'] ?? 'Utilisateur') ?></p><h1><?= e($title ?? 'DAGRIL ERP') ?></h1></div>
+            <div><p class="page-kicker"><?= e(trim($user['role_name'] ?? '') ?: 'Espace de travail') ?></p><h1><?= e($title ?? 'DAGRIL ERP') ?></h1></div>
         </div>
     </div>
 
@@ -37,14 +37,14 @@ foreach ($pageIcons as $prefix => $icon) {
             <form method="post" action="<?= e(base_url('context/site')) ?>" class="site-context-form" data-ajax="false">
                 <?= csrf_field() ?><input type="hidden" name="_return_to" value="<?= e($_SERVER['REQUEST_URI'] ?? '') ?>">
                 <label><span class="sr-only">Site courant</span><i class="bi bi-geo-alt"></i>
-                    <select name="site_id" onchange="this.form.elements._return_to.value=window.location.pathname+window.location.search+window.location.hash;this.form.submit()" aria-label="Site courant">
+                    <select name="site_id" data-site-context-select aria-label="Site courant">
                         <?php if (Auth::canViewConsolidated()): ?><option value="all" <?= $currentSiteId === null ? 'selected' : '' ?>>Tous les sites</option><?php endif; ?>
                         <?php foreach ($contextSites as $contextSite): ?><option value="<?= e($contextSite['id']) ?>" <?= (int) $currentSiteId === (int) $contextSite['id'] ? 'selected' : '' ?>><?= e($contextSite['code']) ?></option><?php endforeach; ?>
                     </select><i class="bi bi-chevron-down"></i>
                 </label>
             </form>
         <?php endif; ?>
-        <?php if (Auth::can('alerts', 'read')): ?><a href="<?= e(base_url('alerts')) ?>" class="topbar-icon-button" aria-label="Consulter les alertes" title="Alertes"><i class="bi bi-bell"></i></a><?php endif; ?>
+        <?php require view_path('partials.operational_attention'); ?>
         <div class="user-identity"><div class="user-avatar"><?= e(strtoupper(substr($user['name'] ?? 'U', 0, 1))) ?></div><div class="user-copy"><strong><?= e($user['name'] ?? '') ?></strong><small><?= e($user['email'] ?? '') ?></small></div></div>
         <form method="post" action="<?= e(base_url('logout')) ?>" class="logout-form" data-ajax="false">
             <?= csrf_field() ?><button type="submit" aria-label="Déconnexion" title="Déconnexion"><i class="bi bi-box-arrow-right"></i><span class="logout-label">Déconnexion</span></button>

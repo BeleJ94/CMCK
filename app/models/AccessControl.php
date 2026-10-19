@@ -17,7 +17,8 @@ class AccessControl extends Model
 
     public function createAssignment(array $data, array $actor)
     {
-        $this->db->beginTransaction();
+        $ownsTransaction=!$this->db->inTransaction();
+        if($ownsTransaction)$this->db->beginTransaction();
         try {
             $role = $this->query("SELECT * FROM roles WHERE id=:id AND status='active' AND deleted_at IS NULL FOR UPDATE", ['id'=>$data['role_id']])->fetch();
             if (!$role) { throw new RuntimeException('Role introuvable.'); }
@@ -35,13 +36,13 @@ class AccessControl extends Model
             $this->event($id, $actor['id'] ?? null, 'requested', 'Attribution demandee');
             if ($status === 'approved') { $this->event($id, $actor['id'] ?? null, 'approved', 'Role non sensible approuve lors de attribution'); }
             $this->logActivity('rbac_assign', 'rbac', 'user_role_assignments', $id, 'Attribution de role.', null, $data, $actor);
-            $this->db->commit(); return $id;
-        } catch (Exception $e) { $this->db->rollBack(); throw $e; }
+            if($ownsTransaction)$this->db->commit(); return $id;
+        } catch (Exception $e) { if($ownsTransaction)$this->db->rollBack(); throw $e; }
     }
 
     public function decide($id, $decision, array $actor)
     {
-        $this->db->beginTransaction();
+        $ownsTransaction=!$this->db->inTransaction();if($ownsTransaction)$this->db->beginTransaction();
         try {
             $row=$this->query("SELECT * FROM user_role_assignments WHERE id=:id AND deleted_at IS NULL FOR UPDATE",['id'=>$id])->fetch();
             if (!$row || $row['approval_status']!=='pending') { throw new RuntimeException('Attribution non disponible pour approbation.'); }
@@ -50,13 +51,13 @@ class AccessControl extends Model
             $this->query("UPDATE user_role_assignments SET approval_status=:status,approved_by=:actor,approved_at=NOW() WHERE id=:id",['status'=>$status,'actor'=>$actor['id'],'id'=>$id]);
             $this->event($id,$actor['id'],$status,$status==='approved'?'Deuxieme approbation':'Attribution rejetee');
             $this->logActivity('rbac_'.$status,'rbac','user_role_assignments',$id,'Decision sur attribution RBAC.',$row,['approval_status'=>$status],$actor);
-            $this->db->commit();
-        } catch(Exception $e){$this->db->rollBack();throw $e;}
+            if($ownsTransaction)$this->db->commit();
+        } catch(Exception $e){if($ownsTransaction)$this->db->rollBack();throw $e;}
     }
 
     public function revoke($id, array $actor)
     {
-        $this->db->beginTransaction();
+        $ownsTransaction=!$this->db->inTransaction();if($ownsTransaction)$this->db->beginTransaction();
         try {
             $row=$this->query("SELECT * FROM user_role_assignments WHERE id=:id AND deleted_at IS NULL FOR UPDATE",['id'=>$id])->fetch();
             if(!$row){throw new RuntimeException('Attribution introuvable.');}
@@ -64,8 +65,8 @@ class AccessControl extends Model
             $this->query("UPDATE user_role_assignments SET approval_status='revoked',revoked_by=:actor,revoked_at=NOW() WHERE id=:id",['actor'=>$actor['id'],'id'=>$id]);
             $this->event($id,$actor['id'],'revoked','Revocation manuelle');
             $this->logActivity('rbac_revoke','rbac','user_role_assignments',$id,'Revocation RBAC.',$row,['approval_status'=>'revoked'],$actor);
-            $this->db->commit();
-        } catch(Exception $e){$this->db->rollBack();throw $e;}
+            if($ownsTransaction)$this->db->commit();
+        } catch(Exception $e){if($ownsTransaction)$this->db->rollBack();throw $e;}
     }
 
     public function syncRolePermissions($roleId, array $permissionIds, array $actor)

@@ -1,7 +1,7 @@
 <?php
 require dirname(__DIR__).'/app/helpers/functions.php';require dirname(__DIR__).'/app/core/Database.php';require dirname(__DIR__).'/app/core/Model.php';
 if(!preg_match('/_(test|testing)$/',config('database.database')))throw new RuntimeException('Base de test obligatoire');
-class Auth{static $admin=false,$allowed=true,$site;static function hasRole($r){return self::$admin;}static function requireSiteAccess($s){if((int)$s!==self::$site)throw new RuntimeException('Site interdit');}static function requirePermission($m,$a,$s){self::requireSiteAccess($s);if(!self::$allowed)throw new RuntimeException('Droit refusé');}static function currentSiteId(){return self::$site;}}
+class Auth{static $admin=false,$allowed=true,$site;static function hasRole($r){return self::$admin;}static function canSelfValidate($id,$component=null,$site=null){return self::$admin&&self::$allowed&&(int)$site===self::$site;}static function requireSiteAccess($s){if((int)$s!==self::$site)throw new RuntimeException('Site interdit');}static function requirePermission($m,$a,$s){self::requireSiteAccess($s);if(!self::$allowed)throw new RuntimeException('Droit refusé');}static function currentSiteId(){return self::$site;}}
 require dirname(__DIR__).'/app/models/Agriculture.php';$db=Database::getInstance()->connection();$m=new Agriculture();
 function sql($q,$p=[]){global $db;$s=$db->prepare($q);$s->execute($p);return $s;}
 function check($ok,$label){if(!$ok)throw new RuntimeException($label);echo "OK - $label\n";}

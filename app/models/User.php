@@ -49,7 +49,10 @@ class User extends Model
             if ($user['status']==='pending') { $stats['pending']++; }
             if ((int)$user['active_roles']===0) { $stats['without_role']++; }
         }
-        return ['users'=>$users,'sites'=>$sites,'stats'=>$stats];
+        $roles=Auth::can('rbac','administer')?$this->query("SELECT id,name,is_sensitive FROM roles WHERE status='active' AND deleted_at IS NULL ORDER BY name")->fetchAll():[];
+        $assignments=$this->query("SELECT a.id,a.requested_by,a.assignment_type,a.user_id,r.name role_name,COALESCE(s.name,'Tous les sites') site_name,a.approval_status,a.starts_at,a.expires_at FROM user_role_assignments a JOIN roles r ON r.id=a.role_id LEFT JOIN sites s ON s.id=a.site_id WHERE a.deleted_at IS NULL AND a.approval_status IN ('approved','pending') AND (a.expires_at IS NULL OR a.expires_at>NOW()) ORDER BY r.name")->fetchAll();
+        foreach($users as &$user){$user['assignments']=array_values(array_filter($assignments,static fn($a)=>(int)$a['user_id']===(int)$user['id']));}unset($user);
+        return ['users'=>$users,'sites'=>$sites,'stats'=>$stats,'roles'=>$roles];
     }
 
     public function createAccount(array $data, array $actor)
@@ -65,7 +68,8 @@ class User extends Model
             ]);
             $id=(int)$this->db->lastInsertId();
             $this->syncSites($id,$clean['site_ids']);
-            $this->logActivity('user_create','users','users',$id,'Compte utilisateur créé sans permission métier.',null,['name'=>$clean['name'],'email'=>$clean['email'],'status'=>$clean['status'],'site_ids'=>$clean['site_ids']],$actor);
+            $this->assignAccountRole($id,$data,$clean['site_ids'],$actor);
+            $this->logActivity('user_create','users','users',$id,'Compte utilisateur créé et accès configurés.',null,['name'=>$clean['name'],'email'=>$clean['email'],'status'=>$clean['status'],'site_ids'=>$clean['site_ids']],$actor);
             $this->db->commit();
             return $id;
         } catch (Exception $e) {
@@ -90,11 +94,47 @@ class User extends Model
             if ($clean['password']!=='') { $passwordSql=',password=:password';$params['password']=password_hash($clean['password'],PASSWORD_DEFAULT); }
             $this->query("UPDATE users SET name=:name,email=:email,phone=:phone,status=:status{$passwordSql} WHERE id=:id",$params);
             $this->syncSites((int)$id,$clean['site_ids']);
+            $this->assignAccountRole((int)$id,$data,$clean['site_ids'],$actor);
+            $this->applyAccessDecisions((int)$id,$data,$actor);
             $this->logActivity('user_update','users','users',$id,'Compte utilisateur modifié.',$old,['name'=>$clean['name'],'email'=>$clean['email'],'phone'=>$clean['phone'],'status'=>$clean['status'],'site_ids'=>$clean['site_ids'],'password_changed'=>$clean['password']!==''],$actor);
             $this->db->commit();
         } catch (Exception $e) {
             $this->db->rollBack();
             throw $e;
+        }
+    }
+
+    private function assignAccountRole(int $id,array $data,array $sites,array $actor): void
+    {
+        $role=(int)($data['account_role_id']??0);
+        if(!$role){if(($data['access_mode']??'')==='now')throw new RuntimeException('Choisissez le rôle à attribuer ou préparez le compte sans accès.');return;}
+        Auth::requirePermission('rbac','administer');
+        $site=(int)($data['account_role_site_id']??0);
+        if(!$site||!in_array($site,$sites,true))throw new RuntimeException('Le site du rôle doit faire partie des sites accessibles cochés.');
+        Auth::requireSiteAccess($site);
+        $existing=$this->query("SELECT id FROM user_role_assignments WHERE user_id=? AND role_id=? AND site_id=? AND deleted_at IS NULL AND approval_status IN ('approved','pending') AND starts_at<=NOW() AND (expires_at IS NULL OR expires_at>NOW())",[$id,$role,$site])->fetch();
+        if($existing)return;
+        $type=($data['account_assignment_type']??'')==='delegation'?'delegation':'direct';
+        $parse=static function($value){if(!$value)return null;if(!is_string($value))throw new RuntimeException('Date invalide.');$date=DateTimeImmutable::createFromFormat('!Y-m-d\TH:i',$value);if(!$date||$date->format('Y-m-d\TH:i')!==$value)throw new RuntimeException('Date invalide.');return $date->format('Y-m-d H:i:s');};
+        $starts=$parse($data['account_starts_at']??'');$expires=$parse($data['account_expires_at']??'');
+
+        require_once __DIR__.'/AccessControl.php';
+        (new AccessControl())->createAssignment(['user_id'=>$id,'role_id'=>$role,'site_id'=>$site,'assignment_type'=>$type,'starts_at'=>$starts,'expires_at'=>$expires,'reason'=>mb_substr(trim((string)($data['account_role_reason']??'Attribution depuis la gestion des utilisateurs.')),0,255)],$actor);
+    }
+
+    private function applyAccessDecisions(int $userId,array $data,array $actor): void
+    {
+        $decisions=$data['access_decisions']??[];
+        if(!is_array($decisions))throw new RuntimeException('Décisions invalides.');
+        foreach($decisions as$id=>$decision){
+            if($decision==='')continue;
+            Auth::requirePermission('rbac','administer');
+            if(!in_array($decision,['approve','reject','revoke'],true)||!ctype_digit((string)$id))throw new RuntimeException('Décision invalide.');
+            $assignment=$this->query('SELECT user_id,site_id FROM user_role_assignments WHERE id=? AND deleted_at IS NULL FOR UPDATE',[(int)$id])->fetch();
+            if(!$assignment||(int)$assignment['user_id']!==$userId)throw new RuntimeException('Cet accès n’appartient pas à cet utilisateur.');
+            if($assignment['site_id'])Auth::requireSiteAccess((int)$assignment['site_id']);
+            require_once __DIR__.'/AccessControl.php';$access=new AccessControl();
+            if($decision==='revoke')$access->revoke((int)$id,$actor);else $access->decide((int)$id,$decision,$actor);
         }
     }
 

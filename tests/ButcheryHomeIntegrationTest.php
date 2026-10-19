@@ -1,0 +1,28 @@
+<?php
+if(!preg_match('/^dagril_porcin_[a-f0-9]{12}_test$/D',getenv('DAGRIL_DB_DATABASE')?:''))throw new RuntimeException('Base temporaire obligatoire pour ce test.');
+require_once __DIR__.'/integration/TestBootstrap.php';$db=DagrilIntegrationTest::boot();
+require_once __DIR__.'/../app/core/Controller.php';require_once __DIR__.'/../app/controllers/PorcineFlowController.php';
+$admin=DagrilIntegrationTest::loginRole('administrateur');
+$site=(int)DagrilIntegrationTest::scalar("SELECT id FROM sites WHERE code='BOUCH'");Auth::selectSite((string)$site);
+$directory=(new PorcineFlowService($db))->butcheryDirectory();
+ob_start();(new PorcineFlowController())->home();$html=ob_get_clean();
+DagrilIntegrationTest::check(substr_count($html,'class="plot-card butchery-stage-card"')===4,'Accueil : quatre étapes illustrées');
+DagrilIntegrationTest::check(strpos($html,'Warning:')===false&&strpos($html,'Fatal error:')===false,'Accueil rendu sans avertissement PHP');
+$doc=new DOMDocument();@$doc->loadHTML('<?xml encoding="utf-8" ?>'.$html);$xpath=new DOMXPath($doc);
+$physical=array_sum(array_column($directory['raw'],'quantity_kg'))+array_sum(array_column($directory['finished'],'cold_kg'));
+$coldValue=$xpath->query('//article[contains(@class,"butchery-stage-card")][2]//p[contains(@class,"butchery-stage-value")]/strong')->item(0)->textContent;
+DagrilIntegrationTest::check($coldValue===number_format($physical,3,',',' '),'Chambre froide : poids physique sans compter deux fois les comptoirs');
+DagrilIntegrationTest::check($xpath->query('//section[contains(@class,"butchery-overview-modal")]//form')->length===0,'Détails sans opération de mutation');
+$roleCode='butchery-home-read-'.bin2hex(random_bytes(4));
+$db->prepare("INSERT INTO roles(name,slug,status) VALUES('Test lecture boucherie',?,'active')")->execute([$roleCode]);$role=(int)$db->lastInsertId();
+$db->prepare("INSERT INTO role_permissions(role_id,permission_id) SELECT ?,id FROM permissions WHERE component='butchery' AND action='read'")->execute([$role]);
+$email=$roleCode.'@example.test';$db->prepare("INSERT INTO users(name,email,password,status) VALUES('Test lecture',?,?,'active')")->execute([$email,password_hash(bin2hex(random_bytes(16)),PASSWORD_DEFAULT)]);$userId=(int)$db->lastInsertId();
+$db->prepare("INSERT INTO user_sites(user_id,site_id,is_default,status) VALUES(?,?,1,'active')")->execute([$userId,$site]);
+$db->prepare("INSERT INTO user_role_assignments(user_id,role_id,site_id,assignment_type,starts_at,approval_status) VALUES(?,?,?,'direct',NOW(),'approved')")->execute([$userId,$role,$site]);
+$reader=DagrilIntegrationTest::row('SELECT * FROM users WHERE id=?',[$userId]);Auth::login($reader);Auth::selectSite((string)$site);
+ob_start();(new PorcineFlowController())->home();$readHtml=ob_get_clean();
+DagrilIntegrationTest::check(strpos($readHtml,'Ma boucherie')!==false&&strpos($readHtml,'Accéder aux ventes')===false,'Lecture seule : accueil consultable sans raccourci de saisie');
+DagrilIntegrationTest::check(Auth::homePathFor(Auth::user())==='butchery','Un compte boucherie arrive sur la vue d’ensemble');
+Auth::login($admin);Auth::selectSite('1');ob_start();(new PorcineFlowController())->home();$otherSite=ob_get_clean();
+DagrilIntegrationTest::check(strpos($otherSite,'Travailler sur Boucherie')!==false&&strpos($otherSite,'Accéder aux ventes')===false,'Autre site sélectionné : contexte visible, action de saisie masquée');
+DagrilIntegrationTest::finish();

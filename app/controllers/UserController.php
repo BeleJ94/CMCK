@@ -11,7 +11,7 @@ class UserController extends Controller
 
     public function store()
     {
-        try {$this->csrf();$this->model('User')->createAccount($_POST,Auth::user());flash('success','Utilisateur créé sans permission métier. Affectez ensuite ses rôles dans le contrôle d’accès.');}
+        try {$this->csrf();$this->model('User')->createAccount($_POST,Auth::user());flash('success','Utilisateur créé. Les accès attribués sont visibles dans sa fiche ; les rôles sensibles attendent une seconde approbation.');}
         catch(Exception $e){flash('error',$e->getMessage());}
         redirect('users');
     }

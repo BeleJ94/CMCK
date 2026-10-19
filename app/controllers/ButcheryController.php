@@ -11,8 +11,10 @@ class ButcheryController extends Controller
             echo 'Page introuvable';
             return;
         }
-        if ($section === 'recipes') {
-            Auth::requirePermission('butchery', 'administer');
+        if ($section === 'recipes' && !Auth::can('butchery', 'read')) {
+            http_response_code(403);
+            echo '403 - Accès refusé';
+            return;
         }
         $model = $this->model('Butchery');
         $this->view('butchery.index', array_merge([
@@ -34,7 +36,7 @@ class ButcheryController extends Controller
     public function control($id) { $this->go(function ($m, $u) use ($id) { $m->controlReceipt($id, $_POST, $u); }, 'Contrôle sanitaire enregistré.'); }
     public function slaughter() { $this->go(function ($m, $u) { $m->createSlaughter($_POST, $u); }, 'Abattage enregistré, en attente de validation.'); }
     public function validateSlaughter($id) { $this->go(function ($m, $u) use ($id) { $m->validateSlaughter($id, $_POST, $u); }, 'Abattage validé. Le stock de viande est disponible.'); }
-    public function recipe() { $this->go(function ($m, $u) { $m->createRecipe($_POST, $u); }, 'Nouvelle version de recette enregistrée.'); }
+    public function recipe() { $this->go(function ($m, $u) { Auth::requirePermission('butchery', 'administer'); $m->createRecipe($_POST, $u); }, 'Nouvelle version de recette enregistrée.'); }
     public function order() { $this->go(function ($m, $u) { $m->createOrder($_POST, $u); }, 'Fabrication planifiée. Vous pouvez saisir ses résultats.'); }
     public function results($id) { $this->go(function ($m, $u) use ($id) { $m->submitOrder($id, $_POST, $u); }, 'Résultats enregistrés, en attente de validation.'); }
     public function validateOrder($id) { $this->go(function ($m, $u) use ($id) { $m->validateOrder($id, $u); }, 'Fabrication validée. Les produits finis sont disponibles.'); }

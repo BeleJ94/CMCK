@@ -4,10 +4,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#092f3b">
+    <meta name="theme-color" content="#18864b">
     <title><?= e($title ?? 'Connexion') ?> - <?= e($appName) ?></title>
     <link rel="stylesheet" href="<?= e(asset_url('vendor/bootstrap-icons/bootstrap-icons.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset_url('css/app.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset_url('css/design-system.css')) ?>">
 </head>
 <body class="auth-body auth-body-executive">
     <main class="auth-shell auth-shell-executive">

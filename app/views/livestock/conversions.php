@@ -19,7 +19,7 @@ $kg=static fn($v)=>number_format((float)$v,3,',',' ');
 </section>
 <?php foreach($conversions as $c):
 $canValidate=Auth::can('livestock','validate',$c['site_id']);
-$selfBlocked=(int)$c['created_by']===(int)$user['id']&&!Auth::canSelfValidate($user['id']);
+$selfBlocked=(int)$c['created_by']===(int)$user['id']&&!Auth::canSelfValidate($user['id'],'livestock',(int)$c['site_id']);
 ?>
 <section id="livestock-conversion-<?=e($c['id'])?>" class="entity-modal workspace-entity-modal feed-editor livestock-editor conversion-editor" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="conversion-title-<?=e($c['id'])?>">
 <header><div><p class="page-kicker">ÉLEVAGE · CONVERSION</p><h2 id="conversion-title-<?=e($c['id'])?>"><?=e($types[$c['conversion_type']]??$c['conversion_type'])?></h2><p><?=e($c['conversion_number'])?></p></div><button type="button" class="modal-close" data-workspace-modal-close aria-label="Fermer">×</button></header>

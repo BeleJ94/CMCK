@@ -91,10 +91,14 @@ class Auth
         return $user && in_array(self::roleSlug($user), $roles, true);
     }
 
-    public static function canSelfValidate($userId)
+    public static function canSelfValidate($userId, $component = null, $siteId = null)
     {
         $user = self::user();
-        return $user && (int)$user['id'] === (int)$userId && self::hasRole(['administrateur']);
+        if (!$user || (int)$user['id'] !== (int)$userId) { return false; }
+        $siteId = $siteId === null ? self::currentSiteId() : $siteId;
+        if ($siteId !== null && !self::canAccessSite($siteId)) { return false; }
+        require_once dirname(__DIR__) . '/services/AuthorizationService.php';
+        return (new AuthorizationService())->canSelfValidate($userId, $component, $siteId);
     }
 
     public static function can($component, $action, $siteId = null)
@@ -232,7 +236,37 @@ class Auth
             'agent-distribution' => 'terrain/distribution',
         ];
 
-        return $paths[self::roleSlug($user)] ?? 'dashboard';
+        $legacy = $paths[self::roleSlug($user)] ?? null;
+        if ($legacy !== null) return $legacy;
+        foreach (self::menu() as $item) {
+            if (in_array($item['path'], ['dashboard','direction'], true) || strpos($item['path'],'terrain/') === 0) continue;
+            $permission = self::menuPermission($item['path']);
+            if ($permission && self::can($permission[0], $permission[1])) return $item['path'];
+        }
+        return 'access-pending';
+    }
+
+    public static function authorizedIntendedUrl($url)
+    {
+        if (!is_string($url) || $url === '' || preg_match('/[\\\r\n]/', $url)) return null;
+        $parts = parse_url($url); $base = parse_url(base_url());
+        if ($parts === false || isset($parts['user']) || isset($parts['pass'])) return null;
+        if (isset($parts['host']) && (strtolower($parts['host']) !== strtolower($base['host'] ?? '') || ($parts['port'] ?? null) !== ($base['port'] ?? null))) return null;
+        if (isset($parts['scheme']) && strtolower($parts['scheme']) !== strtolower($base['scheme'] ?? '')) return null;
+        $path = trim(rawurldecode($parts['path'] ?? ''), '/');
+        $prefix = trim(rawurldecode($base['path'] ?? ''), '/');
+        if ($prefix !== '') {
+            if (strpos($path, $prefix.'/') !== 0) return null;
+            $path = substr($path, strlen($prefix)+1);
+        }
+        if (in_array('..', explode('/', $path), true)) return null;
+        foreach (self::menu() as $item) {
+            $candidate = trim($item['path'], '/');
+            if ($path !== $candidate && strpos($path, $candidate.'/') !== 0) continue;
+            $permission = self::menuPermission($path);
+            if ($permission && self::can($permission[0], $permission[1])) return $url;
+        }
+        return null;
     }
 
     public static function menu()
@@ -309,23 +343,22 @@ class Auth
             ]],
             ['label' => 'Élevage', 'icon' => 'bi-heart-pulse', 'items' => [
                 ['label' => 'Élevage par espèce', 'path' => 'livestock', 'icon' => 'bi-heart-pulse', 'roles' => ['administrateur', 'direction']],
-                ['label' => 'Suivi quotidien', 'path' => 'livestock/daily', 'icon' => 'bi-calendar-check', 'roles' => ['administrateur', 'direction']],
-                ['label' => 'Conversions pesées', 'path' => 'livestock/conversions', 'icon' => 'bi-arrow-repeat', 'roles' => ['administrateur', 'direction']],
-                ['label' => 'Transferts boucherie', 'path' => 'livestock/transfers', 'icon' => 'bi-truck', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Effectifs et groupes', 'submenu' => 'Porcs', 'submenu_icon' => 'bi-heart-pulse', 'path' => 'livestock/pigs', 'icon' => 'bi-heart-pulse', 'badge' => 'pending_pig_groups', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Abattage à la ferme', 'submenu' => 'Porcs', 'submenu_icon' => 'bi-heart-pulse', 'path' => 'livestock/pigs/slaughters', 'icon' => 'bi-clipboard-check', 'badge' => 'pending_pig_slaughters', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Carcasses et envois', 'submenu' => 'Porcs', 'submenu_icon' => 'bi-heart-pulse', 'path' => 'livestock/pigs/shipments', 'icon' => 'bi-truck', 'badge' => 'ready_pig_shipments', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Bâtiments et étangs', 'path' => 'livestock/facilities', 'icon' => 'bi-building', 'roles' => ['administrateur', 'direction']],
             ]],
             ['label' => 'Boucherie', 'icon' => 'bi-shop', 'items' => [
-                ['label' => 'Réceptions', 'path' => 'butchery/receipts', 'icon' => 'bi-box-arrow-in-down', 'roles' => ['administrateur', 'direction']],
-                ['label' => 'Abattage', 'path' => 'butchery/slaughters', 'icon' => 'bi-clipboard-check', 'roles' => ['administrateur', 'direction']],
-                ['label' => 'Fabrication', 'path' => 'butchery/production', 'icon' => 'bi-gear', 'roles' => ['administrateur', 'direction']],
-                ['label' => 'Stocks et DLC', 'path' => 'butchery/stocks', 'icon' => 'bi-boxes', 'roles' => ['administrateur', 'direction']],
-                ['label' => 'Ventes et transferts', 'path' => 'butchery/outgoing', 'icon' => 'bi-truck', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Vue d’ensemble', 'path' => 'butchery', 'icon' => 'bi-grid', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Réceptions', 'path' => 'butchery/receipts', 'icon' => 'bi-box-arrow-in-down', 'badge' => 'pending_carcass_controls', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Transformation', 'path' => 'butchery/production', 'icon' => 'bi-gear', 'badge' => 'pending_butchery_transformations', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Chambre froide', 'path' => 'butchery/cold-room', 'icon' => 'bi-snow', 'badge' => 'expired_cold_lots', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Comptoirs et ventes', 'path' => 'butchery/counters', 'icon' => 'bi-shop', 'badge' => 'expired_counter_lots', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Recettes', 'path' => 'butchery/recipes', 'icon' => 'bi-journal-text', 'roles' => ['administrateur', 'direction']],
             ]],
             ['label' => 'Distribution & logistique', 'icon' => 'bi-send-check', 'items' => [
                 ['label' => 'Transferts inter-sites', 'path' => 'transfers', 'icon' => 'bi-arrow-left-right', 'roles' => ['administrateur', 'direction', 'agent-distribution']],
                 ['label' => 'Distribution clients', 'path' => 'distributions', 'icon' => 'bi-send-check', 'roles' => ['administrateur', 'direction', 'agent-distribution']],
-                ['label' => 'Carburant & Logistique', 'path' => 'fuel-logistics', 'icon' => 'bi-fuel-pump', 'roles' => ['administrateur', 'direction', 'agent-distribution']],
             ]],
             ['label' => 'Pilotage & conformité', 'icon' => 'bi-graph-up-arrow', 'items' => [
                 ['label' => 'Budgets & engagements', 'path' => 'budgets', 'icon' => 'bi-pie-chart', 'roles' => ['administrateur', 'direction']],
@@ -350,7 +383,7 @@ class Auth
         foreach ($groups as $group) {
             $items = array_values(array_filter($group['items'], function ($item) use ($roleSlug, $legacySlugs) {
                 if ($item['path'] === 'activity-logs') { return $roleSlug === 'administrateur'; }
-                if (strpos($item['path'], 'butchery/') === 0) { return self::can('butchery', 'read') && ($item['path'] !== 'butchery/recipes' || self::can('butchery', 'administer')); }
+                if ($item['path'] === 'butchery' || strpos($item['path'], 'butchery/') === 0) { return self::can('butchery', 'read'); }
                 if ($item['path'] === 'silo-administration') { return self::can('silos', 'administer'); }
                 if (in_array($roleSlug, $legacySlugs, true)) { return in_array($roleSlug, $item['roles'], true); }
                 $permission = self::menuPermission($item['path']);
@@ -388,6 +421,11 @@ class Auth
             $db = Database::getInstance()->connection();
             $siteId = self::currentSiteId();
             $siteFilter = $siteId === null && self::canViewConsolidated() ? '' : ' AND site_id = ' . (int) $siteId;
+
+            if (in_array($key,['pending_pig_groups','pending_pig_slaughters','ready_pig_shipments','incoming_carcasses','pending_carcass_controls','pending_butchery_transformations','expired_cold_lots','expired_counter_lots'],true)) {
+                require_once dirname(__DIR__).'/services/OperationalAttentionService.php';
+                return (new OperationalAttentionService($db))->countFor($key) ?: null;
+            }
 
             $queries = [
                 'pending_weighings' => "SELECT COUNT(*) FROM weighings WHERE status = 'pending' AND deleted_at IS NULL{$siteFilter}",

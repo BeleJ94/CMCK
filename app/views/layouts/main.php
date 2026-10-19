@@ -3,10 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#12324a">
+    <meta name="theme-color" content="#18864b">
     <title><?= e($title ?? 'Application') ?> - <?= e(config('app.name')) ?></title>
     <link rel="stylesheet" href="<?= e(asset_url('vendor/bootstrap-icons/bootstrap-icons.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset_url('css/app.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset_url('css/design-system.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset_url('css/operations.css')) ?>">
 </head>
 <body class="app-body">
     <a class="skip-link" href="#mainContent">Aller au contenu principal</a>
@@ -57,6 +59,7 @@
     </section>
 
     <section class="command-palette" role="dialog" aria-modal="true" aria-labelledby="commandPaletteTitle" aria-hidden="true" data-command-palette>
+        <h2 id="commandPaletteTitle" class="sr-only">Rechercher une fonction</h2>
         <div class="command-palette-search">
             <i class="bi bi-search" aria-hidden="true"></i>
             <label class="sr-only" for="globalCommandSearch">Rechercher une fonction</label>
@@ -86,12 +89,16 @@
     <script src="<?= e(asset_url('js/packaging.js')) ?>"></script>
     <script src="<?= e(asset_url('js/finished-stocks.js')) ?>"></script>
     <script src="<?= e(asset_url('js/livestock.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/pigs.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/porcine-flow.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/butchery-pos.js')) ?>"></script>
     <script src="<?= e(asset_url('js/butchery.js')) ?>"></script>
     <script src="<?= e(asset_url('js/cancellations.js')) ?>"></script>
     <script src="<?= e(asset_url('js/budgets.js')) ?>"></script>
     <script src="<?= e(asset_url('js/fuel-logistics.js')) ?>"></script>
     <script src="<?= e(asset_url('js/distributions.js')) ?>"></script>
     <script src="<?= e(asset_url('js/transfers.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/ui-shell.js')) ?>"></script>
     <script src="<?= e(asset_url('js/app.js')) ?>"></script>
 </body>
 </html>

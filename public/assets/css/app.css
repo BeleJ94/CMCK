@@ -4756,24 +4756,10 @@ body:has(.work-editor[open]),body:has(.work-detail[open]) { overflow:hidden; }
 .butchery-stock-soon{color:#8a601a;font-weight:600}
 [data-butchery-history=stocks]{min-width:980px!important}
 [data-butchery-history=stocks] td:nth-child(4){white-space:normal}
-PHP
-php -l app/views/butchery/stocks.php
-php -l app/views/butchery/stock_table.php
-php -l app/views/butchery/index.php
-php -l app/models/Butchery.php
-node --check public/assets/js/app.js
-php scripts/test_ui_experience.php | tail -2
-git diff --check[data-outgoing-form] [data-outgoing-balance]{margin-top:12px}
+[data-outgoing-form] [data-outgoing-balance]{margin-top:12px}
 [data-outgoing-history] table{min-width:900px}
 .butchery-workspace .butchery-recipe-composition-title{font-size:13px;color:#345e4a;margin:18px 0 8px}
 #butchery-recipe-editor label small{font-size:11px;line-height:1.5;color:#64748b;font-weight:400}
-PHP
-php -l app/views/butchery/index.php
-php -l app/views/butchery/recipes.php
-php -l app/models/Butchery.php
-node --check public/assets/js/app.js
-php scripts/test_ui_experience.php | tail -2
-git diff --check
 /* Compact inter-site transfer directory. */
 .transfer-workspace .butchery-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
 .transfer-workspace .table-panel{min-width:0}
@@ -4817,15 +4803,7 @@ git diff --check
 .distribution-workspace .butchery-history-details dd{overflow-wrap:anywhere}
 .distribution-workspace .table-panel{padding:12px}
 .distribution-stock-summary{font-size:12px;border-radius:6px;padding:9px 12px;background:#f0f7f2;color:#27613e;margin:12px 0}
-PHP
-php -l app/views/distributions/modal_create.php
-php -l app/views/distributions/index.php
-php -l app/models/Distribution.php
-php -l app/controllers/DistributionController.php
-node --check public/assets/js/distributions.js
-node --check public/assets/js/app.js
-php scripts/test_ui_experience.php | tail -2
- git diff --check.fuel-workspace .fuel-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.fuel-workspace .fuel-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .fuel-workspace .fuel-action-panel{padding:10px 12px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:10px}
 .fuel-workspace .fuel-action-panel h3{font-size:13px;margin:0;padding:0;background:none;border:0}
 .fuel-workspace .fuel-reference{padding:10px 12px;border:1px solid #dde5ec;border-radius:8px;margin-bottom:12px;background:#fff;font-size:13px}
