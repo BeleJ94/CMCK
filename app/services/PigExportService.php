@@ -8,9 +8,11 @@ class PigExportService
         return strtolower(strtr($value, ['À'=>'a','Â'=>'a','Ä'=>'a','à'=>'a','â'=>'a','ä'=>'a','É'=>'e','È'=>'e','Ê'=>'e','Ë'=>'e','é'=>'e','è'=>'e','ê'=>'e','ë'=>'e','Î'=>'i','Ï'=>'i','î'=>'i','ï'=>'i','Ô'=>'o','Ö'=>'o','ô'=>'o','ö'=>'o','Ù'=>'u','Û'=>'u','Ü'=>'u','ù'=>'u','û'=>'u','ü'=>'u','Ç'=>'c','ç'=>'c']));
     }
 
-    public function report(array $directory, array $query): array
+    public function report(array $directory, array $query, ?array $groups = null): array
     {
-        $labels=[''=>'Tous les lots','A'=>'Groupe A','B'=>'Groupe B','C'=>'Groupe C','male'=>'Mâles','female'=>'Femelles','breeding'=>'Reproducteurs','pending'=>'Passages à vérifier','unknown'=>'Lots à renseigner'];
+        $labels=[''=>'Tous les lots'];
+        foreach(array_merge(array_column($groups??[],'code'),array_column($directory,'confirmed_group')) as$code)if($code!==null)$labels[$code]='Groupe '.$code;
+        $labels+=['male'=>'Mâles','female'=>'Femelles','breeding'=>'Reproducteurs','pending'=>'Passages à vérifier','unknown'=>'Lots à renseigner'];
         $filter=is_string($query['filter']??null)?$query['filter']:'';
         $metric=is_string($query['metric']??null)?$query['metric']:'';
         $search=is_string($query['q']??null)?trim($query['q']):'';

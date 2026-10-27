@@ -18,5 +18,9 @@ try{
     if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='livestock_pig_profiles'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/036_add_pig_lifecycle.sql'));
     if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='butchery_counters'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/037_add_farm_carcasses_and_butchery_counters.sql'));
     if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='butchery_pos_tickets'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/040_add_butchery_pos.sql'));
+    if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='livestock_pig_groups'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/041_add_pig_group_referential.sql'));
+    if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='livestock_pond_parcels'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/042_add_fish_ponds_and_transit_weighing.sql'));
+    if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='cattle_slaughter_details'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/043_add_cattle_flow.sql'));
+    if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='poultry_lot_profiles'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/044_add_poultry_flow.sql'));
     echo $name,PHP_EOL;
 }catch(Throwable $e){$db->exec('DROP DATABASE `'.$name.'`');throw $e;}

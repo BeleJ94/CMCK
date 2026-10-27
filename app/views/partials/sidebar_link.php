@@ -1,6 +1,6 @@
 <?php
     $itemPath = trim($item['path'], '/');
-    $isActive = $currentPath === $itemPath || (!in_array($itemPath, ['agriculture','livestock','livestock/pigs','butchery'], true) && strpos($currentPath, $itemPath . '/') === 0);
+    $isActive = $currentPath === $itemPath || (!in_array($itemPath, ['agriculture','livestock','livestock/pigs','livestock/fish','livestock/cattle','livestock/poultry','butchery'], true) && strpos($currentPath, $itemPath . '/') === 0);
     $searchText = strtolower(($group['label'] ?? '') . ' ' . ($item['submenu'] ?? '') . ' ' . ($item['label'] ?? '') . ' ' . ($item['path'] ?? ''));
 ?>
 <a

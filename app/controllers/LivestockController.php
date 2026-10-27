@@ -3,7 +3,7 @@ class LivestockController extends Controller
 {
  public function index(){$this->page('species');}
  public function lots(){$this->page('batches');}
- public function speciesLots($id){$refs=$this->model('Livestock')->references();foreach($refs['species'] as $sp)if((int)$sp['id']===(int)$id&&$sp['code']==='PORC'){redirect('livestock/pigs');return;}$this->page('batches',(int)$id);}
+ public function speciesLots($id){$refs=$this->model('Livestock')->references();foreach($refs['species'] as $sp){if((int)$sp['id']===(int)$id&&$sp['code']==='PORC'){redirect('livestock/pigs');return;}if((int)$sp['id']===(int)$id&&$sp['category']==='fish'){require_once dirname(__DIR__).'/services/FishFlowService.php';if((new FishFlowService())->fishAvailable()){redirect('livestock/fish');return;}}if((int)$sp['id']===(int)$id&&$sp['code']==='BOVIN'){require_once dirname(__DIR__).'/services/CattleFlowService.php';if((new CattleFlowService())->cattleAvailable()){redirect('livestock/cattle');return;}}if((int)$sp['id']===(int)$id&&$sp['code']==='POULET'){require_once dirname(__DIR__).'/services/PoultryFlowService.php';if((new PoultryFlowService())->poultryAvailable()){redirect('livestock/poultry');return;}}}$this->page('batches',(int)$id);}
  public function daily(){$this->page('daily');}
  public function conversionsPage(){$this->page('conversions');}
  public function transfersPage(){$this->page('transfers');}

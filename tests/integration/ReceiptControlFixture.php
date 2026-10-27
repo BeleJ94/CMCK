@@ -33,7 +33,7 @@ try{
         $flow->advanceShipment($transfer,'approve',$user);
         $flow->advanceShipment($transfer,'dispatch',$user);
         Auth::selectSite((string)$fixture['butchery']);
-        $receipt=$flow->arrival($key(['transfer_id'=>(string)$transfer]),$user);
+        $receipt=$flow->arrival($key(['transfer_id'=>(string)$transfer,'weighing_mode'=>'net','net_kg'=>'2']),$user);
         $record=receiptFixtureQuery('SELECT r.receipt_number,t.transfer_number,t.quantity_kg,b.batch_number,s.name source_name FROM butchery_receipts r JOIN livestock_transfers t ON t.id=r.livestock_transfer_id JOIN livestock_batches b ON b.id=t.batch_id JOIN sites s ON s.id=t.source_site_id WHERE r.id=?',[$receipt])->fetch();
         echo json_encode(['receiptId'=>$receipt,'receiptNumber'=>$record['receipt_number'],'transferId'=>$transfer,'transferReference'=>$record['transfer_number'],'source'=>$record['source_name'],'batchNumber'=>$record['batch_number'],'quantity'=>(float)$record['quantity_kg']],JSON_UNESCAPED_UNICODE);
     }

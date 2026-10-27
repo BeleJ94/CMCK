@@ -4,8 +4,12 @@ $coldRows=[];
 $coldStatuses=['available'=>'Disponible','reserved'=>'Avec réservation','quarantine'=>'En quarantaine','rejected'=>'Refusé','cancelled'=>'Annulé','in_transit'=>'En transit','expired'=>'DLC dépassée','depleted'=>'Épuisé'];
 foreach(['raw'=>$raw,'finished'=>$finished] as$kind=>$lots){
     foreach($lots as$lot){
+        // Live poultry is not kept in the cold room: it is shown on the transformation page.
+        if(!empty($lot['is_live']))continue;
         $physical=(float)($kind==='raw'?$lot['quantity_kg']:$lot['cold_kg']);
         if($physical<=0)continue;
+        // Stocks counted in pieces (poultry) also show their pieces; NULL otherwise.
+        $pieces=isset($lot['quantity_pieces'])?(int)($kind==='raw'?$lot['quantity_pieces']:$lot['cold_pieces']):null;
         $reserved=(float)$lot['reserved_kg'];
         $usable=in_array($lot['status'],['available','reserved'],true)&&$lot['expiry_date']>=date('Y-m-d');
         $available=$usable?max(0,round($kind==='raw'?$physical-$reserved:(float)$lot['cold_available_kg'],3)):0;
@@ -14,6 +18,7 @@ foreach(['raw'=>$raw,'finished'=>$finished] as$kind=>$lots){
             'key'=>$kind.'-'.$lot['id'],'kind'=>$kind,'article'=>$kind.'-'.$lot['item_id'],
             'kind_label'=>$kind==='raw'?'Carcasses et matières':'Produit transformé',
             'physical'=>$physical,'reserved'=>$reserved,'available'=>$available,
+            'pieces'=>$pieces,'available_pieces'=>$pieces===null?null:($usable?max(0,$kind==='raw'?$pieces-(int)$lot['reserved_pieces']:(int)$lot['cold_available_pieces']):0),
             'state'=>$state,'state_label'=>$coldStatuses[$state]??'Indisponible',
             'expired'=>$lot['expiry_date']<date('Y-m-d'),
         ]);
@@ -34,8 +39,9 @@ $coldCanTransform=$canOperate&&Auth::can('butchery','create',$site);
 $coldArticles=[];
 foreach($coldRows as$row){
     $key=$row['article'];
-    if(!isset($coldArticles[$key]))$coldArticles[$key]=['key'=>$key,'kind'=>$row['kind'],'name'=>$row['item_name'],'physical'=>0,'reserved'=>0,'available'=>0,'lots'=>0,'expired'=>0,'search'=>[]];
+    if(!isset($coldArticles[$key]))$coldArticles[$key]=['key'=>$key,'kind'=>$row['kind'],'name'=>$row['item_name'],'physical'=>0,'reserved'=>0,'available'=>0,'pieces'=>null,'available_pieces'=>null,'lots'=>0,'expired'=>0,'search'=>[]];
     foreach(['physical','reserved','available'] as$weight)$coldArticles[$key][$weight]=round($coldArticles[$key][$weight]+$row[$weight],3);
+    if($row['pieces']!==null)foreach(['pieces','available_pieces'] as$count)$coldArticles[$key][$count]=(int)$coldArticles[$key][$count]+(int)$row[$count];
     $coldArticles[$key]['lots']++;
     $coldArticles[$key]['expired']+=(int)$row['expired'];
     $coldArticles[$key]['search'][]=$row['lot_number'].' '.($row['batch_number']??'');

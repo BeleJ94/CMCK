@@ -6,7 +6,7 @@
 <button type="button" class="btn-secondary" data-flow-reset><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Réinitialiser</button>
 <a class="btn-secondary" href="<?=e(base_url('butchery/history/receipts'))?>"><i class="bi bi-clock-history" aria-hidden="true"></i> Autres livraisons et historique</a>
 </div>
-<div class="slaughter-register-context"><div class="ui-filterbar__summary"><strong data-flow-count aria-live="polite"></strong><span aria-hidden="true">·</span><small data-flow-filter-count></small></div><p><i class="bi bi-info-circle" aria-hidden="true"></i> Arrivée → contrôle sanitaire → entrée en chambre froide.</p></div>
+<div class="slaughter-register-context"><div class="ui-filterbar__summary"><strong data-flow-count aria-live="polite"></strong><span aria-hidden="true">·</span><small data-flow-filter-count></small></div><p><i class="bi bi-info-circle" aria-hidden="true"></i> Pesée d’arrivée → contrôle sanitaire → entrée en chambre froide.</p></div>
 </section>
 <p class="flow-empty" data-flow-filter-empty role="status" hidden>Aucune réception pour ces filtres. Modifiez la recherche ou réinitialisez les filtres.</p>
 <p class="app-alert alert-info" data-flow-filter-update role="status" hidden><i class="bi bi-info-circle" aria-hidden="true"></i> Des réceptions nouvelles ou modifiées sont masquées par vos filtres. <button type="button" class="btn-secondary" data-flow-reveal-results>Afficher tous les résultats</button></p>

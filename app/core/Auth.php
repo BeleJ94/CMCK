@@ -346,12 +346,20 @@ class Auth
                 ['label' => 'Effectifs et groupes', 'submenu' => 'Porcs', 'submenu_icon' => 'bi-heart-pulse', 'path' => 'livestock/pigs', 'icon' => 'bi-heart-pulse', 'badge' => 'pending_pig_groups', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Abattage à la ferme', 'submenu' => 'Porcs', 'submenu_icon' => 'bi-heart-pulse', 'path' => 'livestock/pigs/slaughters', 'icon' => 'bi-clipboard-check', 'badge' => 'pending_pig_slaughters', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Carcasses et envois', 'submenu' => 'Porcs', 'submenu_icon' => 'bi-heart-pulse', 'path' => 'livestock/pigs/shipments', 'icon' => 'bi-truck', 'badge' => 'ready_pig_shipments', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Groupes d’âge', 'submenu' => 'Porcs', 'submenu_icon' => 'bi-heart-pulse', 'path' => 'livestock/pigs/groups', 'icon' => 'bi-sliders', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Réceptions et lots', 'submenu' => 'Bœufs', 'submenu_icon' => 'bi-truck-flatbed', 'path' => 'livestock/cattle', 'icon' => 'bi-box-arrow-in-down', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Abattages et envois', 'submenu' => 'Bœufs', 'submenu_icon' => 'bi-truck-flatbed', 'path' => 'livestock/cattle/slaughters', 'icon' => 'bi-clipboard-check', 'badge' => 'pending_cattle_slaughters', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Lots et suivi', 'submenu' => 'Volailles', 'submenu_icon' => 'bi-egg', 'path' => 'livestock/poultry', 'icon' => 'bi-egg', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Abattages et envois', 'submenu' => 'Volailles', 'submenu_icon' => 'bi-egg', 'path' => 'livestock/poultry/slaughters', 'icon' => 'bi-clipboard-check', 'badge' => 'pending_poultry_slaughters', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Étangs et lots', 'submenu' => 'Poissons', 'submenu_icon' => 'bi-water', 'path' => 'livestock/fish', 'icon' => 'bi-water', 'badge' => 'pending_fish_harvests', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Pêches et envois', 'submenu' => 'Poissons', 'submenu_icon' => 'bi-water', 'path' => 'livestock/fish/harvests', 'icon' => 'bi-truck', 'badge' => 'ready_fish_shipments', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Bâtiments et étangs', 'path' => 'livestock/facilities', 'icon' => 'bi-building', 'roles' => ['administrateur', 'direction']],
             ]],
             ['label' => 'Boucherie', 'icon' => 'bi-shop', 'items' => [
                 ['label' => 'Vue d’ensemble', 'path' => 'butchery', 'icon' => 'bi-grid', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Réceptions', 'path' => 'butchery/receipts', 'icon' => 'bi-box-arrow-in-down', 'badge' => 'pending_carcass_controls', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Transformation', 'path' => 'butchery/production', 'icon' => 'bi-gear', 'badge' => 'pending_butchery_transformations', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Écarts de pesée', 'path' => 'butchery/weighing-gaps', 'icon' => 'bi-speedometer2', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Chambre froide', 'path' => 'butchery/cold-room', 'icon' => 'bi-snow', 'badge' => 'expired_cold_lots', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Comptoirs et ventes', 'path' => 'butchery/counters', 'icon' => 'bi-shop', 'badge' => 'expired_counter_lots', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Recettes', 'path' => 'butchery/recipes', 'icon' => 'bi-journal-text', 'roles' => ['administrateur', 'direction']],
@@ -422,7 +430,7 @@ class Auth
             $siteId = self::currentSiteId();
             $siteFilter = $siteId === null && self::canViewConsolidated() ? '' : ' AND site_id = ' . (int) $siteId;
 
-            if (in_array($key,['pending_pig_groups','pending_pig_slaughters','ready_pig_shipments','incoming_carcasses','pending_carcass_controls','pending_butchery_transformations','expired_cold_lots','expired_counter_lots'],true)) {
+            if (in_array($key,['pending_pig_groups','pending_pig_slaughters','ready_pig_shipments','pending_fish_harvests','ready_fish_shipments','pending_cattle_slaughters','ready_cattle_shipments','pending_poultry_slaughters','ready_poultry_shipments','incoming_carcasses','pending_carcass_controls','pending_butchery_transformations','expired_cold_lots','expired_counter_lots'],true)) {
                 require_once dirname(__DIR__).'/services/OperationalAttentionService.php';
                 return (new OperationalAttentionService($db))->countFor($key) ?: null;
             }

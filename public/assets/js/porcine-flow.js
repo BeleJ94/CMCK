@@ -196,40 +196,63 @@ window.initPorcineFlow=function(root){
    input.addEventListener('input',filterOptions);select.addEventListener('change',filterOptions);select.form.addEventListener('reset',()=>queueMicrotask(()=>{input.value='';filterOptions();}));filterOptions();
   });
  }
+ const fr=(grams,digits=3)=>(grams/1000).toLocaleString('fr-FR',{maximumFractionDigits:digits});
+ // Kilos following pieces taken from a stock: proportional in grams, the last pieces take the remainder (as on the server).
+ const shareGrams=(grams,pieces,taken)=>taken>=pieces?grams:Math.floor(grams*taken/pieces);
  function syncTransformation(form){
   const area=form.querySelector('[data-transformation-form]');if(!area)return;
   const source=form.elements.source_item_id,quantity=form.elements.quantity_kg,day=form.elements.production_date.value;
-  const manual=form.elements.lot_mode.value==='manual',requested=Math.max(0,Math.round(Number(quantity.value||0)*1000));
+  // Carcasses counted in pieces (poultry) leave by pieces: their kilos come from the lots.
+  const counted=source.selectedOptions[0]?.dataset.pieces==='1',piecesInput=form.elements.quantity_pieces,piecesField=form.querySelector('[data-transform-pieces]');
+  piecesField.hidden=!counted;piecesInput.disabled=!counted;piecesInput.required=counted;quantity.readOnly=counted;quantity.required=!counted;
+  form.querySelector('[data-transform-kg-label]').textContent=counted?'Poids correspondant (kg)':'Quantité sortie (kg) *';
+  const manual=form.elements.lot_mode.value==='manual';
   const lots=Array.from(form.querySelectorAll('[data-transform-lot]'));
   const eligible=lots.filter(lot=>lot.dataset.item===source.value&&lot.dataset.production<=day);
-  let available=0,remaining=requested;
-  lots.forEach(lot=>{const check=lot.querySelector('input');const matches=eligible.includes(lot);lot.hidden=!matches;check.disabled=!matches||!manual;lot.querySelector('[data-transform-take]').textContent='';if(matches&&(!manual||check.checked))available+=Math.round(Number(lot.dataset.quantity)*1000);});
-  eligible.forEach(lot=>{const check=lot.querySelector('input');const take=(!manual||check.checked)?Math.min(remaining,Math.round(Number(lot.dataset.quantity)*1000)):0;remaining-=take;lot.querySelector('[data-transform-take]').textContent=take?'Prélèvement proposé : '+(take/1000).toLocaleString('fr-FR',{maximumFractionDigits:3})+' kg':'Aucun prélèvement proposé';});
-  quantity.max=String(available/1000);
-  if(source.value&&manual&&!eligible.some(lot=>lot.querySelector('input').checked))quantity.setCustomValidity('Choisissez au moins un lot ou revenez au choix automatique.');
-  form.querySelector('[data-transform-available]').textContent=source.value?(available/1000).toLocaleString('fr-FR',{maximumFractionDigits:3})+' kg disponibles'+(manual?' dans les lots cochés.':' · Lots choisis automatiquement par DLC la plus proche.'):'Choisissez le produit. Les lots seront proposés automatiquement, par DLC la plus proche.';
+  const used=lot=>!manual||lot.querySelector('input').checked;
+  let available=0,availablePieces=0;
+  lots.forEach(lot=>{const check=lot.querySelector('input');const matches=eligible.includes(lot);lot.hidden=!matches;check.disabled=!matches||!manual;lot.querySelector('[data-transform-take]').textContent='';if(matches&&used(lot)){available+=Math.round(Number(lot.dataset.quantity)*1000);availablePieces+=Number(lot.dataset.pieces||0);}});
+  let requested;
+  if(counted){
+   let remaining=Math.max(0,Math.floor(Number(piecesInput.value||0))),grams=0;
+   eligible.forEach(lot=>{const free=Number(lot.dataset.pieces||0),lotGrams=Math.round(Number(lot.dataset.quantity)*1000),take=used(lot)?Math.min(remaining,free):0,taken=take?shareGrams(lotGrams,free,take):0;remaining-=take;grams+=taken;lot.querySelector('[data-transform-take]').textContent=take?'Prélèvement proposé : '+take+' pièce(s), '+fr(taken)+' kg':'Aucun prélèvement proposé';});
+   requested=grams;quantity.value=grams?(grams/1000).toFixed(3):'';piecesInput.max=String(availablePieces);quantity.removeAttribute('max');
+   piecesInput.setCustomValidity(remaining>0?'Pièces disponibles insuffisantes dans les lots choisis.':'');
+  }else{
+   requested=Math.max(0,Math.round(Number(quantity.value||0)*1000));let remaining=requested;
+   eligible.forEach(lot=>{const take=used(lot)?Math.min(remaining,Math.round(Number(lot.dataset.quantity)*1000)):0;remaining-=take;lot.querySelector('[data-transform-take]').textContent=take?'Prélèvement proposé : '+fr(take)+' kg':'Aucun prélèvement proposé';});
+   quantity.max=String(available/1000);
+  }
+  if(source.value&&manual&&!eligible.some(lot=>lot.querySelector('input').checked))(counted?piecesInput:quantity).setCustomValidity('Choisissez au moins un lot ou revenez au choix automatique.');
+  form.querySelector('[data-transform-available]').textContent=source.value?(counted?availablePieces.toLocaleString('fr-FR')+' pièce(s), ':'')+fr(available)+' kg disponibles'+(manual?' dans les lots cochés.':' · Lots choisis automatiquement par DLC la plus proche.'):'Choisissez le produit. Les lots seront proposés automatiquement, par DLC la plus proche.';
   const distribute=form.querySelector('[data-transform-distribute]').checked;
   form.querySelector('[data-transform-destinations]').hidden=!distribute;
   form.elements.counter_id.disabled=!distribute;form.elements.counter_id.required=distribute;
   const rows=Array.from(form.querySelectorAll('[data-flow-output]'));let total=0,counter=0;
   rows.forEach(row=>{
    const obtained=row.querySelector('[data-output-quantity]'),product=row.querySelector('[data-flow-product-select]');
+   // Whole birds and other products counted in pieces: pieces obtained, and pieces sent to the counter.
+   const tracked=product.selectedOptions[0]?.dataset.pieces==='1',piecesLabel=row.querySelector('[data-output-pieces]'),pieces=piecesLabel.querySelector('input');
+   piecesLabel.hidden=!tracked;pieces.disabled=!tracked;pieces.required=tracked;
    const allocation=form.querySelector('[data-output-allocation="'+row.dataset.outputIndex+'"]');
    form.querySelector('[data-transform-allocations]').appendChild(allocation);
-   const toCounter=allocation.querySelector('[data-output-counter]');
-   toCounter.disabled=!distribute;toCounter.required=distribute;toCounter.max=obtained.value||'0';
-   allocation.querySelector('[data-allocation-label]').textContent=(product.value?product.selectedOptions[0].textContent:'Produit à choisir')+' · Au comptoir (kg)';
-   const outputGrams=Math.round(Number(obtained.value||0)*1000),counterGrams=distribute?Math.round(Number(toCounter.value||0)*1000):0;
-   allocation.querySelector('[data-allocation-help]').textContent='Au froid : '+(Math.max(0,outputGrams-counterGrams)/1000).toLocaleString('fr-FR',{maximumFractionDigits:3})+' kg sur '+(outputGrams/1000).toLocaleString('fr-FR')+' kg obtenus.';
+   const toCounter=allocation.querySelector('[data-output-counter]'),toCounterPieces=allocation.querySelector('[data-output-counter-pieces]');
+   toCounter.hidden=tracked;toCounter.disabled=!distribute||tracked;toCounter.required=distribute&&!tracked;toCounter.max=obtained.value||'0';
+   toCounterPieces.hidden=!tracked;toCounterPieces.disabled=!distribute||!tracked;toCounterPieces.required=distribute&&tracked;toCounterPieces.max=pieces.value||'0';
+   allocation.querySelector('[data-allocation-label]').textContent=(product.value?product.selectedOptions[0].textContent:'Produit à choisir')+(tracked?' · Au comptoir (pièces)':' · Au comptoir (kg)');
+   const outputGrams=Math.round(Number(obtained.value||0)*1000),outputPieces=Math.floor(Number(pieces.value||0));
+   const counterPieces=distribute&&tracked?Math.min(outputPieces,Math.floor(Number(toCounterPieces.value||0))):0;
+   const counterGrams=!distribute?0:(tracked?(outputPieces?shareGrams(outputGrams,outputPieces,counterPieces):0):Math.round(Number(toCounter.value||0)*1000));
+   allocation.querySelector('[data-allocation-help]').textContent=tracked?'Au froid : '+Math.max(0,outputPieces-counterPieces).toLocaleString('fr-FR')+' pièce(s) sur '+outputPieces.toLocaleString('fr-FR')+', soit '+fr(Math.max(0,outputGrams-counterGrams))+' kg.':'Au froid : '+fr(Math.max(0,outputGrams-counterGrams))+' kg sur '+fr(outputGrams)+' kg obtenus.';
    total+=outputGrams;counter+=counterGrams;
    row.querySelector('[data-flow-remove-output]').disabled=rows.length===1;
   });
-  if(total>requested)quantity.setCustomValidity('Le poids des produits dépasse la quantité sortie.');
+  if(total>requested)(counted?piecesInput:quantity).setCustomValidity('Le poids des produits dépasse la quantité sortie.');
   const gap=Math.max(0,requested-total),balance=form.querySelector('[data-flow-balance]');
-  balance.textContent=(requested/1000).toLocaleString('fr-FR')+' kg sortis → '+(total/1000).toLocaleString('fr-FR')+' kg obtenus → '+(gap/1000).toLocaleString('fr-FR')+' kg '+(gap?'d’écart à confirmer':'de pertes')+'. Au froid : '+(Math.max(0,total-counter)/1000).toLocaleString('fr-FR')+' kg · Au comptoir : '+(counter/1000).toLocaleString('fr-FR')+' kg.';
+  balance.textContent=(counted?Math.floor(Number(piecesInput.value||0)).toLocaleString('fr-FR')+' pièce(s), ':'')+fr(requested)+' kg sortis → '+fr(total)+' kg obtenus → '+fr(gap)+' kg '+(gap?'d’écart à confirmer':'de pertes')+'. Au froid : '+fr(Math.max(0,total-counter))+' kg · Au comptoir : '+fr(counter)+' kg.';
   balance.classList.toggle('flow-invalid',total>requested);
   const loss=form.elements.loss_confirmed,hasGap=gap>0;
-  const signature=JSON.stringify([source.value,quantity.value,day,manual,eligible.filter(lot=>!manual||lot.querySelector('input').checked).map(lot=>lot.querySelector('input').value),rows.map(row=>[row.querySelector('select').value,row.querySelector('[data-output-quantity]').value,row.querySelector('[type=date]').value]),counter]);
+  const signature=JSON.stringify([source.value,quantity.value,counted?piecesInput.value:'',day,manual,eligible.filter(used).map(lot=>lot.querySelector('input').value),rows.map(row=>[row.querySelector('select').value,row.querySelector('[data-output-quantity]').value,row.querySelector('[data-output-pieces] input').value,row.querySelector('[type=date]').value]),counter]);
   if(area.dataset.lossSignature!==signature)loss.checked=false;area.dataset.lossSignature=signature;
   loss.required=hasGap;loss.disabled=!hasGap;form.querySelector('[data-transform-loss]').hidden=!hasGap;
   form.querySelector('[data-flow-add-output]').disabled=rows.length>=30;
@@ -240,7 +263,11 @@ window.initPorcineFlow=function(root){
    const source=form.elements.batch_id||form.elements.weight_stock_id||form.elements.raw_lot_id||form.elements.counter_stock_id||form.elements.finished_lot_id;
    const max=source?.selectedOptions[0]?.dataset.max;const quantity=form.elements.heads||form.elements.quantity_kg;
    if(quantity){quantity.setCustomValidity('');if(max)quantity.max=max;else quantity.removeAttribute('max');}
-   const preview=form.querySelector('[data-flow-preview]');if(preview){const q=Number(quantity?.value||0);const price=Number(form.elements.unit_price?.value||0);preview.textContent=max?'Disponible : '+Number(max).toLocaleString('fr-FR')+(form.elements.heads?' porcs':' kg')+(q>0?' · Reste prévu : '+Math.max(0,Number(max)-q).toLocaleString('fr-FR'):'')+(price>0&&q>0?' · Total de la vente : '+(q*price).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}):''):'Choisissez le lot ou le produit concerné.';}
+   if(form.elements.quantity_pieces)form.elements.quantity_pieces.setCustomValidity('');
+   // Lots counted in pieces (poultry) move by pieces; their kilos follow on the server.
+   const pieceField=form.querySelector('[data-flow-pieces]'),counted=Boolean(pieceField&&source?.selectedOptions[0]?.dataset.pieces);
+   if(pieceField){const input=pieceField.querySelector('input');pieceField.hidden=!counted;input.disabled=!counted;input.required=counted;if(counted)input.max=source.selectedOptions[0].dataset.pieces;form.querySelector('[data-flow-kg]').hidden=counted;quantity.disabled=counted;quantity.required=!counted;}
+   const preview=form.querySelector('[data-flow-preview]');if(preview&&counted){const available=Number(source.selectedOptions[0].dataset.pieces),q=Number(form.elements.quantity_pieces.value||0);preview.textContent='Disponible : '+available.toLocaleString('fr-FR')+' pièce(s), '+Number(max).toLocaleString('fr-FR')+' kg'+(q>0?' · Reste prévu : '+Math.max(0,available-q).toLocaleString('fr-FR')+' pièce(s). Les kilos suivent les pièces.':'');}else if(preview){const q=Number(quantity?.value||0);const price=Number(form.elements.unit_price?.value||0);preview.textContent=max?'Disponible : '+Number(max).toLocaleString('fr-FR')+(form.elements.heads?' porcs':' kg')+(q>0?' · Reste prévu : '+Math.max(0,Number(max)-q).toLocaleString('fr-FR'):'')+(price>0&&q>0?' · Total de la vente : '+(q*price).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}):''):'Choisissez le lot ou le produit concerné.';}
    const balance=form.querySelector('[data-flow-balance]');if(balance&&!form.querySelector('[data-transformation-form]')){
     const rows=Array.from(form.querySelectorAll('[data-flow-output]'));
     const cold=rows.reduce((n,r)=>n+Number(r.querySelector('[data-output-cold]').value||0),0),counter=rows.reduce((n,r)=>n+Number(r.querySelector('[data-output-counter]').value||0),0),input=Number(form.elements.quantity_kg.value||0),total=cold+counter;
@@ -258,7 +285,7 @@ window.initPorcineFlow=function(root){
     checks.forEach(check=>check.closest('.receipt-control-check').classList.toggle('is-checked',check.checked));
     const progress=receiptControl.querySelector('[data-receipt-control-progress]');progress.textContent=completed+' / '+checks.length+' contrôles confirmés';progress.classList.toggle('is-complete',controlsReady);
    }
-   const missing=Array.from(form.querySelectorAll('select[required]')).some(s=>!Array.from(s.options).some(o=>o.value&&!o.disabled));const submit=form.querySelector('[type=submit]');if(submit)submit.disabled=missing||!controlsReady;
+   const missing=Array.from(form.querySelectorAll('select[required]')).some(s=>!Array.from(s.options).some(o=>o.value&&!o.disabled));const submit=form.querySelector('[type=submit]');if(submit)submit.disabled=missing||!controlsReady||form.querySelector('[data-weighing-locked]')!==null;
   }
   form.querySelector('[data-flow-add-output]')?.addEventListener('click',()=>{const template=form.querySelector('[data-flow-output-template]');const wrap=form.querySelector('[data-flow-outputs]');wrap.insertAdjacentHTML('beforeend',template.innerHTML.replaceAll('__INDEX__',String(next++)));initSourceSearch(wrap);sync();});
   form.addEventListener('click',event=>{const remove=event.target.closest('[data-flow-remove-output]');if(remove){const row=remove.closest('[data-flow-output]');form.querySelector('[data-output-allocation="'+row.dataset.outputIndex+'"]')?.remove();row.remove();sync();}});
@@ -287,7 +314,7 @@ window.initPorcineFlow=function(root){
      const match=normalize(choice.dataset.search).includes(query);
      choice.hidden=!match&&!radio.checked;if(match)found++;
     });
-    picker.querySelector('[data-slaughter-lot-count]').textContent=choices.length ? found+' lot(s) correspondant(s) sur '+choices.length : 'Aucun lot du groupe C validé disponible. Vérifiez les effectifs et les passages de groupe.';
+    picker.querySelector('[data-slaughter-lot-count]').textContent=choices.length ? found+' lot(s) correspondant(s) sur '+choices.length : 'Aucun lot validé dans un groupe autorisé à l’abattage. Vérifiez les effectifs et les passages de groupe.';
     picker.querySelector('[data-slaughter-no-match]').hidden=found>0||choices.length===0;
     picker.querySelector('[data-slaughter-selected-label]').textContent=select.value?select.selectedOptions[0].textContent:'Rechercher et choisir un lot…';
     trigger.classList.toggle('has-selection',Boolean(select.value));

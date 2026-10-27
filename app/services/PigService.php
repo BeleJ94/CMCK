@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/PigGroupService.php';
 
 /** First stage of the porcine lifecycle. Head counts remain in livestock_batches. */
 class PigService extends Model
@@ -16,17 +17,18 @@ class PigService extends Model
         return $date;
     }
 
-    public static function expectedGroup(string $bornOn, ?DateTimeImmutable $today = null): string
+    /** Without an explicit referential, the historical A/B/C rules apply. */
+    public static function expectedGroup(string $bornOn, ?DateTimeImmutable $today = null, ?array $groups = null): string
     {
         $birth = self::date($bornOn);
         $today = ($today ?: new DateTimeImmutable('today'))->setTime(0, 0);
         if ($birth > $today) throw new RuntimeException('La naissance ne peut pas être dans le futur.');
-        // Calendar months, clamped to the last day of the destination month.
-        $threshold = static function ($months) use ($birth) {
-            $month = $birth->modify('first day of this month')->modify('+'.$months.' months');
-            return $month->setDate((int)$month->format('Y'), (int)$month->format('m'), min((int)$birth->format('d'), (int)$month->format('t')));
-        };
-        return $today < $threshold(2) ? 'A' : ($today < $threshold(3) ? 'B' : 'C');
+        return PigGroupService::classify($birth, $today, $groups ?? PigGroupService::defaults())['code'];
+    }
+
+    public function groups(): array
+    {
+        return PigGroupService::active($this->db);
     }
 
     public static function version(array $row): string
@@ -48,8 +50,9 @@ class PigService extends Model
         $species = $this->query("SELECT sp.code FROM livestock_batches b JOIN livestock_species sp ON sp.id=b.species_id WHERE b.id=?", [$batchId])->fetchColumn();
         if ($species !== 'PORC' || !$this->available()) return;
         if ($operation !== 'slaughter') throw new RuntimeException('Les porcs sont abattus à la ferme. Transférez ensuite les carcasses vers la boucherie.');
+        $groups = $this->groups();
         $profile = $this->row('SELECT born_on,confirmed_group FROM livestock_pig_profiles WHERE batch_id=?', [$batchId]);
-        if (!$profile || $profile['confirmed_group'] !== 'C' || self::expectedGroup($profile['born_on']) !== 'C') throw new RuntimeException('Renseignez le lot et validez son passage au groupe C avant l’abattage.');
+        if (!$profile || !PigGroupService::allows($groups, $profile['confirmed_group'], 'allows_slaughter') || self::expectedGroup($profile['born_on'], null, $groups) !== $profile['confirmed_group']) throw new RuntimeException('Renseignez le lot et validez son passage dans un groupe autorisé à l’abattage ('.PigGroupService::names($groups, 'allows_slaughter').').');
     }
 
     public function directory(): array
@@ -62,9 +65,12 @@ class PigService extends Model
             LEFT JOIN livestock_pig_profiles p ON p.batch_id=b.id
             WHERE sp.code='PORC' AND b.deleted_at IS NULL AND b.status='active' AND b.current_heads>0{$scope}
             ORDER BY p.born_on,b.id", $params)->fetchAll();
+        $groups = $this->groups();
         foreach ($rows as &$row) {
-            $row['expected_group'] = $row['born_on'] ? self::expectedGroup($row['born_on']) : null;
+            $row['expected_group'] = $row['born_on'] ? self::expectedGroup($row['born_on'], null, $groups) : null;
             $row['pending'] = $row['expected_group'] !== null && $row['expected_group'] !== $row['confirmed_group'];
+            $row['can_breed'] = PigGroupService::allows($groups, $row['confirmed_group'], 'allows_breeding');
+            $row['can_slaughter'] = !$row['pending'] && PigGroupService::allows($groups, $row['confirmed_group'], 'allows_slaughter');
             $row['version'] = self::version($row);
         }
         unset($row);
@@ -111,7 +117,7 @@ class PigService extends Model
         $sex = $data['sex'] ?? '';
         if (!in_array($sex, ['male','female'], true)) throw new RuntimeException('Choisissez mâles ou femelles.');
         $birth = self::date($data['born_on'] ?? '')->format('Y-m-d');
-        return [$sex, $birth, self::expectedGroup($birth)];
+        return [$sex, $birth, self::expectedGroup($birth, null, $this->groups())];
     }
 
     private function event(int $batchId, string $type, ?string $old, string $new, int $heads, string $reason, array $user): void
@@ -151,8 +157,9 @@ class PigService extends Model
             $mother = null;
             if ($origin === 'birth') {
                 $mother = $this->locked($data['mother_batch_id'] ?? 0, 'create');
-                if ((int)$mother['site_id'] !== $site || $mother['sex'] !== 'female' || $mother['purpose'] !== 'breeding' || $mother['confirmed_group'] !== 'C') throw new RuntimeException('Choisissez un lot de femelles reproductrices de cette ferme.');
-                if ($group !== 'A' || $birth <= $mother['born_on']) throw new RuntimeException('Une naissance doit alimenter le groupe A, après la naissance des reproductrices.');
+                $groups = $this->groups();
+                if ((int)$mother['site_id'] !== $site || $mother['sex'] !== 'female' || $mother['purpose'] !== 'breeding' || !PigGroupService::allows($groups, $mother['confirmed_group'], 'allows_breeding')) throw new RuntimeException('Choisissez un lot de femelles reproductrices de cette ferme.');
+                if (!PigGroupService::allows($groups, $group, 'accepts_births') || $birth <= $mother['born_on']) throw new RuntimeException('Une naissance doit alimenter un groupe qui accueille les naissances ('.PigGroupService::names($groups, 'accepts_births').'), après la naissance des reproductrices.');
             }
             $number = 'PORC-'.date('YmdHis').'-'.strtoupper(bin2hex(random_bytes(5)));
             $this->query("INSERT INTO livestock_batches(site_id,species_id,facility_id,batch_number,purpose,started_at,initial_heads,current_heads,status,created_by) VALUES(?,?,?,?,'fattening',?,?,?,'active',?)", [$site,$species['id'],$facility['id'],$number,date('Y-m-d'),$heads,$heads,$user['id']]);
@@ -179,7 +186,7 @@ class PigService extends Model
             $this->checkVersion($row,$data);
             if ($row['sex'] !== null) throw new RuntimeException('Ce lot possède déjà un suivi porcin.');
             if ($this->count($data['heads'] ?? '') !== (int)$row['current_heads']) throw new RuntimeException('Confirmez l’effectif actuel complet de ce lot.');
-            if ($row['purpose'] === 'breeding' && $group !== 'C') throw new RuntimeException('Un lot reproducteur doit appartenir au groupe C.');
+            if ($row['purpose'] === 'breeding' && !PigGroupService::allows($this->groups(), $group, 'allows_breeding')) throw new RuntimeException('Un lot reproducteur doit appartenir à un groupe ouvert à la reproduction ('.PigGroupService::names($this->groups(), 'allows_breeding').').');
             $this->query('INSERT INTO livestock_pig_profiles(batch_id,sex,born_on,confirmed_group,confirmed_by,confirmed_at) VALUES(?,?,?,?,?,CURRENT_TIMESTAMP)', [$id,$sex,$birth,$group,$user['id']]);
             $this->event((int)$id,'registration',null,$group,(int)$row['current_heads'],'Renseignement du lot existant après vérification terrain.',$user);
             $this->logActivity('pig_identification','livestock','livestock_batches',$id,'Identification du lot existant.',$row,['sex'=>$sex,'born_on'=>$birth,'confirmed_group'=>$group],$user,(int)$row['site_id']);
@@ -197,7 +204,7 @@ class PigService extends Model
             $row = $this->locked($id,'validate');
             $this->checkVersion($row,$data);
             if (!$row['born_on']) throw new RuntimeException('Renseignez la date de naissance de ce lot.');
-            $expected = self::expectedGroup($row['born_on']);
+            $expected = self::expectedGroup($row['born_on'], null, $this->groups());
             if ($expected === $row['confirmed_group']) throw new RuntimeException('Ce lot est déjà dans le bon groupe.');
             if (($data['target_group'] ?? '') !== $expected) throw new RuntimeException('Le groupe attendu a changé. Actualisez la page.');
             if (($data['field_checked'] ?? '') !== '1') throw new RuntimeException('Confirmez la vérification des animaux sur le terrain.');
@@ -221,7 +228,8 @@ class PigService extends Model
         try {
             $row = $this->locked($id,'update');
             $this->checkVersion($row,$data);
-            if ($row['confirmed_group'] !== 'C' || !$row['born_on'] || self::expectedGroup($row['born_on']) !== 'C') throw new RuntimeException('Validez d’abord le passage au groupe C.');
+            $groups = $this->groups();
+            if (!$row['born_on'] || !PigGroupService::allows($groups, $row['confirmed_group'], 'allows_breeding') || !PigGroupService::allows($groups, self::expectedGroup($row['born_on'], null, $groups), 'allows_breeding')) throw new RuntimeException('Validez d’abord le passage dans un groupe ouvert à la reproduction ('.PigGroupService::names($groups, 'allows_breeding').').');
             if ($heads > (int)$row['current_heads']) throw new RuntimeException('Effectif disponible insuffisant.');
             if ($row['purpose'] === $purpose) throw new RuntimeException('Ces porcs ont déjà cette orientation.');
             // Existing head commitments cannot be reassigned while awaiting execution.
@@ -231,16 +239,16 @@ class PigService extends Model
                 $number = 'PORC-'.date('YmdHis').'-'.strtoupper(bin2hex(random_bytes(5)));
                 $this->query("INSERT INTO livestock_batches(site_id,species_id,facility_id,batch_number,purpose,started_at,initial_heads,current_heads,initial_average_weight_kg,current_average_weight_kg,status,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,'active',?)", [$row['site_id'],$row['species_id'],$row['facility_id'],$number,$purpose,$row['started_at'],$heads,$heads,$row['initial_average_weight_kg'],$row['current_average_weight_kg'],$user['id']]);
                 $target = (int)$this->db->lastInsertId();
-                $this->query('INSERT INTO livestock_pig_profiles(batch_id,sex,born_on,confirmed_group,mother_batch_id,source_batch_id,confirmed_by,confirmed_at) VALUES(?,?,?,?,?,?,?,CURRENT_TIMESTAMP)', [$target,$row['sex'],$row['born_on'],'C',$row['mother_batch_id'],$id,$user['id']]);
+                $this->query('INSERT INTO livestock_pig_profiles(batch_id,sex,born_on,confirmed_group,mother_batch_id,source_batch_id,confirmed_by,confirmed_at) VALUES(?,?,?,?,?,?,?,CURRENT_TIMESTAMP)', [$target,$row['sex'],$row['born_on'],$row['confirmed_group'],$row['mother_batch_id'],$id,$user['id']]);
                 $this->query('UPDATE livestock_batches SET current_heads=current_heads-? WHERE id=?',[$heads,$id]);
-                $this->event((int)$id,'split','C','C',$heads,mb_substr('Sélection vers le lot #'.$target.' : '.trim($reason),0,500),$user);
+                $this->event((int)$id,'split',$row['confirmed_group'],$row['confirmed_group'],$heads,mb_substr('Sélection vers le lot #'.$target.' : '.trim($reason),0,500),$user);
                 $reference = (int)$this->db->lastInsertId();
                 $this->headMove((int)$id,'correction',$heads,(int)$row['current_heads'],(int)$row['current_heads']-$heads,$reference,$user);
                 $this->headMove($target,'correction',$heads,0,$heads,$reference,$user);
             } else {
                 $this->query('UPDATE livestock_batches SET purpose=? WHERE id=?',[$purpose,$id]);
             }
-            $this->event($target,$purpose,'C','C',$heads,trim($reason),$user);
+            $this->event($target,$purpose,$row['confirmed_group'],$row['confirmed_group'],$heads,trim($reason),$user);
             $this->logActivity('pig_orientation','livestock','livestock_batches',$id,trim($reason),['purpose'=>$row['purpose'],'heads'=>$row['current_heads']],['purpose'=>$purpose,'heads'=>$heads,'target_batch_id'=>$target],$user,(int)$row['site_id']);
             $this->db->commit();
             return $target;

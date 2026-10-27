@@ -32,7 +32,7 @@ $flow->cancelShipment($t2,keyData(['reason'=>'Report de l’envoi']),$user);ok((
 no(fn()=>$flow->advanceShipment($t2,'dispatch',$user),'Envoi annulé non expédiable');
 Auth::selectSite((string)$bouch);
 no(fn()=>$flow->shipment($send,$user),'Écriture ferme depuis le mauvais contexte refusée');
-$receipt=$flow->arrival(keyData(['transfer_id'=>$t1]),$user);ok((int)q('SELECT COUNT(*) FROM butchery_raw_lots')->fetchColumn()===0,'Arrivée en attente : aucun stock vendable créé');
+$receipt=$flow->arrival(keyData(['transfer_id'=>$t1,'weighing_mode'=>'net','net_kg'=>'120']),$user);ok((int)q('SELECT COUNT(*) FROM butchery_raw_lots')->fetchColumn()===0,'Arrivée en attente : aucun stock vendable créé');
 no(fn()=>$flow->receive(keyData(['receipt_id'=>$receipt,'visual_conform'=>'1']),$user),'Contrôle documentaire obligatoire');
 $receiveData=keyData(['receipt_id'=>$receipt,'visual_conform'=>'1','documents_conform'=>'1','temperature_c'=>'4']);$flow->receive($receiveData,$user);ok($flow->receive($receiveData,$user)===$receipt,'Contrôle de réception idempotent');
 $raw=(int)q('SELECT id FROM butchery_raw_lots WHERE receipt_id=?',[$receipt])->fetchColumn();ok((float)q('SELECT quantity_kg FROM butchery_raw_lots WHERE id=?',[$raw])->fetchColumn()===120.0,'Réception entrée en chambre froide');ok(q('SELECT expiry_date FROM butchery_raw_lots WHERE id=?',[$raw])->fetchColumn()===$expiry,'DLC d’origine conservée');

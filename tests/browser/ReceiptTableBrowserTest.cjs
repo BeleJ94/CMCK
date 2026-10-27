@@ -17,7 +17,7 @@ const assert=require('node:assert/strict');
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
   const base=(process.env.DAGRIL_TEST_URL||'http://127.0.0.1:8110').replace(/\/$/,'');
   assert.equal((await page.goto(base+'/butchery/receipts?kind=incoming')).status(),200);
-  const table=page.locator('table[aria-label="Réceptions de carcasses"]');
+  const table=page.locator('table[aria-label="Réceptions de la ferme"]');
   assert.equal(await page.locator('.flow-summary .ui-kpi').count(),2,'Seulement deux indicateurs liés aux réceptions.');
   assert.equal(await page.locator('#receipt-kpi-raw,#receipt-kpi-finished,#receipt-kpi-counter').count(),0,'Aucun indicateur de stock ou de vente sur cette page.');
   assert.equal(await table.count(),1);
@@ -97,7 +97,7 @@ const assert=require('node:assert/strict');
    for(let i=1;i<=23;i++){
     const row=document.createElement('tr'),kind=i<=11?'incoming':'pending';
     Object.assign(row.dataset,{flowItem:'',flowKey:'receipt-display-test-'+i,kind,state:kind,reference:'REC-'+i,date:'2026-10-'+String(i).padStart(2,'0'),weight:String(i*10),expiry:'2026-11-01',search:'réception-test-'+i+' Ferme de test lot-'+i});
-    row.innerHTML='<td data-label="Référence / lot"><strong>REC-'+i+'</strong><small>Ferme de test · lot-'+i+'</small></td><td data-label="Catégorie">'+(kind==='incoming'?'Envoi attendu':'Contrôle sanitaire')+'</td><td data-label="Poids (kg)" class="num">'+i*10+'</td><td data-label="Date">17/10/2026</td><td data-label="DLC">01/11/2026</td><td data-label="État">'+(kind==='incoming'?'À réceptionner':'Contrôle à effectuer')+'</td><td data-label="Actions"><details class="slaughter-row-actions"><summary>Détails et actions</summary><p>Traçabilité de la réception</p></details></td>';
+    row.innerHTML='<td data-label="Référence / lot"><strong>REC-'+i+'</strong><small>Ferme de test · lot-'+i+'</small></td><td data-label="Catégorie">'+(kind==='incoming'?'Envoi attendu':'Contrôle sanitaire')+'</td><td data-label="Poids (kg)" class="num">'+i*10+'</td><td data-label="Date">17/10/2026</td><td data-label="DLC">01/11/2026</td><td data-label="État">'+(kind==='incoming'?'À réceptionner':'Contrôle à effectuer')+'</td><td data-label="Actions" class="receipts-actions"><div class="row-actions"><button type="button" class="btn-primary row-action-button"><span>Contrôler</span></button></div></td>';
     body.append(row);
    }
    old.replaceWith(panel);window.initPorcineFlow(panel);
@@ -130,8 +130,8 @@ const assert=require('node:assert/strict');
   assert(await page.locator('[data-flow-filter-empty]').isVisible());
   await page.locator('[data-flow-reset]').click();assert.equal(await rows.count(),23);
 
-  const details=rows.first().locator('details');await details.locator('summary').click();
-  assert(await details.locator('p').isVisible(),'Les détails de la ligne sont dépliables.');
+  assert(await rows.first().locator('.row-actions .row-action-button').isVisible(),'Action principale visible sans dépliage.');
+  assert.equal(await table.locator('details').count(),0,'Plus de formulaires dépliés dans les lignes.');
   for(const width of [390,320]){
    await page.setViewportSize({width,height:900});
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'La page tient à '+width+' px.');

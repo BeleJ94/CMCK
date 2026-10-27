@@ -21,7 +21,7 @@ $transfer=$flow->shipment(pk(['weight_stock_id'=>$stock,'quantity_kg'=>'20','tru
 $r=pq('SELECT created_by,approved_by,status FROM livestock_transfers WHERE id=?',[$transfer])->fetch();pc((int)$r['created_by']===$farmerId&&(int)$r['approved_by']===$farmerId&&$r['status']==='in_transit','Envoi créé, approuvé et expédié par le même responsable élevage');
 pc(!Auth::canSelfValidate($farmerId,'butchery',$bouch),'Le responsable élevage ne reçoit aucun accès implicite à la boucherie');
 $butcher=managerLogin($butcherId,$bouch);pc(Auth::canSelfValidate($butcherId,'butchery',$bouch),'Responsable boucherie autorisé à valider sa propre opération');
-$receipt=$flow->arrival(pk(['transfer_id'=>$transfer]),$butcher);$flow->receive(pk(['receipt_id'=>$receipt,'visual_conform'=>'1','documents_conform'=>'1','temperature_c'=>'4']),$butcher);
+$receipt=$flow->arrival(pk(['transfer_id'=>$transfer,'weighing_mode'=>'net','net_kg'=>'20']),$butcher);$flow->receive(pk(['receipt_id'=>$receipt,'visual_conform'=>'1','documents_conform'=>'1','temperature_c'=>'4']),$butcher);
 $r=pq('SELECT created_by,validated_by,status FROM butchery_receipts WHERE id=?',[$receipt])->fetch();pc((int)$r['created_by']===$butcherId&&(int)$r['validated_by']===$butcherId&&$r['status']==='accepted','Arrivée et contrôle sanitaire effectués par le même responsable boucherie');
 $raw=pq('SELECT * FROM butchery_raw_lots WHERE receipt_id=?',[$receipt])->fetch();
 $order=$flow->transform(pk(['source_item_id'=>$raw['item_id'],'lot_mode'=>'manual','source_lot_ids'=>[(string)$raw['id']],'quantity_kg'=>'20','production_date'=>date('Y-m-d'),'counter_id'=>$fixture['counter'],'outputs'=>[['item_id'=>$fixture['item1'],'quantity_kg'=>'20','counter_kg'=>'5','expiry_date'=>$fixture['expiry']]]]),$butcher);

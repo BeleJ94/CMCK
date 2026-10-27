@@ -3,13 +3,13 @@ require_once dirname(__DIR__).'/services/PorcineFlowService.php';
 
 class PorcineFlowController extends Controller
 {
-    private const RETURNS=['livestock/pigs/slaughters','livestock/pigs/shipments','butchery/receipts','butchery/cold-room','butchery/production','butchery/counters','butchery/pos/history'];
+    private const RETURNS=['livestock/pigs/slaughters','livestock/pigs/shipments','butchery/receipts','butchery/cold-room','butchery/production','butchery/counters','butchery/pos/history','butchery/weighing-gaps'];
     public function slaughters(){ $this->farm('slaughters'); }
     public function shipments(){ $this->farm('shipments'); }
     private function farm(string $section)
     {
-        $flow=new PorcineFlowService();$available=$flow->available();
-        $this->view('porcine_flow/farm',['title'=>$section==='slaughters'?'Porcs · abattage à la ferme':'Porcs · carcasses et envois','section'=>$section,'available'=>$available,'rows'=>$available?(new PigService())->directory():[],'farm'=>$available?$flow->farmDirectory():['slaughters'=>[],'shipments'=>[]],'success'=>flash('success'),'error'=>flash('error')],'layouts.main');
+        $flow=new PorcineFlowService();$available=$flow->available();$pigs=new PigService();
+        $this->view('porcine_flow/farm',['title'=>$section==='slaughters'?'Porcs · abattage à la ferme':'Porcs · carcasses et envois','section'=>$section,'available'=>$available,'rows'=>$available?$pigs->directory():[],'slaughterGroups'=>PigGroupService::names($available?$pigs->groups():PigGroupService::defaults(),'allows_slaughter'),'farm'=>$available?$flow->farmDirectory():['slaughters'=>[],'shipments'=>[]],'success'=>flash('success'),'error'=>flash('error')],'layouts.main');
     }
     public function home()
     {
@@ -43,13 +43,41 @@ class PorcineFlowController extends Controller
     {
         header('Cache-Control: private, no-store');
         $flow=new PorcineFlowService();if(!$flow->posAvailable())return $this->json(['ok'=>false,'message'=>'Caisse indisponible.'],503);
-        $data=$flow->posDirectory();return $this->json(['ok'=>true,'catalog'=>$data['posCatalog'],'prices'=>$data['posPrices']]);
+        $data=$flow->posDirectory();return $this->json(['ok'=>true,'catalog'=>$data['posCatalog'],'prices'=>$data['posPrices'],'items'=>$data['posItems']]);
     }
     public function posHistory()
     {
         $flow=new PorcineFlowService();if(!$flow->posAvailable()){http_response_code(503);echo 'La caisse doit être mise à niveau.';return;}
         $this->view('porcine_flow/pos_history',array_merge($flow->butcheryDirectory(),$flow->posDirectory(),['title'=>'Boucherie · reçus et ventes','success'=>flash('success'),'error'=>flash('error')]),'layouts.main');
     }
+    public function coldMovementReport()
+    {
+        $flow=new PorcineFlowService();
+        $export=$_GET['export']??'';
+        if(!is_string($export)||!in_array($export,['','xlsx','pdf'],true)){http_response_code(400);echo 'Format d’export invalide.';return;}
+        try{$report=$flow->coldMovementReport($_GET);}catch(InvalidArgumentException $e){http_response_code(400);echo e($e->getMessage());return;}
+        header('Cache-Control: private, no-store');$filename='mouvements-chambre-froide-'.$report['filters']['from'].'-'.$report['filters']['to'];
+        if($export==='xlsx'){
+            $bytes=(new ColdRoomMovementReportService())->spreadsheet($report);header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');header('Content-Disposition: attachment; filename="'.$filename.'.xlsx"');echo $bytes;return;
+        }
+        if($export==='pdf'){$html=$this->renderViewToString('porcine_flow/cold_movement_report_pdf',['report'=>$report]);(new PdfService())->stream('Mouvements · Chambre froide',$html,$filename.'.pdf','landscape');return;}
+        $this->view('porcine_flow/cold_movement_report',['title'=>'Boucherie · mouvements chambre froide','report'=>$report],'layouts.main');
+    }
+    public function weighingGaps()
+    {
+        $flow=new PorcineFlowService();
+        if(!$flow->available()||!TransitWeighingService::ready(Database::getInstance()->connection())){$this->view('porcine_flow/unavailable',['title'=>'Boucherie'],'layouts.main');return;}
+        $export=$_GET['export']??'';
+        if(!is_string($export)||!in_array($export,['','xlsx'],true)){http_response_code(400);echo 'Format d’export invalide.';return;}
+        try{$data=$flow->weighingGaps($_GET);}catch(InvalidArgumentException $e){http_response_code(400);echo e($e->getMessage());return;}
+        if($export==='xlsx'){
+            header('Cache-Control: private, no-store');header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment; filename="ecarts-pesee-'.$data['report']['filters']['from'].'-'.$data['report']['filters']['to'].'.xlsx"');
+            echo (new TransitWeighingService())->spreadsheet($data['report']);return;
+        }
+        $this->view('porcine_flow/weighing_gaps',array_merge($data,['title'=>'Boucherie · écarts de pesée','success'=>flash('success'),'error'=>flash('error')]),'layouts.main');
+    }
+    public function saveTolerance(){ $this->run(fn($s,$u)=>$s->saveTolerance($_POST,$u),'Tolérance enregistrée. Elle s’applique aux prochaines pesées d’arrivée.'); }
     public function posReport()
     {
         $flow=new PorcineFlowService();if(!$flow->posAvailable()){http_response_code(503);echo 'La caisse doit être mise à niveau.';return;}
@@ -79,14 +107,18 @@ class PorcineFlowController extends Controller
         $data=$flow->butcheryDirectory();
         $allocations=[];foreach($data['allocations'] as $allocation)$allocations[$allocation['output_id']]=$allocation;$data['allocations']=$allocations;
         $data['productionLines']=$this->model('Butchery')->productionLines();
+        // Live poultry is sold as it is or slaughtered here, from the transformation page (044).
+        if($section==='production'&&$data['piecesReady']){require_once dirname(__DIR__).'/services/PoultryFlowService.php';$data+=(new PoultryFlowService())->liveDirectory();}
         $this->view('porcine_flow/butchery',array_merge($data,['title'=>['receipts'=>'Boucherie · réceptions','cold-room'=>'Boucherie · chambre froide','production'=>'Boucherie · transformation','counters'=>'Boucherie · comptoirs et ventes'][$section],'section'=>$section,'success'=>flash('success'),'error'=>flash('error')]),'layouts.main');
     }
     public function slaughter(){ $this->run(fn($s,$u)=>$s->slaughter($_POST,$u),'Abattage enregistré. Validez-le pour créer le stock de carcasses.'); }
     public function validateSlaughter($id){ $this->run(fn($s,$u)=>$s->validateSlaughter($id,$u),'Abattage validé : les animaux ont quitté l’effectif et les carcasses sont disponibles.'); }
-    public function shipmentBtr($id)
+    public function shipmentBtr($id){ $this->btr($id,'farm'); }
+    public function receiptBtr($id){ $this->btr($id,'butchery'); }
+    private function btr($id,string $side)
     {
         $service=new PorcineFlowService();
-        $shipment=$service->available()?$service->shipmentBtr($id):null;
+        try{$shipment=$service->available()?$service->shipmentBtr($id,$side):null;}catch(RuntimeException $e){$shipment=null;}
         if(!$shipment){http_response_code(404);echo 'BTR introuvable ou hors de votre périmètre.';return;}
         header('Cache-Control: private, no-store');
         if(($_GET['export']??'')==='pdf'){

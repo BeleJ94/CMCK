@@ -91,6 +91,11 @@
     <script src="<?= e(asset_url('js/livestock.js')) ?>"></script>
     <script src="<?= e(asset_url('js/pigs.js')) ?>"></script>
     <script src="<?= e(asset_url('js/porcine-flow.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/weighing.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/fish.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/cattle.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/poultry.js')) ?>"></script>
+    <script src="<?= e(asset_url('js/row-actions.js')) ?>"></script>
     <script src="<?= e(asset_url('js/butchery-pos.js')) ?>"></script>
     <script src="<?= e(asset_url('js/butchery.js')) ?>"></script>
     <script src="<?= e(asset_url('js/cancellations.js')) ?>"></script>

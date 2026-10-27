@@ -826,6 +826,11 @@
         if(window.initLivestock)window.initLivestock(root);
         if(window.initPigs)window.initPigs(root);
         if(window.initPorcineFlow)window.initPorcineFlow(root);
+        if(window.initWeighing)window.initWeighing(root);
+        if(window.initFish)window.initFish(root);
+        if(window.initCattle)window.initCattle(root);
+        if(window.initPoultry)window.initPoultry(root);
+        if(window.initRowActions)window.initRowActions(root);
         if(window.initButcheryPos)window.initButcheryPos(root);
         if(window.initButchery)window.initButchery(root);
         if(window.initTransfers)window.initTransfers(root);

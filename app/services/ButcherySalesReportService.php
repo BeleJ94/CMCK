@@ -48,7 +48,7 @@ class ButcherySalesReportService
             $key=$currency.':'.$t['payment_method'];if(!isset($payments[$key]))$payments[$key]=['currency'=>$currency,'method'=>$settings['payment_methods'][$t['payment_method']]??$t['payment_method'],'count'=>0,'cents'=>0];
             $payments[$key]['count']++;$payments[$key]['cents']+=$amount;
         }
-        foreach($lines as$l){if($l['status']!=='paid')continue;$key=$l['currency'].':'.$l['item_id'];if(!isset($articles[$key]))$articles[$key]=['name'=>$l['item_name'],'currency'=>$l['currency'],'count'=>0,'grams'=>0,'cents'=>0];$articles[$key]['count']++;$articles[$key]['grams']+=$this->units($l['quantity_kg'],3);$articles[$key]['cents']+=$this->units($l['amount']);}
+        foreach($lines as$l){if($l['status']!=='paid')continue;$key=$l['currency'].':'.$l['item_id'];if(!isset($articles[$key]))$articles[$key]=['name'=>$l['item_name'],'currency'=>$l['currency'],'count'=>0,'grams'=>0,'pieces'=>null,'cents'=>0];$articles[$key]['count']++;$articles[$key]['grams']+=$this->units($l['quantity_kg'],3);if(isset($l['quantity_pieces']))$articles[$key]['pieces']=(int)$articles[$key]['pieces']+(int)$l['quantity_pieces'];$articles[$key]['cents']+=$this->units($l['amount']);}
         ksort($summary);ksort($payments);uasort($articles,static fn($a,$b)=>strcmp($a['currency'],$b['currency'])?:($b['cents']<=>$a['cents'])?:strnatcasecmp($a['name'],$b['name']));
         $scope='Du '.$start->format('d/m/Y').' au '.$end->format('d/m/Y').' · '.($filters['counter']===''?'Tous les comptoirs':$counterNames[$filters['counter']]).' · '.($filters['currency']?:'Devises séparées').' · '.($filters['payment']===''?'Tous les paiements':$settings['payment_methods'][$filters['payment']]).' · '.([''=>'Tous les états','paid'=>'Encaissés','cancelled'=>'Annulés'][$filters['status']]).($filters['q']!==''?' · Recherche : '.$filters['q']:'');
         return ['filters'=>$filters,'tickets'=>$tickets,'summary'=>array_values($summary),'payments'=>array_values($payments),'articles'=>array_values($articles),'scope'=>$scope,'issuedAt'=>date('d/m/Y à H:i'),'methods'=>$settings['payment_methods'],'counters'=>$counters,'currencies'=>$settings['currencies']];
@@ -61,14 +61,14 @@ class ButcherySalesReportService
         $tickets[]=['FIN',count($report['tickets']).' ticket(s)'];
         $summary=array_merge($prefix,[['Devise','Tickets encaissés','Chiffre d’affaires','Poids vendu (kg)','Tickets annulés','Montant annulé']]);
         foreach($report['summary']as$s)$summary[]=[$s['currency'],(float)$s['paid'],(float)($s['revenue_cents']/100),(float)($s['grams']/1000),(float)$s['cancelled'],(float)($s['cancelled_cents']/100)];$summary[]=['FIN','Aucun total entre devises différentes'];
-        $articles=array_merge($prefix,[['Article','Devise','Poids vendu (kg)','Tickets','Montant vendu']]);
-        foreach($report['articles']as$a)$articles[]=[$a['name'],$a['currency'],(float)($a['grams']/1000),(float)$a['count'],(float)($a['cents']/100)];$articles[]=['FIN','Ventes encaissées uniquement'];
+        $articles=array_merge($prefix,[['Article','Devise','Poids vendu (kg)','Pièces vendues','Tickets','Montant vendu']]);
+        foreach($report['articles']as$a)$articles[]=[$a['name'],$a['currency'],(float)($a['grams']/1000),($a['pieces']??null)===null?'':(float)$a['pieces'],(float)$a['count'],(float)($a['cents']/100)];$articles[]=['FIN','Ventes encaissées uniquement'];
         $payments=array_merge($prefix,[['Devise','Mode de paiement','Tickets encaissés','Montant vendu']]);
         foreach($report['payments']as$p)$payments[]=[$p['currency'],$p['method'],(float)$p['count'],(float)($p['cents']/100)];$payments[]=['FIN','Montants vendus, hors monnaie rendue'];
         return (new SpreadsheetExportService())->workbook([
             ['name'=>'Synthèse','rows'=>$summary,'widths'=>[15,22,25,24,22,25],'formats'=>[1=>0,2=>2,4=>0,5=>2]],
             ['name'=>'Tickets','rows'=>$tickets,'widths'=>[40,23,25,25,30,12,20,24,20,20,18,16],'formats'=>[6=>2,8=>2,9=>2]],
-            ['name'=>'Articles','rows'=>$articles,'widths'=>[35,15,24,18,25],'formats'=>[3=>0,4=>2]],
+            ['name'=>'Articles','rows'=>$articles,'widths'=>[35,15,24,18,18,25],'formats'=>[3=>0,4=>0,5=>2]],
             ['name'=>'Paiements','rows'=>$payments,'widths'=>[15,28,24,25],'formats'=>[2=>0,3=>2]],
         ]);
     }

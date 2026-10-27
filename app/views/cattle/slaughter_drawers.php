@@ -1,0 +1,43 @@
+<?php
+// Read-only detail and cancellation drawers opened from the row action menus.
+$flowViews=dirname(__DIR__).'/porcine_flow';
+$sheetFact=static fn($label,$value,$note='')=>'<div><dt>'.e($label).'</dt><dd>'.e($value).($note!==''?'<small>'.e($note).'</small>':'').'</dd></div>';
+?>
+<?php foreach($slaughters as $s):[$stateLabel,$stateTone]=$slaughterStates[$s['status']]??[$s['status'],'neutral'];$site=(int)$s['site_id'];$availableKg=round((float)$s['stock_kg']-(float)$s['stock_reserved_kg'],3); ?>
+<?php $drawerId='cattle-slaughter-detail-'.$s['id'];$drawerTitle='Abattage du '.date('d/m/Y',strtotime($s['converted_at']));require $flowViews.'/drawer_start.php'; ?>
+<div class="feed-form-body detail-sheet">
+<div class="detail-sheet__status"><span class="ui-status ui-status--<?=e($stateTone)?>"><?=e($stateLabel)?></span><code><?=e($s['conversion_number'])?></code></div>
+<h3>Origine</h3><dl class="detail-sheet__grid"><?=$sheetFact('Lot',$s['batch_number'],$s['supplier_name']?:'Origine non renseignée')?><?=$sheetFact('Bâtiment',$s['facility_name'],$s['site_name'])?><?=$sheetFact('Abattage',$stamp($s['converted_at']))?><?=$sheetFact('Bovins abattus',$int($s['input_heads']))?></dl>
+<h3>Pesée des carcasses</h3><dl class="detail-sheet__grid"><?=$sheetFact('Poids net',$kg($s['net_weight_kg']).' kg',(int)$s['input_heads']>0?number_format((float)$s['net_weight_kg']/(int)$s['input_heads'],1,',',' ').' kg par carcasse':'')?><?php if((float)$s['tare_weight_kg']>0): ?><?=$sheetFact('Poids brut',$kg($s['gross_weight_kg']).' kg')?><?=$sheetFact('Tare',$kg($s['tare_weight_kg']).' kg',(string)$s['tare_note'])?><?php else: ?><?=$sheetFact('Mode de pesée','Poids net')?><?php endif; ?></dl>
+<h3>Suivi</h3><dl class="detail-sheet__grid"><?=$sheetFact('DLC',date('d/m/Y',strtotime($s['expiry_date'])))?><?=$sheetFact('Saisi par',$s['author']?:'—',date('d/m/Y H:i',strtotime($s['created_at'])))?><?=$sheetFact('Validé par',$s['validator']?:'—',$s['validated_at']?date('d/m/Y H:i',strtotime($s['validated_at'])):'')?><?php if($s['status']==='validated'&&$s['weight_stock_id']): ?><?=$sheetFact('Stock de carcasses',$kg($s['stock_kg']).' kg',$availableKg>0?$kg($availableKg).' kg à envoyer':'Entièrement envoyé')?><?php endif; ?></dl>
+</div>
+<footer><button type="button" class="btn-secondary" data-workspace-modal-close>Fermer</button>
+<?php if($s['status']==='submitted'&&Auth::can('livestock','validate',$site)):$rowAction='livestock/cattle/slaughters/'.$s['id'].'/validate';$rowConfirm='Valider cet abattage ? Les bovins quittent l’effectif et le stock de carcasses est créé.';$rowLabel='Valider l’abattage';$rowIcon='bi-check2-circle';require dirname(__DIR__).'/partials/row_form.php';
+elseif($s['status']==='validated'&&$availableKg>0&&$s['expiry_date']>=date('Y-m-d')&&Auth::can('livestock','create',$site)): ?><button type="button" class="btn-primary" data-workspace-modal-open="cattle-shipment" data-preselect-field="weight_stock_id" data-preselect-value="<?=e($s['weight_stock_id'])?>"><i class="bi bi-truck" aria-hidden="true"></i> Préparer un envoi</button><?php endif; ?>
+</footer>
+<?php require $flowViews.'/drawer_end.php'; ?>
+<?php if($s['status']==='submitted'&&Auth::can('livestock','delete',$site)): $drawerId='cattle-slaughter-cancel-'.$s['id'];$drawerTitle='Annuler l’abattage';require $flowViews.'/drawer_start.php';$action='livestock/cattle/slaughters/'.$s['id'].'/cancel';$confirm='Annuler cet abattage en attente ? Son historique est conservé.';require $flowViews.'/form_start.php'; ?>
+<p class="livestock-guide">Abattage <?=e($s['conversion_number'])?> · <?=$int($s['input_heads'])?> bovin(s), <?=$kg($s['net_weight_kg'])?> kg. Les bovins restent dans le lot.</p>
+<div class="form-grid"><label class="form-wide"><span>Motif d’annulation *</span><textarea name="reason" maxlength="500" rows="3" required placeholder="Ex. erreur de lot, pesée à refaire"></textarea></label></div>
+<?php $submitLabel='Annuler l’abattage';$destructiveSubmit=true;require $flowViews.'/form_end.php';unset($destructiveSubmit);require $flowViews.'/drawer_end.php';endif; ?>
+<?php endforeach; ?>
+
+<?php foreach($shipments as $t):[$stateLabel,$stateTone]=$shipmentStates[$t['status']]??[$t['status'],'neutral'];$site=(int)$t['source_site_id'];$gap=$t['weight_gap_kg']===null?null:['kg'=>(float)$t['weight_gap_kg'],'pct'=>(float)$t['weight_gap_pct']]; ?>
+<?php $drawerId='cattle-shipment-detail-'.$t['id'];$drawerTitle='Envoi '.$t['truck_plate'];require $flowViews.'/drawer_start.php'; ?>
+<div class="feed-form-body detail-sheet">
+<div class="detail-sheet__status"><span class="ui-status ui-status--<?=e($stateTone)?>"><?=e($stateLabel)?></span><code><?=e($t['transfer_number'])?></code></div>
+<h3>Marchandise</h3><dl class="detail-sheet__grid"><?=$sheetFact('Origine',($t['supplier_name']?:'Lot antérieur').' · '.$t['facility_name'],$t['batch_number'])?><?=$sheetFact('Abattage',$t['conversion_number'],date('d/m/Y à H:i',strtotime($t['converted_at'])))?><?=$sheetFact('DLC',date('d/m/Y',strtotime($t['expiry_date'])))?><?=$sheetFact('Transport',$t['truck_plate'],$t['driver_name'])?></dl>
+<h3>Double pesée</h3><dl class="detail-sheet__grid"><?=$sheetFact('Pesé à la ferme',$kg($t['quantity_kg']).' kg')?><?php if($gap!==null): ?><?=$sheetFact('Pesé à la boucherie',$kg($t['received_weight_kg']).' kg',(float)$t['received_tare_kg']>0?'Brut '.$kg($t['received_gross_kg']).' − tare '.$kg($t['received_tare_kg']).($t['receipt_tare_note']?' ('.$t['receipt_tare_note'].')':''):'Poids net')?><?=$sheetFact('Écart',TransitWeighingService::describe($gap),$t['tolerance_pct']===null?'Aucune tolérance paramétrée':'Tolérance '.number_format((float)$t['tolerance_pct'],2,',',' ').' %')?><?php if($t['gap_reason']): ?><?=$sheetFact('Motif déclaré',$t['gap_reason'],$t['gap_approver']?'Écart validé par '.$t['gap_approver']:'')?><?php endif; ?><?php else: ?><?=$sheetFact('Pesé à la boucherie','—',$t['status']==='in_transit'?'En attente de la pesée d’arrivée':'Non pesé')?><?php endif; ?></dl>
+<h3>Suivi</h3><dl class="detail-sheet__grid"><?=$sheetFact('Préparé par',$t['author']?:'—',date('d/m/Y H:i',strtotime($t['created_at'])))?><?=$sheetFact('Approuvé par',$t['approver']?:'—')?><?=$sheetFact('Expédié par',$t['dispatcher']?:'—',$t['dispatched_at']?date('d/m/Y H:i',strtotime($t['dispatched_at'])):'')?><?=$sheetFact('Réception',$t['receipt_number']?:'—',$t['weigher']?'Pesé par '.$t['weigher'].($t['receipt_received_at']?' le '.date('d/m/Y H:i',strtotime($t['receipt_received_at'])):''):'')?></dl>
+</div>
+<footer><button type="button" class="btn-secondary" data-workspace-modal-close>Fermer</button><button type="button" class="btn-secondary" data-workspace-modal-open="btr-preview" data-btr-url="<?=e(base_url('livestock/cattle/shipments/'.$t['id'].'/btr'))?>" data-btr-title="<?=e($t['transfer_number'])?>" data-workspace-return-focus="cattle-shipment-menu-<?=e($t['id'])?>-toggle"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> Bon de transfert</button>
+<?php if($t['status']==='draft'&&Auth::can('livestock','validate',$site)):$rowAction='livestock/cattle/shipments/'.$t['id'].'/approve';$rowConfirm='Approuver cet envoi et réserver les carcasses ?';$rowLabel='Approuver';$rowIcon='bi-check2-circle';require dirname(__DIR__).'/partials/row_form.php';
+elseif($t['status']==='approved'&&Auth::can('livestock','update',$site)):$rowAction='livestock/cattle/shipments/'.$t['id'].'/dispatch';$rowConfirm='Confirmer le départ des carcasses vers la boucherie ?';$rowLabel='Expédier';$rowIcon='bi-truck';require dirname(__DIR__).'/partials/row_form.php';endif; ?>
+</footer>
+<?php require $flowViews.'/drawer_end.php'; ?>
+<?php if(in_array($t['status'],['draft','approved'],true)&&Auth::can('livestock','delete',$site)): $drawerId='cattle-shipment-cancel-'.$t['id'];$drawerTitle='Annuler l’envoi';require $flowViews.'/drawer_start.php';$action='livestock/cattle/shipments/'.$t['id'].'/cancel';$confirm='Annuler cet envoi ? La réservation de carcasses est libérée.';require $flowViews.'/form_start.php'; ?>
+<p class="livestock-guide">Envoi <?=e($t['transfer_number'])?> · <?=$kg($t['quantity_kg'])?> kg · <?=e($t['truck_plate'].' · '.$t['driver_name'])?>. Les carcasses redeviennent disponibles à la ferme.</p>
+<div class="form-grid"><label class="form-wide"><span>Motif d’annulation *</span><textarea name="reason" maxlength="500" rows="3" required placeholder="Ex. camion indisponible, quantité erronée"></textarea></label></div>
+<?php $submitLabel='Annuler l’envoi';$destructiveSubmit=true;require $flowViews.'/form_end.php';unset($destructiveSubmit);require $flowViews.'/drawer_end.php';endif; ?>
+<?php endforeach; ?>
+<?php if($shipments){$btrKicker='BŒUFS · BON DE TRANSFERT';require dirname(__DIR__).'/partials/btr_preview.php';} ?>
