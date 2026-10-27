@@ -207,6 +207,21 @@ async function testPigFilters(page) {
     await reset.click();
 }
 
+// Pages laid out like the cattle ones (pig shipments) search each table with the shared table toolbar.
+async function testTableSearch(page, route) {
+    await visit(page, route);
+    for (const table of await page.locator('.dagril-datatable').all()) {
+        const input = table.locator('.dagril-table-search input'), rows = table.locator('tbody tr:visible:not(:has(.dagril-table-empty))');
+        const total = await rows.count();
+        assert.equal(await table.locator('.dagril-table-meta').getAttribute('aria-live'), 'polite');
+        await input.fill(searchMiss);
+        assert.equal(await rows.count(), 0, route + ': search hides unrelated records');
+        assert(await table.locator('.dagril-table-empty').isVisible(), route + ': no-results state is visible');
+        await input.fill('');
+        assert.equal(await rows.count(), total, route + ': clearing the search restores records');
+    }
+}
+
 async function testFlowFilters(page, route) {
     await visit(page, route);
     const reset = page.locator('[data-flow-reset]');
@@ -310,7 +325,7 @@ async function testDrawers(page, route, width) {
         page.on('pageerror', error => errors.push(error.message));
         await testPigFilters(page);
         await testAttentionNavigation(page);
-        for (const route of screenPaths.filter(route => route !== '/livestock/pigs' && route !== '/livestock')) await testFlowFilters(page, route);
+        for (const route of screenPaths.filter(route => route !== '/livestock/pigs' && route !== '/livestock')) await (route === '/livestock/pigs/shipments' ? testTableSearch : testFlowFilters)(page, route);
         for (const width of [1440, 390, 320]) {
             await page.setViewportSize({ width, height: width > 1000 ? 1000 : 900 });
             for (const route of screenPaths) {

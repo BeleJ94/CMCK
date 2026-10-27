@@ -35,7 +35,7 @@ class OperationalAttentionService
                 $count=$this->count("SELECT COUNT(*) FROM livestock_conversions c JOIN pig_slaughter_details d ON d.conversion_id=c.id JOIN livestock_batches b ON b.id=c.batch_id WHERE b.site_id IN ($scope) AND c.status='submitted' AND b.deleted_at IS NULL");
                 $add('pending_pig_slaughters',$count,'Abattages à valider','livestock/pigs/slaughters?status=submitted','warning','bi-clipboard-check');
                 $count=$this->count("SELECT COUNT(*) FROM livestock_transfers t JOIN livestock_weight_stocks w ON w.id=t.weight_stock_id JOIN pig_slaughter_details d ON d.conversion_id=w.conversion_id WHERE t.source_site_id IN ($scope) AND t.status='approved' AND t.deleted_at IS NULL");
-                $add('ready_pig_shipments',$count,'Envois prêts à expédier','livestock/pigs/shipments?status=approved','progress','bi-truck');
+                $add('ready_pig_shipments',$count,'Envois prêts à expédier','livestock/pigs/shipments','progress','bi-truck');
             }
         }
         $fish=$this->hasTables(['livestock_pond_parcels']);

@@ -11,10 +11,11 @@ const base=process.env.DAGRIL_TEST_URL||'http://127.0.0.1:8108';
    const action=await form.getAttribute('action');const response=page.waitForResponse(r=>r.request().method()==='POST'&&r.url()===action);
    await form.locator('button[type=submit]').click();await page.locator('[data-action-dialog-confirm]').click();const r=await response;const payload=await r.json();assert(payload.ok,payload.message);await page.locator('body.is-loading').waitFor({state:'hidden'});await page.waitForFunction(()=>document.querySelector('[data-flow-directory]')?.dataset.ready==='1');
   }
-  async function previewBtr(row,status){
-   await row.locator('[data-btr-preview]').click();
-   await page.waitForFunction(()=>!document.querySelector('[data-btr-print]').disabled);
-   assert.match(await page.frameLocator('[data-btr-frame]').locator('.btr-status').innerText(),status);
+  async function rowMenu(id,label){await page.locator(`#pig-shipment-menu-${id}-toggle`).click();await page.locator(`#pig-shipment-menu-${id}`).getByRole('menuitem',{name:label}).click();}
+  async function previewBtr(id,status){
+   await rowMenu(id,'Bon de transfert');
+   await page.locator('#btr-preview [data-btr-frame].is-ready').waitFor();
+   assert.match(await page.frameLocator('#btr-preview [data-btr-frame]').locator('.btr-status').innerText(),status);
    await page.keyboard.press('Escape');
   }
   async function sourceLot(form,id){
@@ -29,13 +30,13 @@ const base=process.env.DAGRIL_TEST_URL||'http://127.0.0.1:8108';
   await form.locator('[data-slaughter-picker-open]').click();await form.locator(`[name=_batch_choice][value="${fixture.adult}"]`).check();await form.locator('[name=heads]').fill('1');await form.locator('[name=net_kg]').fill('5');await form.locator('[name=expiry_date]').fill(fixture.expiry);await save(form);
   const slaughter=page.locator('[data-slaughter-id]').first();const slaughterId=await slaughter.getAttribute('data-slaughter-id');const slaughterNumber=await slaughter.locator('td:first-child strong').textContent();
   await save(page.locator(`form[action$="/slaughters/${slaughterId}/validate"]`));
-  await page.locator('.sidebar a[href$="/livestock/pigs/shipments"]').click();await page.locator('[data-workspace-modal-open=flow-shipment]').click();form=page.locator('#flow-shipment form');
+  await page.locator('.sidebar a[href$="/livestock/pigs/shipments"]').click();await page.locator('.ui-page-header [data-workspace-modal-open=flow-shipment]').click();form=page.locator('#flow-shipment form');
   const option=form.locator('[name=weight_stock_id] option').filter({hasText:slaughterNumber});await form.locator('[name=weight_stock_id]').selectOption(await option.getAttribute('value'));await form.locator('[name=quantity_kg]').fill('5');await form.locator('[name=truck_plate]').fill('BROWSER-01');await form.locator('[name=driver_name]').fill('Chauffeur navigateur');await save(form);
-  const shipment=page.locator('[data-shipment-id]').first();const shipmentId=await shipment.getAttribute('data-shipment-id');
-  await previewBtr(shipment,/BROUILLON/);
-  await save(page.locator(`form[action$="/shipments/${shipmentId}/approve"]`));await previewBtr(shipment,/APPROUVÉ/);
-  await save(page.locator(`form[action$="/shipments/${shipmentId}/dispatch"]`));await previewBtr(shipment,/EXPÉDIÉ/);
-  await shipment.locator('summary').click();await shipment.locator('a[href$="/butchery/receipts"]').click();
+  const shipmentId=await page.locator('[data-shipment-id]',{hasText:'BROWSER-01'}).first().getAttribute('data-shipment-id');const shipment=page.locator(`[data-shipment-id="${shipmentId}"]`);
+  await previewBtr(shipmentId,/BROUILLON/);
+  await save(shipment.locator(`form[action$="/shipments/${shipmentId}/approve"]`));await previewBtr(shipmentId,/APPROUVÉ/);
+  await save(shipment.locator(`form[action$="/shipments/${shipmentId}/dispatch"]`));await previewBtr(shipmentId,/EXPÉDIÉ/);
+  await rowMenu(shipmentId,'Consulter l’envoi');await page.locator(`#pig-shipment-detail-${shipmentId} a[href$="/butchery/receipts"]`).click();
   // Arrival weighing at the butchery (migration 042), then the sanitary control.
   await page.locator(`[data-transfer-id="${shipmentId}"] [data-workspace-modal-open="flow-arrival-${shipmentId}"]`).click();const arrival=page.locator(`#flow-arrival-${shipmentId} form`);await arrival.locator('[name=net_kg]').fill('5');await save(arrival);
   const pending=page.locator('[data-receipt-id]').first();const receiptId=await pending.getAttribute('data-receipt-id');await pending.locator(`[data-workspace-modal-open="flow-receive-${receiptId}"]`).click();form=page.locator(`#flow-receive-${receiptId} form`);

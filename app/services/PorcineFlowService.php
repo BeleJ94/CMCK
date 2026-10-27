@@ -132,10 +132,18 @@ class PorcineFlowService extends Model
     public function farmDirectory(): array
     {
         $params=[];$scope=Auth::siteClause('b.site_id',$params);
-        $slaughters=$this->query("SELECT c.*,b.site_id,b.batch_number,b.current_heads,p.sex,d.expiry_date,i.name item_name,w.id weight_stock_id,w.quantity_kg,w.reserved_kg,u.name author,v.name validator,s.name site_name
-          FROM livestock_conversions c JOIN pig_slaughter_details d ON d.conversion_id=c.id JOIN livestock_batches b ON b.id=c.batch_id JOIN livestock_pig_profiles p ON p.batch_id=b.id JOIN sites s ON s.id=b.site_id JOIN butchery_items i ON i.id=d.item_id LEFT JOIN livestock_weight_stocks w ON w.conversion_id=c.id LEFT JOIN users u ON u.id=c.created_by LEFT JOIN users v ON v.id=c.validated_by WHERE 1=1{$scope} ORDER BY c.id DESC",$params)->fetchAll();
+        $slaughters=$this->query("SELECT c.*,b.site_id,b.batch_number,b.current_heads,p.sex,d.expiry_date,i.name item_name,w.id weight_stock_id,w.quantity_kg,w.reserved_kg,u.name author,v.name validator,s.name site_name,f.name facility_name
+          FROM livestock_conversions c JOIN pig_slaughter_details d ON d.conversion_id=c.id JOIN livestock_batches b ON b.id=c.batch_id JOIN livestock_pig_profiles p ON p.batch_id=b.id JOIN sites s ON s.id=b.site_id JOIN butchery_items i ON i.id=d.item_id LEFT JOIN livestock_facilities f ON f.id=b.facility_id LEFT JOIN livestock_weight_stocks w ON w.conversion_id=c.id LEFT JOIN users u ON u.id=c.created_by LEFT JOIN users v ON v.id=c.validated_by WHERE 1=1{$scope} ORDER BY c.id DESC",$params)->fetchAll();
         $params=[];$scope=Auth::siteClause('t.source_site_id',$params);
-        $shipments=$this->query("SELECT t.*,b.batch_number,d.expiry_date,c.conversion_number FROM livestock_transfers t JOIN livestock_weight_stocks w ON w.id=t.weight_stock_id JOIN pig_slaughter_details d ON d.conversion_id=w.conversion_id JOIN livestock_conversions c ON c.id=d.conversion_id JOIN livestock_batches b ON b.id=t.batch_id WHERE t.deleted_at IS NULL{$scope} ORDER BY t.id DESC",$params)->fetchAll();
+        // Arrival weighing at the butchery (042): weight received, transit gap and its justification.
+        $weighed=$this->weighingReady()?'r.received_gross_kg,r.received_tare_kg,r.tare_note receipt_tare_note,r.weight_gap_kg,r.weight_gap_pct,r.tolerance_pct,r.gap_reason,gap_approver.name gap_approver':'NULL received_gross_kg,NULL received_tare_kg,NULL receipt_tare_note,NULL weight_gap_kg,NULL weight_gap_pct,NULL tolerance_pct,NULL gap_reason,NULL gap_approver';
+        $shipments=$this->query("SELECT t.*,b.batch_number,d.expiry_date,c.conversion_number,c.converted_at,f.name facility_name,s.name site_name,
+            r.receipt_number,r.status receipt_status,r.received_weight_kg,r.received_at receipt_received_at,{$weighed},
+            author.name author,approver.name approver,dispatcher.name dispatcher,weigher.name weigher
+          FROM livestock_transfers t JOIN livestock_weight_stocks w ON w.id=t.weight_stock_id JOIN pig_slaughter_details d ON d.conversion_id=w.conversion_id JOIN livestock_conversions c ON c.id=d.conversion_id JOIN livestock_batches b ON b.id=t.batch_id JOIN sites s ON s.id=t.source_site_id LEFT JOIN livestock_facilities f ON f.id=b.facility_id
+          LEFT JOIN butchery_receipts r ON r.livestock_transfer_id=t.id AND r.deleted_at IS NULL
+          LEFT JOIN users author ON author.id=t.created_by LEFT JOIN users approver ON approver.id=t.approved_by LEFT JOIN users dispatcher ON dispatcher.id=t.dispatched_by LEFT JOIN users weigher ON weigher.id=r.created_by".($this->weighingReady()?' LEFT JOIN users gap_approver ON gap_approver.id=r.gap_approved_by':'')."
+          WHERE t.deleted_at IS NULL{$scope} ORDER BY t.id DESC",$params)->fetchAll();
         return ['slaughters'=>$slaughters,'shipments'=>$shipments];
     }
     /** Transfer note seen from the shipping farm, or from the receiving butchery. */

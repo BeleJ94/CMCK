@@ -42,12 +42,18 @@
     window.addEventListener('resize', follow, {passive: true});
     // One preview modal serves every transfer note: the trigger tells which BTR to load.
     function initBtrPreview(scope) {
-        // The pig shipment table also marks its own preview buttons with data-btr-preview: keep the modal only.
+        // Only the shared modal holds the frame; other elements may carry data-btr-preview.
         const modal = Array.from(scope.querySelectorAll('[data-btr-preview]')).find(element => element.querySelector('[data-btr-frame]'));
         if (!modal || modal.dataset.ready) return;
         modal.dataset.ready = '1';
         const frame = modal.querySelector('[data-btr-frame]'), loading = modal.querySelector('[data-btr-loading]');
-        frame.addEventListener('load', () => { if (frame.getAttribute('src')) { loading.hidden = true; frame.classList.add('is-ready'); } });
+        frame.addEventListener('load', () => {
+            if (!frame.getAttribute('src')) return;
+            loading.hidden = true;
+            frame.classList.add('is-ready');
+            // Escape also closes the preview when the focus is inside the document.
+            try { frame.contentDocument.addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); modal.querySelector('[data-workspace-modal-close]').click(); } }); } catch (_) {}
+        });
         modal.addEventListener('workspace:opened', event => {
             const trigger = event.detail && event.detail.trigger;
             const url = trigger ? trigger.dataset.btrUrl : '';

@@ -163,25 +163,6 @@ window.initPorcineFlow=function(root){
    form.elements.finished_lot_id.dispatchEvent(new Event('change',{bubbles:true}));
   });
  }
- const btrPreview=panel.querySelector('#flow-shipment-btr');
- if(btrPreview){
-  const frame=btrPreview.querySelector('[data-btr-frame]'),print=btrPreview.querySelector('[data-btr-print]');
-  const loading=btrPreview.querySelector('[data-btr-loading]'),error=btrPreview.querySelector('[data-btr-error]');
-  panel.querySelectorAll('[data-btr-preview]').forEach(trigger=>trigger.addEventListener('click',()=>{
-   btrPreview.querySelector('[data-btr-preview-reference]').textContent=trigger.dataset.btrReference;
-   const url=new URL(trigger.dataset.btrUrl,window.location.href);
-   btrPreview.querySelector('[data-btr-open]').href=url.href;
-   const pdf=new URL(url);pdf.searchParams.set('export','pdf');btrPreview.querySelector('[data-btr-download]').href=pdf.href;
-   print.disabled=true;frame.hidden=true;loading.hidden=false;error.hidden=true;btrPreview.setAttribute('aria-busy','true');frame.src=url.href;
-  }));
-  frame.addEventListener('load',()=>{
-   let ready=false;try{ready=Boolean(frame.contentDocument?.querySelector('.shipment-btr-document'));}catch(_){}
-   loading.hidden=true;error.hidden=ready;frame.hidden=!ready;print.disabled=!ready;btrPreview.setAttribute('aria-busy','false');
-   if(ready)frame.contentDocument.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();btrPreview.querySelector('[data-workspace-modal-close]').click();}});
-  });
-  frame.addEventListener('error',()=>{loading.hidden=true;error.hidden=false;print.disabled=true;btrPreview.setAttribute('aria-busy','false');});
-  print.addEventListener('click',()=>{if(!print.disabled){frame.contentWindow.focus();frame.contentWindow.print();}});
- }
  function initSourceSearch(root){
   root.querySelectorAll('select[name="batch_id"],select[name="weight_stock_id"],select[name="raw_lot_id"],select[name="counter_stock_id"],select[name="finished_lot_id"],select[data-flow-product-select]').forEach(select=>{
    if(select.closest('[data-slaughter-lot-picker],[data-transformation-form]')||select.dataset.searchReady||select.options.length<9)return;

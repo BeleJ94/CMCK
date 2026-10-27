@@ -476,10 +476,6 @@ dialog.slaughter-lot-dialog::backdrop { background:rgba(9,17,12,.72); }
 .flow-kpi-detail > header [data-kpi-total] { margin-top:6px; color:var(--text-muted); font-size:13px; }
 @media(max-width:767px){.flow-kpi-detail > .feed-form-body{padding:12px;}}
 
-.slaughter-register-tools .shipment-register-filters { grid-template-columns:minmax(170px,1fr) minmax(120px,150px) minmax(120px,160px) 100px auto auto; }
-.shipment-weight-note { display:block; margin-top:2px; color:var(--text-muted); font-size:12px; white-space:normal; }
-@media(max-width:1280px){.slaughter-register-tools .shipment-register-filters{grid-template-columns:repeat(3,minmax(0,1fr));}.shipment-register-filters > .ui-filterbar__search{grid-column:1 / -1;}}
-@media(max-width:767px){.slaughter-register-tools .shipment-register-filters{grid-template-columns:repeat(2,minmax(0,1fr));}.shipment-register-filters > button{grid-column:1 / -1;}}
 
 .user-account-modal [hidden] { display:none!important; }
 .user-account-modal [data-user-current-access] { margin-bottom:14px; padding:12px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface-alt); font-size:13px; }
@@ -564,20 +560,6 @@ dialog.slaughter-lot-dialog::backdrop { background:rgba(9,17,12,.72); }
 .flow-summary.receipts-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
 @media(max-width:540px){.flow-summary.receipts-summary { grid-template-columns:1fr; }}
 
-/* Shipment actions stay visible; audit and destructive controls are secondary. */
-.shipment-action-stack { display:grid; gap:8px; min-width:160px; }
-.shipment-action-stack > button { min-height:44px; justify-content:center; }
-.shipment-action-stack .enterprise-form { margin:0; }
-.shipment-action-stack .enterprise-form .feed-form-body { padding:0; }
-.shipment-action-stack .enterprise-form footer { display:flex; margin:0; padding:0; border:0; background:transparent; }
-.shipment-action-stack .enterprise-form footer button { flex:1; width:100%; min-height:44px; white-space:normal; }
-.shipment-table .shipment-follow-up { margin-top:6px; }
-.shipment-detail-list { margin:10px 0; padding:10px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface-alt); font-size:12px; }
-.shipment-detail-list > div + div { margin-top:8px; }
-.shipment-detail-list dt { color:var(--text-muted); }
-.shipment-detail-list dd { margin:2px 0 0; color:var(--text); font-weight:500; overflow-wrap:anywhere; }
-.shipment-table .shipment-cancel { margin-top:10px; }
-.shipment-table .shipment-cancel > summary { color:var(--st-danger); }
 .shipment-btr-preview { --primary-panel-width:1000px; }
 .shipment-btr-preview > .shipment-btr-body { display:flex; flex-direction:column; height:min(70dvh,760px); min-height:160px; padding:0; overflow:auto; background:var(--surface-alt); }
 .shipment-btr-body .app-alert { margin:16px; }
@@ -585,7 +567,7 @@ dialog.slaughter-lot-dialog::backdrop { background:rgba(9,17,12,.72); }
 .shipment-btr-preview [hidden] { display:none!important; }
 .shipment-btr-preview > header [data-btr-preview-reference] { margin:4px 0 0; color:var(--text-muted); font-size:12px; overflow-wrap:anywhere; }
 .shipment-btr-preview > footer { flex-wrap:wrap; }
-@media(max-width:767px){.shipment-action-stack{min-width:0;}.shipment-btr-preview > footer > :is(a,button){flex:1;min-height:44px;}.shipment-btr-preview > .shipment-btr-body{height:60dvh;}}
+@media(max-width:767px){.shipment-btr-preview > footer > :is(a,button){flex:1;min-height:44px;}.shipment-btr-preview > .shipment-btr-body{height:60dvh;}}
 
 /* Receipt control groups traceability, measurements and explicit confirmations. */
 .receipt-control-panel { display:grid; gap:18px; min-width:0; }
