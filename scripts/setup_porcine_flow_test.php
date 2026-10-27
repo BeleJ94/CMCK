@@ -22,5 +22,7 @@ try{
     if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='livestock_pond_parcels'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/042_add_fish_ponds_and_transit_weighing.sql'));
     if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='cattle_slaughter_details'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/043_add_cattle_flow.sql'));
     if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='poultry_lot_profiles'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/044_add_poultry_flow.sql'));
+    $db->exec(file_get_contents(__DIR__.'/../database/045_add_missing_cutting_recipes.sql'));
+    if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='butchery_product_sources'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/046_add_butchery_product_sources.sql'));
     echo $name,PHP_EOL;
 }catch(Throwable $e){$db->exec('DROP DATABASE `'.$name.'`');throw $e;}

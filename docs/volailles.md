@@ -85,7 +85,7 @@ Toutes les ventes se font au comptoir de la boucherie. La boucherie suit les **p
 
 ## Déploiement
 
-Appliquer une fois `database/044_add_poultry_flow.sql`.
+Appliquer une fois `database/044_add_poultry_flow.sql`, puis `database/045_add_missing_cutting_recipes.sql`. Cette dernière crée la fiche « Découpe de volaille » et l’article « Morceaux de volaille » s’ils manquent : sans fiche, la transformation des carcasses de poulet est refusée.
 
 La migration crée :
 

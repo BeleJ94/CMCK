@@ -228,9 +228,25 @@ window.initPorcineFlow=function(root){
   const distribute=form.querySelector('[data-transform-distribute]').checked;
   form.querySelector('[data-transform-destinations]').hidden=!distribute;
   form.elements.counter_id.disabled=!distribute;form.elements.counter_id.required=distribute;
+  // Only the products of the chosen material, as set in the products referential (046).
+  const filtered=area.hasAttribute('data-products-filtered'),catalog=JSON.parse(area.dataset.products||'[]');
+  const offered=filtered?catalog.filter(p=>(p.sources||[]).includes(Number(source.value))):catalog;
+  const hint=form.querySelector('[data-transform-products-text]');
+  if(hint){const name=source.selectedOptions[0]?.dataset.name||'';hint.textContent=!source.value?'Choisissez d’abord le produit source : seuls ses produits seront proposés.':offered.length?offered.length+' produit(s) paramétré(s) pour '+name+'.':'Aucun produit paramétré pour '+name+'. Ajoutez-en dans le référentiel des produits.';hint.parentElement.classList.toggle('is-warning',Boolean(source.value)&&!offered.length);}
   const rows=Array.from(form.querySelectorAll('[data-flow-output]'));let total=0,counter=0;
   rows.forEach(row=>{
    const obtained=row.querySelector('[data-output-quantity]'),product=row.querySelector('[data-flow-product-select]');
+   if(filtered&&product.dataset.offer!==source.value){
+    const current=product.value;product.dataset.offer=source.value;
+    product.replaceChildren(new Option(!source.value?'Choisissez d’abord le produit source':offered.length?'Choisir le produit':'Aucun produit pour cette matière',''),...offered.map(p=>{const option=new Option(p.name,p.id);option.dataset.pieces=p.pieces?'1':'0';if(p.shelf!==null)option.dataset.shelf=p.shelf;return option;}));
+    product.value=offered.some(p=>String(p.id)===current)?current:'';
+   }
+   // Best-before date proposed from the product's shelf life, until the user types another one.
+   const expiry=row.querySelector('[type=date]'),shelf=product.selectedOptions[0]?.dataset.shelf;
+   if(row.dataset.product!==product.value){
+    row.dataset.product=product.value;
+    if(shelf&&day&&(expiry.value===''||expiry.value===row.dataset.proposed)){const date=new Date(day+'T00:00:00');date.setDate(date.getDate()+Number(shelf));expiry.value=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');row.dataset.proposed=expiry.value;}
+   }
    // Whole birds and other products counted in pieces: pieces obtained, and pieces sent to the counter.
    const tracked=product.selectedOptions[0]?.dataset.pieces==='1',piecesLabel=row.querySelector('[data-output-pieces]'),pieces=piecesLabel.querySelector('input');
    piecesLabel.hidden=!tracked;pieces.disabled=!tracked;pieces.required=tracked;

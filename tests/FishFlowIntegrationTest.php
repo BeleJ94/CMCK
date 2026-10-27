@@ -105,6 +105,11 @@ $mine=array_values(array_filter($report['rows'],static fn($row)=>in_array((int)$
 ok(count($mine)===2&&$report['totals']['exceeded']>=1&&$report['totals']['weighed']>=2,'Rapport : réceptions pesées et dépassements comptés');
 ok(count($weighing->report($bouch,['from'=>date('Y-m-01',strtotime('-1 day')),'to'=>date('Y-m-d'),'status'=>'exceeded'])['rows'])>=1,'Rapport filtré sur les dépassements');
 ok(substr($weighing->spreadsheet($report),0,2)==='PK','Export Excel du rapport');
+
+// Preparation of the received fish, with the cutting sheet of migration 045.
+$poisson=(int)DagrilIntegrationTest::scalar("SELECT id FROM butchery_items WHERE code='MP-POISSON'");$prepare=(int)DagrilIntegrationTest::scalar("SELECT id FROM butchery_items WHERE code='POISSON-PREPARE'");
+$order=$fish->transform(k(['source_item_id'=>(string)$poisson,'lot_mode'=>'auto','production_date'=>date('Y-m-d'),'quantity_kg'=>'20','outputs'=>[['item_id'=>(string)$prepare,'quantity_kg'=>'18','expiry_date'=>date('Y-m-d',strtotime('+2 days'))]],'loss_confirmed'=>'1']),$user);
+ok(DagrilIntegrationTest::scalar('SELECT r.code FROM butchery_orders o JOIN butchery_recipe_versions v ON v.id=o.recipe_version_id JOIN butchery_recipes r ON r.id=v.recipe_id WHERE o.id=?',[$order])==='PREP-POISSON','Transformation du poisson : fiche « Préparation de poisson »');
 // The receiving butchery reads the transfer note without any livestock permission.
 $db->exec(file_get_contents(__DIR__.'/../database/038_add_butchery_manager_role.sql'));
 q("INSERT INTO users(role_id,name,email,password,status) VALUES(NULL,'Boucher test',?,'unused','active')",['boucher-'.bin2hex(random_bytes(4)).'@example.test']);$butcherId=(int)$db->lastInsertId();

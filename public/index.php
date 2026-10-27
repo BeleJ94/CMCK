@@ -195,6 +195,10 @@ $router->post('/butchery/weighing-gaps/tolerances','PorcineFlow@saveTolerance',[
 $router->get('/butchery/cold-room/report','PorcineFlow@coldMovementReport',['auth'=>true,'permission'=>['butchery','read']]);
 $router->get('/butchery/cold-room','PorcineFlow@coldRoom',['auth'=>true,'permission'=>['butchery','read']]);
 $router->get('/butchery/production','PorcineFlow@production',['auth'=>true,'permission'=>['butchery','read']]);
+$router->get('/butchery/products','PorcineFlow@products',['auth'=>true,'permission'=>['butchery','read']]);
+$router->post('/butchery/products','PorcineFlow@createProduct',['auth'=>true,'permission'=>['butchery','administer']]);
+$router->post('/butchery/products/{id}','PorcineFlow@updateProduct',['auth'=>true,'permission'=>['butchery','administer']]);
+$router->post('/butchery/products/materials/{id}','PorcineFlow@materialProducts',['auth'=>true,'permission'=>['butchery','administer']]);
 $router->get('/butchery/counters','PorcineFlow@counters',['auth'=>true,'permission'=>['butchery','read']]);
 $router->get('/butchery/pos/tickets/{id}','PorcineFlow@posReceipt',['auth'=>true,'permission'=>['butchery','read']]);
 $router->get('/butchery/pos/catalog','PorcineFlow@posCatalog',['auth'=>true,'permission'=>['butchery','read']]);

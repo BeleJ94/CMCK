@@ -30,6 +30,10 @@ Vérification : `DAGRIL_DB_DATABASE=dagril_works_verified_test php tests/Butcher
 
 Le script conserve les références existantes et ne modifie aucun stock. Les fiches initiales sont attribuées au premier administrateur actif ; l’exécution automatique et les codes créés sont journalisés comme initialisation CLI. Exécuter `php scripts/setup_butchery_recipes.php` sur une autre installation après les migrations boucherie existantes. Une relance n’ajoute pas de doublons.
 
+La migration `database/045_add_missing_cutting_recipes.sql` crée DEC-BOEUF, DEC-VOLAILLE et PREP-POISSON, ainsi que leurs articles de sortie, sur une installation où le script n’a pas été lancé. Sans ces fiches, la transformation de ces carcasses était refusée. Une matière qui a déjà une fiche active, quel que soit son code, n’en reçoit pas d’autre. Le porc utilise DEC-PORC-FERME, créée par la migration 037.
+
+Les produits proposés pour chaque matière se paramètrent dans Boucherie › Produits (migration 046) : voir [boucherie-produits.md](boucherie-produits.md).
+
 La planification filtre les lots par matière de la fiche. Le serveur vérifie aussi la correspondance lors de la planification, de la saisie des résultats et de la validation finale. Le contrôle autorise les matières explicitement déclarées dans les composants de la version, sans modifier les versions historiques.
 
 Tests : initialisation répétée, `tests/ButcheryRecipeCompatibilityTest.php` et `scripts/test_butchery.php`, exclusivement avec `DAGRIL_DB_DATABASE` pointant sur une base `_test` ou `_testing`.

@@ -359,6 +359,7 @@ class Auth
                 ['label' => 'Vue d’ensemble', 'path' => 'butchery', 'icon' => 'bi-grid', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Réceptions', 'path' => 'butchery/receipts', 'icon' => 'bi-box-arrow-in-down', 'badge' => 'pending_carcass_controls', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Transformation', 'path' => 'butchery/production', 'icon' => 'bi-gear', 'badge' => 'pending_butchery_transformations', 'roles' => ['administrateur', 'direction']],
+                ['label' => 'Produits', 'path' => 'butchery/products', 'icon' => 'bi-tags', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Écarts de pesée', 'path' => 'butchery/weighing-gaps', 'icon' => 'bi-speedometer2', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Chambre froide', 'path' => 'butchery/cold-room', 'icon' => 'bi-snow', 'badge' => 'expired_cold_lots', 'roles' => ['administrateur', 'direction']],
                 ['label' => 'Comptoirs et ventes', 'path' => 'butchery/counters', 'icon' => 'bi-shop', 'badge' => 'expired_counter_lots', 'roles' => ['administrateur', 'direction']],

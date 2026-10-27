@@ -65,12 +65,13 @@ Ensuite :
 
 - **Paramétrer les tolérances** du porc et du poisson dans « Écarts de pesée ». Sinon, tout écart demande une justification.
 - **Préparer la réception.** Elle exige désormais une pesée : les envois déjà en route au moment du déploiement seront pesés à leur arrivée.
+- **Appliquer `database/045_add_missing_cutting_recipes.sql`.** Elle crée la fiche « Préparation de poisson » et l’article « Poisson préparé » s’ils manquent : sans fiche, la transformation du poisson est refusée.
 
 ## Vérifications
 
 - `php tests/TransitWeighingTest.php` : 17 contrôles sans base de données, sur la saisie net ou brut − tare, l’écart, la tolérance et les libellés.
 - Sur une base jetable créée par `scripts/setup_porcine_flow_test.php`, qui applique désormais la migration 042 :
-  - `tests/FishFlowIntegrationTest.php` : 44 contrôles MySQL, du parcours complet jusqu’au rapport et à l’export.
+  - `tests/FishFlowIntegrationTest.php` : 48 contrôles MySQL, du parcours complet jusqu’au rapport, à l’export et à la préparation du poisson.
   - `tests/PorcineFlowIntegrationTest.php` et `tests/PigLifecycleIntegrationTest.php`, adaptés à la pesée d’arrivée.
 - `tests/browser/FishFlowBrowserTest.cjs` : parcours Chrome complet, rejouable.
   - Il enchaîne mise en charge, pêche finale, validation, envoi, pesée d’arrivée avec écart, contrôle et rapport.

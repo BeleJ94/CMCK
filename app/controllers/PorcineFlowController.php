@@ -3,7 +3,7 @@ require_once dirname(__DIR__).'/services/PorcineFlowService.php';
 
 class PorcineFlowController extends Controller
 {
-    private const RETURNS=['livestock/pigs/slaughters','livestock/pigs/shipments','butchery/receipts','butchery/cold-room','butchery/production','butchery/counters','butchery/pos/history','butchery/weighing-gaps'];
+    private const RETURNS=['livestock/pigs/slaughters','livestock/pigs/shipments','butchery/receipts','butchery/cold-room','butchery/production','butchery/counters','butchery/pos/history','butchery/weighing-gaps','butchery/products'];
     public function slaughters(){ $this->farm('slaughters'); }
     public function shipments(){ $this->farm('shipments'); }
     private function farm(string $section)
@@ -77,6 +77,17 @@ class PorcineFlowController extends Controller
         }
         $this->view('porcine_flow/weighing_gaps',array_merge($data,['title'=>'Boucherie · écarts de pesée','success'=>flash('success'),'error'=>flash('error')]),'layouts.main');
     }
+    /** Products referential: the products each raw material gives (046). */
+    public function products()
+    {
+        $flow=new PorcineFlowService();
+        if(!$flow->available()){$this->view('porcine_flow/unavailable',['title'=>'Boucherie'],'layouts.main');return;}
+        $this->view('porcine_flow/products',array_merge($this->productService()->directory(),['title'=>'Boucherie · produits de transformation','success'=>flash('success'),'error'=>flash('error')]),'layouts.main');
+    }
+    public function createProduct(){ $this->run(fn($s,$u)=>$this->productService()->create($_POST,$u),'Produit créé. Il est proposé à la transformation de ses matières.'); }
+    public function updateProduct($id){ $this->run(fn($s,$u)=>$this->productService()->update($id,$_POST,$u),'Produit enregistré. La transformation propose désormais ses nouvelles matières.'); }
+    public function materialProducts($id){ $this->run(fn($s,$u)=>$this->productService()->saveMaterial($id,$_POST,$u),'Produits de la matière enregistrés. Seuls ceux-ci sont proposés à sa transformation.'); }
+    private function productService(): ButcheryProductService { require_once dirname(__DIR__).'/services/ButcheryProductService.php';return new ButcheryProductService(); }
     public function saveTolerance(){ $this->run(fn($s,$u)=>$s->saveTolerance($_POST,$u),'Tolérance enregistrée. Elle s’applique aux prochaines pesées d’arrivée.'); }
     public function posReport()
     {

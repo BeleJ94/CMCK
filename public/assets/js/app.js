@@ -830,6 +830,7 @@
         if(window.initFish)window.initFish(root);
         if(window.initCattle)window.initCattle(root);
         if(window.initPoultry)window.initPoultry(root);
+        if(window.initButcheryProducts)window.initButcheryProducts(root);
         if(window.initRowActions)window.initRowActions(root);
         if(window.initButcheryPos)window.initButcheryPos(root);
         if(window.initButchery)window.initButchery(root);

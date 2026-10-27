@@ -69,4 +69,10 @@ ok((float)$raw['quantity_kg']===868.0&&$raw['code']==='MP-BOEUF'&&strpos($raw['l
 ok(DagrilIntegrationTest::scalar('SELECT status FROM livestock_transfers WHERE id=?',[$t])==='received','Envoi reçu à la boucherie');
 $report=$weighing->report($bouch,['from'=>date('Y-m-01',strtotime('-1 day')),'to'=>date('Y-m-d'),'species'=>(string)$bovin]);
 ok(count(array_filter($report['rows'],static fn($row)=>(int)$row['id']===$receipt))===1&&$report['bySpecies'][0]['species']!=='','Rapport des écarts : réception bovine incluse');
+
+// Cutting of the beef carcass at the butchery, with the cutting sheet of migration 045.
+$boeuf=(int)DagrilIntegrationTest::scalar("SELECT id FROM butchery_items WHERE code='MP-BOEUF'");$morceaux=(int)DagrilIntegrationTest::scalar("SELECT id FROM butchery_items WHERE code='MORCEAUX-BOEUF'");
+$order=$cattle->transform(k(['source_item_id'=>(string)$boeuf,'lot_mode'=>'auto','production_date'=>date('Y-m-d'),'quantity_kg'=>'100','outputs'=>[['item_id'=>(string)$morceaux,'quantity_kg'=>'95','expiry_date'=>date('Y-m-d',strtotime('+3 days'))]],'loss_confirmed'=>'1']),$user);
+$o=q('SELECT r.code,o.actual_input_kg,o.output_kg FROM butchery_orders o JOIN butchery_recipe_versions v ON v.id=o.recipe_version_id JOIN butchery_recipes r ON r.id=v.recipe_id WHERE o.id=?',[$order])->fetch();
+ok($o['code']==='DEC-BOEUF'&&(float)$o['actual_input_kg']===100.0&&(float)$o['output_kg']===95.0,'Transformation de la carcasse de bœuf : fiche « Découpe de bœuf », 100 kg pour 95 kg de morceaux');
 DagrilIntegrationTest::finish();

@@ -37,6 +37,8 @@
 
 Appliquer une fois `database/043_add_cattle_flow.sql`. La migration crée `cattle_receipts` et `cattle_slaughter_details`, sans modifier les tables existantes.
 
+Appliquer aussi `database/045_add_missing_cutting_recipes.sql`. Elle crée la fiche « Découpe de bœuf » et l’article « Morceaux de bœuf » s’ils manquent : sans fiche, la transformation des carcasses de bœuf est refusée.
+
 Ensuite :
 
 - paramétrer la tolérance « Bovin » dans Boucherie › Écarts de pesée ;
@@ -44,12 +46,13 @@ Ensuite :
 
 ## Vérifications
 
-- `tests/CattleFlowIntegrationTest.php` : 27 contrôles MySQL sur une base jetable créée par `scripts/setup_porcine_flow_test.php`. Ils couvrent :
+- `tests/CattleFlowIntegrationTest.php` : 28 contrôles MySQL sur une base jetable créée par `scripts/setup_porcine_flow_test.php`. Ils couvrent :
   - la réception (capacité, fournisseur, date, poids vif facultatif) ;
   - le refus du parcours générique ;
   - l’abattage et les animaux disponibles ;
   - la validation, le rendement carcasse et l’annulation ;
   - l’envoi BTR-BOEUF, la pesée d’arrivée avec tolérance et la chambre froide au poids reçu ;
-  - le rapport des écarts.
+  - le rapport des écarts ;
+  - la transformation de la carcasse avec la fiche « Découpe de bœuf ».
 - `tests/browser/CattleFlowBrowserTest.cjs` : parcours Chrome complet, de la réception fournisseur à la fiche du lot, avec l’affichage mobile à 390 et 320 px. La fixture est `tests/integration/CattleBrowserFixture.php`.
 - `scripts/test_livestock.php` : il crée désormais son lot bovin par une réception fournisseur, et teste les conversions génériques sur des volailles.

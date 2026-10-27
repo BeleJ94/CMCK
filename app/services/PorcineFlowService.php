@@ -231,6 +231,8 @@ class PorcineFlowService extends Model
           'counters'=>$this->query('SELECT * FROM butchery_counters WHERE site_id=? ORDER BY id',[$site])->fetchAll(),
           'counterStocks'=>$this->query("SELECT cs.*,c.name counter_name,c.status counter_status,l.site_id,l.lot_number,l.expiry_date,l.status lot_status,i.name item_name{$track} FROM butchery_counter_stocks cs JOIN butchery_counters c ON c.id=cs.counter_id JOIN butchery_finished_lots l ON l.id=cs.finished_lot_id JOIN butchery_items i ON i.id=l.item_id WHERE c.site_id=? AND cs.quantity_kg".($p?'+COALESCE(cs.quantity_pieces,0)':'').">0 ORDER BY c.id,l.expiry_date,cs.id",[$site])->fetchAll(),
           'items'=>$this->query("SELECT * FROM butchery_items WHERE item_kind IN ('finished_product','co_product') AND {$units} AND status='active' AND deleted_at IS NULL ORDER BY name")->fetchAll(),
+          // Raw material id → the products it gives (046); null before the referential, every product is then offered.
+          'productSources'=>$this->hasTable('butchery_product_sources')?$this->query('SELECT raw_item_id,product_item_id FROM butchery_product_sources')->fetchAll(PDO::FETCH_GROUP|PDO::FETCH_COLUMN):null,
           'orders'=>$this->query("SELECT o.*,r.name recipe_name,u.name author FROM butchery_orders o JOIN butchery_recipe_versions v ON v.id=o.recipe_version_id JOIN butchery_recipes r ON r.id=v.recipe_id LEFT JOIN users u ON u.id=o.created_by WHERE o.site_id=? AND o.deleted_at IS NULL ORDER BY o.id DESC",[$site])->fetchAll(),
           'allocations'=>$this->query("SELECT a.*,c.name counter_name FROM butchery_output_allocations a JOIN butchery_counters c ON c.id=a.counter_id WHERE c.site_id=?",[$site])->fetchAll(),
           'sales'=>$this->query("SELECT s.*,c.name counter_name,l.lot_number,i.name item_name FROM butchery_sales s LEFT JOIN butchery_counter_stocks cs ON cs.id=s.counter_stock_id LEFT JOIN butchery_counters c ON c.id=cs.counter_id LEFT JOIN butchery_finished_lots l ON l.id=s.finished_lot_id LEFT JOIN butchery_items i ON i.id=l.item_id WHERE s.site_id=? AND s.status='validated' ORDER BY s.id DESC LIMIT 100",[$site])->fetchAll()];
@@ -424,8 +426,11 @@ class PorcineFlowService extends Model
                 $this->query('UPDATE butchery_raw_lots SET reserved_kg=reserved_kg+?,reserved_pieces=reserved_pieces+? WHERE id=?',[$take['quantity'],$take['pieces'],$source['id']]);
             }
             $units=$this->piecesReady()?"unit IN ('kg','piece') AND is_live=0":"unit='kg'";
+            // Only the products the referential gives for this material (046).
+            $sourced=$this->hasTable('butchery_product_sources');
             foreach($outputs as $out){
                 $item=$this->row("SELECT * FROM butchery_items WHERE id=? AND item_kind IN ('finished_product','co_product') AND {$units} AND status='active' AND deleted_at IS NULL",[$out['item']]);if(!$item)throw new RuntimeException('Produit fini invalide.');
+                if($sourced&&!$this->row('SELECT 1 FROM butchery_product_sources WHERE product_item_id=? AND raw_item_id=?',[$item['id'],$raw['item_id']]))throw new RuntimeException('« '.$item['name'].' » ne fait pas partie des produits de « '.$this->query('SELECT name FROM butchery_items WHERE id=?',[$raw['item_id']])->fetchColumn().' ». Ajoutez-le dans Boucherie › Produits.');
                 $obtained=round($out['cold']+$out['counter'],3);$counterKg=$out['counter'];$outPieces=null;$counterPieces=null;
                 // Products counted in pieces (whole birds) are placed at the counter by pieces.
                 if(!empty($item['track_pieces'])){
