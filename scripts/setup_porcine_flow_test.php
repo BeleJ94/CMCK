@@ -13,7 +13,7 @@ $db->exec('CREATE DATABASE `'.$name.'` CHARACTER SET utf8mb4 COLLATE utf8mb4_uni
 try{
     $db->exec('USE `'.$name.'`');$db->exec('SET FOREIGN_KEY_CHECKS=0');
     foreach($db->query('SHOW FULL TABLES FROM `'.$source.'` WHERE Table_type=\'BASE TABLE\'')->fetchAll(PDO::FETCH_NUM) as $table){$table=$table[0];$ddl=$db->query('SHOW CREATE TABLE `'.$source.'`.`'.$table.'`')->fetch(PDO::FETCH_NUM)[1];$db->exec($ddl);}
-    foreach(['sites','roles','users','user_sites','permissions','role_permissions','user_role_assignments','livestock_species','butchery_items','butchery_recipes','butchery_recipe_versions','butchery_recipe_components','document_types','document_numbering_rules','workflow_definitions','workflow_steps'] as $table)$db->exec('INSERT INTO `'.$name.'`.`'.$table.'` SELECT * FROM `'.$source.'`.`'.$table.'`');
+    foreach(['sites','roles','users','user_sites','permissions','role_permissions','user_role_assignments','livestock_species','butchery_items','butchery_recipes','butchery_recipe_versions','butchery_recipe_components','document_types','document_numbering_rules','workflow_definitions','workflow_steps','site_types','products','bag_formats','empty_packaging_items'] as $table)$db->exec('INSERT INTO `'.$name.'`.`'.$table.'` SELECT * FROM `'.$source.'`.`'.$table.'`');
     $db->exec('SET FOREIGN_KEY_CHECKS=1');
     if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='livestock_pig_profiles'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/036_add_pig_lifecycle.sql'));
     if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='butchery_counters'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/037_add_farm_carcasses_and_butchery_counters.sql'));
@@ -24,5 +24,8 @@ try{
     if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='poultry_lot_profiles'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/044_add_poultry_flow.sql'));
     $db->exec(file_get_contents(__DIR__.'/../database/045_add_missing_cutting_recipes.sql'));
     if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='butchery_product_sources'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/046_add_butchery_product_sources.sql'));
+    if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='customers'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/047_add_customers_and_sales_settings.sql'));
+    if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='customer_orders'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/048_add_customer_orders.sql'));
+    if(!(int)$db->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='customer_deliveries'")->fetchColumn())$db->exec(file_get_contents(__DIR__.'/../database/049_add_customer_deliveries.sql'));
     echo $name,PHP_EOL;
 }catch(Throwable $e){$db->exec('DROP DATABASE `'.$name.'`');throw $e;}

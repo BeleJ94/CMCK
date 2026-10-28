@@ -5,13 +5,19 @@ class DistributionController extends Controller
     public function index()
     {
         $model = $this->model('Distribution');
+        require_once dirname(__DIR__) . '/services/CustomerDeliveryService.php';
+        $deliveries = new CustomerDeliveryService();
 
         $this->view('distributions.index', [
-            'title' => 'Distribution',
+            'title' => 'Distribution · sorties clients',
             'availableStocks' => $model->availableStocks(),
             'distributions' => $model->history(),
+            'delivery' => $deliveries->directory(),
+            'customers' => $model->activeCustomers(),
             'success' => flash('success'),
             'error' => flash('error'),
+            'deliveryDone' => flash('delivery_done'),
+            'exitDone' => flash('exit_done'),
         ], 'layouts.main');
     }
 
@@ -37,6 +43,9 @@ class DistributionController extends Controller
         $model = $this->model('Distribution');
         $data = $this->input();
         $errors = $this->validate($data, $model);
+        if ($data['customer_id'] !== '' && empty($errors['customer_id'])) {
+            $data['recipient_name'] = $model->activeCustomer((int) $data['customer_id'])['name'];
+        }
 
         if (!empty($errors)) {
             if($ajax){$this->jsonResult(false,implode(' ',array_values($errors)));return;}
@@ -47,8 +56,8 @@ class DistributionController extends Controller
 
         try {
             $id = $model->createDistribution($data, Auth::user());
+            if($ajax){flash('success','Sortie enregistrée : '.(int) $data['quantity_bags'].' sac(s) remis à '.$data['recipient_name'].'.');flash('exit_done',(string) $id);$this->jsonResult(true,'Sortie enregistrée.',$id);return;}
             flash('success', 'Sortie stock creee avec succes.');
-            if($ajax){$this->jsonResult(true,'Sortie enregistrée.',$id);return;}
             redirect('distributions/' . $id);
         } catch (Exception $exception) {
             if($ajax){$this->jsonResult(false,$exception->getMessage());return;}
@@ -89,7 +98,8 @@ class DistributionController extends Controller
                 'distribution' => $distribution,
                 'pdfMode' => true,
             ]);
-            (new PdfService())->stream('Bon de sortie produits finis', $html, 'bon-sortie-' . $this->slug($distribution['official_document_number'] ?: $distribution['exit_voucher']) . '.pdf', 'portrait');
+            // ?preview=1 shows the PDF in the browser instead of downloading it.
+            (new PdfService())->stream('Bon de sortie produits finis', $html, 'bon-sortie-' . $this->slug($distribution['official_document_number'] ?: $distribution['exit_voucher']) . '.pdf', 'portrait', ($_GET['preview'] ?? '') !== '1');
             return;
         }
 
@@ -102,7 +112,7 @@ class DistributionController extends Controller
     private function jsonResult($ok,$message,$id=null,$status=422)
     {
         http_response_code($ok?200:$status);header('Content-Type: application/json');
-        echo json_encode(['success'=>$ok,'ok'=>$ok,'message'=>$message,'redirect'=>base_url('distributions/'.$id),'redirect_url'=>$ok?base_url('distributions/'.$id):null]);
+        echo json_encode(['success'=>$ok,'ok'=>$ok,'message'=>$message,'redirect'=>base_url('distributions'),'redirect_url'=>$ok?base_url('distributions'):null]);
     }
 
     private function slug($value)
@@ -120,12 +130,23 @@ class DistributionController extends Controller
             'exit_voucher' => trim($_POST['exit_voucher'] ?? ''),
             'quantity_bags' => trim($_POST['quantity_bags'] ?? ''),
             'distributed_at' => trim($_POST['distributed_at'] ?? ''),
+            'customer_id' => trim($_POST['customer_id'] ?? ''),
         ];
     }
 
     private function validate(array $data, Distribution $model)
     {
         $errors = [];
+
+        // A registered client gives its name to the exit note.
+        if ($data['customer_id'] !== '') {
+            $customer = ctype_digit((string) $data['customer_id']) ? $model->activeCustomer((int) $data['customer_id']) : null;
+            if (!$customer) {
+                $errors['customer_id'] = 'Client introuvable ou bloqué.';
+            } else {
+                $data['recipient_name'] = $customer['name'];
+            }
+        }
 
         if ($data['finished_stock_id'] === '' || !ctype_digit((string) $data['finished_stock_id'])) {
             $errors['finished_stock_id'] = 'Le stock produit fini est obligatoire.';

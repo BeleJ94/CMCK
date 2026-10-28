@@ -9,7 +9,8 @@ class Distribution extends Model
         $params = [];
         $siteClause = Auth::siteClause('finished_stocks.site_id', $params);
         return $this->query(
-            "SELECT finished_stocks.id, sites.code AS site_code,
+            "SELECT finished_stocks.id, sites.code AS site_code, sites.name AS site_name,
+                    finished_stocks.created_at AS stock_date,
                     finished_stocks.product_id,
                     finished_stocks.bag_format_id,
                     finished_stocks.quantity_bags - finished_stocks.reserved_bags AS quantity_bags,
@@ -133,6 +134,9 @@ class Distribution extends Model
             );
 
             $distributionId = $this->db->lastInsertId();
+            if (!empty($data['customer_id']) && $this->hasCustomers()) {
+                $this->query('UPDATE distributions SET customer_id = :customer WHERE id = :id', ['customer' => (int) $data['customer_id'], 'id' => $distributionId]);
+            }
 
             require_once dirname(__DIR__) . '/services/DocumentService.php';
             (new DocumentService($this->db))->register('BS', $stock['site_id'], 'distributions', $distributionId, 'validated', $data['distributed_at'], $user);
@@ -216,6 +220,22 @@ class Distribution extends Model
             $this->db->rollBack();
             throw $exception;
         }
+    }
+
+    /** Active clients (047), to give a registered client to an exit without order. */
+    public function activeCustomers()
+    {
+        return $this->hasCustomers() ? $this->query("SELECT id,code,name,phone FROM customers WHERE status='active' AND deleted_at IS NULL ORDER BY name")->fetchAll() : [];
+    }
+
+    public function activeCustomer($id)
+    {
+        return $this->hasCustomers() ? $this->query("SELECT id,code,name FROM customers WHERE id = :id AND status='active' AND deleted_at IS NULL", ['id' => $id])->fetch() : null;
+    }
+
+    private function hasCustomers()
+    {
+        return (int) $this->query("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='distributions' AND column_name='customer_id'")->fetchColumn() > 0;
     }
 
     public function nextVoucher()

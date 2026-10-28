@@ -368,6 +368,9 @@ class Auth
             ['label' => 'Distribution & logistique', 'icon' => 'bi-send-check', 'items' => [
                 ['label' => 'Transferts inter-sites', 'path' => 'transfers', 'icon' => 'bi-arrow-left-right', 'roles' => ['administrateur', 'direction', 'agent-distribution']],
                 ['label' => 'Distribution clients', 'path' => 'distributions', 'icon' => 'bi-send-check', 'roles' => ['administrateur', 'direction', 'agent-distribution']],
+                ['label' => 'Commandes clients', 'path' => 'sales/orders', 'icon' => 'bi-receipt', 'roles' => ['administrateur', 'direction', 'agent-distribution']],
+                ['label' => 'Clients', 'path' => 'customers', 'icon' => 'bi-person-vcard', 'roles' => ['administrateur', 'direction', 'agent-distribution']],
+                ['label' => 'Tarifs et taux', 'path' => 'sales/settings', 'icon' => 'bi-currency-exchange', 'roles' => ['administrateur', 'direction', 'agent-distribution']],
             ]],
             ['label' => 'Pilotage & conformité', 'icon' => 'bi-graph-up-arrow', 'items' => [
                 ['label' => 'Budgets & engagements', 'path' => 'budgets', 'icon' => 'bi-pie-chart', 'roles' => ['administrateur', 'direction']],
@@ -417,7 +420,7 @@ class Auth
     {
         if ($path === 'silo-administration') { return ['silos', 'administer']; }
         $first = explode('/', trim($path, '/'))[0];
-        $map = ['dashboard'=>'dashboard','direction'=>'dashboard','terrain'=>'dashboard','reports'=>'reports','analytics'=>'analytics','traceability'=>'traceability','cancellations'=>'cancellations','documents'=>'documents','transfers'=>'transfers','agriculture'=>'agriculture','livestock'=>'livestock','butchery'=>'butchery','budgets'=>'budgets','fuel-logistics'=>'fuel-logistics','suppliers'=>'suppliers','trucks'=>'trucks','weighings'=>'weighings','silos'=>'silos','machines'=>'machines','machine-feeds'=>'machine-feeds','production'=>'production','waste'=>'waste','pelletization'=>'pelletization','packaging'=>'packaging','empty-packaging'=>'empty-packaging','finished-stocks'=>'finished-stocks','distributions'=>'distributions','alerts'=>'alerts','activity-logs'=>'activity-logs','sites'=>'sites','users'=>'users','access-control'=>'rbac'];
+        $map = ['dashboard'=>'dashboard','direction'=>'dashboard','terrain'=>'dashboard','reports'=>'reports','analytics'=>'analytics','traceability'=>'traceability','cancellations'=>'cancellations','documents'=>'documents','transfers'=>'transfers','agriculture'=>'agriculture','livestock'=>'livestock','butchery'=>'butchery','budgets'=>'budgets','fuel-logistics'=>'fuel-logistics','suppliers'=>'suppliers','trucks'=>'trucks','weighings'=>'weighings','silos'=>'silos','machines'=>'machines','machine-feeds'=>'machine-feeds','production'=>'production','waste'=>'waste','pelletization'=>'pelletization','packaging'=>'packaging','empty-packaging'=>'empty-packaging','finished-stocks'=>'finished-stocks','distributions'=>'distributions','customers'=>'distributions','sales'=>'distributions','alerts'=>'alerts','activity-logs'=>'activity-logs','sites'=>'sites','users'=>'users','access-control'=>'rbac'];
         if (!isset($map[$first])) { return null; }
         $action = $path === 'livestock/facilities' ? 'administer' : (in_array($path, ['weighings/entry','machine-feeds/create','production/create','waste/process','packaging/create','distributions/create'], true) ? 'create' : 'read');
         if (in_array($first, ['sites','users','access-control'], true)) { $action='administer'; }

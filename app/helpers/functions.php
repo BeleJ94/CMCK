@@ -56,7 +56,10 @@ if (!function_exists('asset_url')) {
         $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
         $isPublicEntry = basename($scriptDir) === 'public';
 
-        return base_url(($isPublicEntry ? 'assets/' : 'public/assets/') . $path);
+        $url = base_url(($isPublicEntry ? 'assets/' : 'public/assets/') . $path);
+        // Version stamp: browsers reload a script or a stylesheet as soon as it changes.
+        $file = dirname(__DIR__, 2) . '/public/assets/' . $path;
+        return is_file($file) ? $url . (strpos($url, '?') === false ? '?' : '&') . 'v=' . filemtime($file) : $url;
     }
 }
 

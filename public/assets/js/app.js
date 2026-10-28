@@ -831,6 +831,7 @@
         if(window.initCattle)window.initCattle(root);
         if(window.initPoultry)window.initPoultry(root);
         if(window.initButcheryProducts)window.initButcheryProducts(root);
+        if(window.initSales)window.initSales(root);
         if(window.initRowActions)window.initRowActions(root);
         if(window.initButcheryPos)window.initButcheryPos(root);
         if(window.initButchery)window.initButchery(root);
@@ -1594,7 +1595,7 @@
                     try { historyStatuses=historyStatuses.concat(JSON.parse(table.getAttribute('data-status-options') || '[]')); } catch (e) {}
                     addFilter('type','Type',[['','Tous les types'],['inter_site','Inter-site'],['internal','Interne']]);
                 }
-                if(historyKind==='distributions')historyStatuses=[['','Tous les statuts'],['validated','Validée'],['cancelled','Annulée'],['draft','Brouillon']];
+                if(historyKind==='distributions'){historyStatuses=[['','Tous les statuts'],['validated','Validée ou livrée'],['cancelled','Annulée'],['draft','Brouillon']];addFilter('type','Type',[['','Toutes les sorties'],['delivery','Livraisons de commande'],['direct','Sorties sans commande']]);}
                 if(historyKind==='fuel-orders')historyStatuses=[['','Tous les statuts'],['draft','Brouillon'],['submitted','À valider'],['approved','Approuvé'],['partially_received','Réception partielle'],['received','Reçu'],['cancelled','Annulé']];
                 if(historyKind==='fuel-missions')historyStatuses=[['','Tous les statuts'],['submitted','À valider'],['approved','Approuvé'],['in_progress','En cours'],['completed','Terminé'],['justification_pending','À justifier'],['settled','Soldé'],['cancelled','Annulé']];
                 if(historyKind==='budgets')historyStatuses=[['','Tous les statuts'],['preparation','En préparation'],['submitted','Soumis'],['pending_df','À valider · DF'],['pending_dg','À valider · DG'],['active','Actif'],['rejected','Refusé'],['replaced','Remplacé'],['cancelled','Annulé']];

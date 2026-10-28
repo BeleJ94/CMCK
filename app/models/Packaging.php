@@ -240,6 +240,10 @@ class Packaging extends Model
                 $user
             );
 
+            // New bags go first to validated client orders still waiting for this product and format.
+            require_once dirname(__DIR__) . '/services/CustomerOrderService.php';
+            CustomerOrderService::allocatePending($this->db, (int) $batch['site_id'], (int) $batch['product_id'], (int) $format['id'], $user);
+
             $this->db->commit();
         } catch (Exception $exception) {
             $this->db->rollBack();
