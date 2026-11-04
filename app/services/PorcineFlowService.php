@@ -237,7 +237,7 @@ class PorcineFlowService extends Model
         return ['site'=>$site,'finished'=>$finished,'incoming'=>$incoming,'pending'=>$pending,'weighingReady'=>$this->weighingReady(),'piecesReady'=>$p,
           'raw'=>$this->query("SELECT l.*,i.name item_name,i.item_kind,i.unit item_unit{$track},i.status item_status,i.deleted_at item_deleted,b.batch_number FROM butchery_raw_lots l JOIN butchery_items i ON i.id=l.item_id LEFT JOIN livestock_batches b ON b.id=l.livestock_batch_id WHERE l.site_id=? AND l.deleted_at IS NULL ORDER BY l.expiry_date,l.production_date,l.id",[$site])->fetchAll(),
           'counters'=>$this->query('SELECT * FROM butchery_counters WHERE site_id=? ORDER BY id',[$site])->fetchAll(),
-          'counterStocks'=>$this->query("SELECT cs.*,c.name counter_name,c.status counter_status,l.site_id,l.lot_number,l.expiry_date,l.status lot_status,i.name item_name{$track} FROM butchery_counter_stocks cs JOIN butchery_counters c ON c.id=cs.counter_id JOIN butchery_finished_lots l ON l.id=cs.finished_lot_id JOIN butchery_items i ON i.id=l.item_id WHERE c.site_id=? AND cs.quantity_kg".($p?'+COALESCE(cs.quantity_pieces,0)':'').">0 ORDER BY c.id,l.expiry_date,cs.id",[$site])->fetchAll(),
+          'counterStocks'=>$this->query("SELECT cs.*,c.name counter_name,c.status counter_status,l.site_id,l.item_id,l.lot_number,l.expiry_date,l.status lot_status,i.name item_name{$track} FROM butchery_counter_stocks cs JOIN butchery_counters c ON c.id=cs.counter_id JOIN butchery_finished_lots l ON l.id=cs.finished_lot_id JOIN butchery_items i ON i.id=l.item_id WHERE c.site_id=? AND cs.quantity_kg".($p?'+COALESCE(cs.quantity_pieces,0)':'').">0 ORDER BY c.id,l.expiry_date,cs.id",[$site])->fetchAll(),
           'items'=>$this->query("SELECT * FROM butchery_items WHERE item_kind IN ('finished_product','co_product') AND {$units} AND status='active' AND deleted_at IS NULL ORDER BY name")->fetchAll(),
           // Raw material id → the products it gives (046); null before the referential, every product is then offered.
           'productSources'=>$this->hasTable('butchery_product_sources')?$this->query('SELECT raw_item_id,product_item_id FROM butchery_product_sources')->fetchAll(PDO::FETCH_GROUP|PDO::FETCH_COLUMN):null,
@@ -365,7 +365,7 @@ class PorcineFlowService extends Model
         $rawId=$sourceItem?0:$this->integer($data['raw_lot_id']??'');
         if($sourceItem&&!empty($data['raw_lot_id']))throw new RuntimeException('Choisissez le produit source ou un lot, pas les deux.');
         $lotMode=$sourceItem?($data['lot_mode']??'auto'):'legacy';$lotIds=[];
-        if(!in_array($lotMode,['auto','manual','legacy'],true)||($sourceItem&&$lotMode==='legacy'))throw new RuntimeException('Mode de choix des lots invalide.');
+        if(!in_array($lotMode,['auto','legacy'],true)||($sourceItem&&$lotMode==='legacy'))throw new RuntimeException($lotMode==='manual'?'Le choix manuel des lots n’est plus proposé : les lots sont prélevés automatiquement, DLC la plus proche en premier.':'Mode de choix des lots invalide.');
         if($lotMode==='manual'){
             $selected=$data['source_lot_ids']??[];if(!is_array($selected)||!count($selected)||count($selected)>200)throw new RuntimeException('Choisissez au moins un lot pour le prélèvement manuel.');
             foreach($selected as$id)$lotIds[]=$this->integer($id);$lotIds=array_values(array_unique($lotIds));sort($lotIds,SORT_NUMERIC);
@@ -511,8 +511,15 @@ class PorcineFlowService extends Model
     {
         return (int)$this->query('SELECT l.quantity_pieces-l.reserved_pieces-(SELECT COALESCE(SUM(quantity_pieces),0) FROM butchery_counter_stocks WHERE finished_lot_id=l.id) FROM butchery_finished_lots l WHERE l.id=?',[$lot])->fetchColumn();
     }
+    /**
+     * Chambre froide ↔ comptoir.
+     * Parcours normal : un produit (item_id) et une quantité ; l'approvisionnement prend les lots valides à la DLC
+     * la plus proche (lots périmés exclus) ; le retour au froid renvoie d'abord les lots à la DLC la plus lointaine,
+     * pour que le comptoir garde ce qui doit partir en premier. Un lot explicite (finished_lot_id) reste accepté.
+     */
     public function move(array $data,array $user): int
     {
+        if(!empty($data['item_id'])&&empty($data['finished_lot_id']))return $this->moveItem($data,$user);
         $site=$this->butcher('update');$lot=$this->integer($data['finished_lot_id']??'');$counter=$this->integer($data['counter_id']??'');$direction=$data['direction']??'';if(!in_array($direction,['supply','return_cold'],true))throw new RuntimeException('Sens du mouvement invalide.');
         // Lots counted in pieces move by pieces, their kilos follow proportionally.
         $pieces=$this->piecesReady()?$this->optionalPieces($data,'quantity_pieces'):null;$qty=$pieces===null?$this->amount($data['quantity_kg']??''):0.0;
@@ -531,8 +538,10 @@ class PorcineFlowService extends Model
             $after=round((float)$stock['quantity_kg']-$qty,3);$this->query('UPDATE butchery_counter_stocks SET quantity_kg=? WHERE id=?',[$after,$stock['id']]);$this->counterMove((int)$stock['id'],$op,'return_cold',$qty,(float)$stock['quantity_kg'],$after,$user,$pieces);return (int)$stock['id'];
         });
     }
+    /** Vente simple au comptoir : par produit (counter_id + item_id), DLC la plus proche d'abord ; une ligne de comptoir explicite reste acceptée. */
     public function sell(array $data,array $user): int
     {
+        if(!empty($data['item_id'])&&empty($data['counter_stock_id']))return $this->sellItem($data,$user);
         $site=$this->butcher('create');$id=$this->integer($data['counter_stock_id']??'');$qty=$this->amount($data['quantity_kg']??'');$price=$this->amount($data['unit_price']??'',false,4);$customer=trim((string)($data['customer_name']??''))?:'Client comptoir';$customer=$this->text($customer,180,'Client');
         return $this->operation('butchery_counter_sale',$site,$data,compact('id','qty','price','customer'),$user,function($op)use($site,$id,$qty,$price,$customer,$user){
             $ref=$this->row('SELECT finished_lot_id,counter_id FROM butchery_counter_stocks WHERE id=?',[$id]);if(!$ref)throw new RuntimeException('Produit du comptoir introuvable.');
@@ -541,6 +550,66 @@ class PorcineFlowService extends Model
             if(isset($l['quantity_pieces']))throw new RuntimeException('Cet article est suivi en pièces : encaissez-le depuis la caisse.');
             $stock=$this->row('SELECT * FROM butchery_counter_stocks WHERE id=? FOR UPDATE',[$id]);if($qty>(float)$stock['quantity_kg']||$qty>round((float)$l['quantity_kg']-(float)$l['reserved_kg'],3))throw new RuntimeException('Stock du comptoir insuffisant.');
             $this->query("INSERT INTO butchery_sales(site_id,sale_number,finished_lot_id,counter_stock_id,customer_name,quantity_kg,unit_price,sold_at,status,created_by) VALUES(?,?,?,?,?,?,?,CURRENT_TIMESTAMP,'validated',?)",[$site,$this->number('VTE'),$l['id'],$id,$customer,$qty,$price,$user['id']]);$sale=(int)$this->db->lastInsertId();$after=round((float)$stock['quantity_kg']-$qty,3);$this->query('UPDATE butchery_counter_stocks SET quantity_kg=? WHERE id=?',[$after,$id]);$this->counterMove($id,$op,'sale',$qty,(float)$stock['quantity_kg'],$after,$user);$total=round((float)$l['quantity_kg']-$qty,3);$this->query("UPDATE butchery_finished_lots SET quantity_kg=?,status=IF(?=0,'depleted',status) WHERE id=?",[$total,$total,$l['id']]);$this->finishedMove($l['id'],$qty,$l['quantity_kg'],$total,'sale_out','butchery_sales',$sale,$user);return $sale;
+        });
+    }
+    private function moveItem(array $data,array $user): int
+    {
+        $site=$this->butcher('update');$item=$this->integer($data['item_id']??'');$counter=$this->integer($data['counter_id']??'');$direction=$data['direction']??'';if(!in_array($direction,['supply','return_cold'],true))throw new RuntimeException('Sens du mouvement invalide.');
+        $pieces=$this->piecesReady()?$this->optionalPieces($data,'quantity_pieces'):null;$qty=$pieces===null?$this->amount($data['quantity_kg']??''):0.0;
+        return $this->operation('butchery_location',$site,$data,compact('item','counter','qty','direction')+($pieces===null?[]:['pieces'=>$pieces]),$user,function($op)use($site,$item,$counter,$qty,$pieces,$direction,$user){
+            require_once __DIR__.'/StockAllocationService.php';$this->counter($counter,$site);$today=date('Y-m-d');
+            if($direction==='supply'){
+                $lots=$this->query("SELECT * FROM butchery_finished_lots WHERE site_id=? AND item_id=? AND deleted_at IS NULL AND status IN ('available','reserved') AND expiry_date>=? ORDER BY expiry_date,production_date,id FOR UPDATE",[$site,$item,$today])->fetchAll();
+                if(!$lots)throw new RuntimeException('Aucun lot valide de ce produit en chambre froide (DLC dépassée ou stock épuisé).');
+                $counted=isset($lots[0]['quantity_pieces']);$this->checkUnit($counted,$pieces);
+                foreach($lots as&$l){$l['free']=$counted?$this->coldPieces((int)$l['id']):round($this->coldAvailable((int)$l['id']),3);}unset($l);
+                $parts=$this->allocateFlow($lots,$counted?$pieces:$qty,$counted,'en chambre froide');$first=0;
+                foreach($parts as$part){$l=$part['lot'];$take=$part['quantity'];$id=$counted?$this->supply((int)$l['id'],$counter,self::share(round($this->coldAvailable((int)$l['id']),3),(int)$l['free'],(int)$take),$op,$user,(int)$take):$this->supply((int)$l['id'],$counter,$take,$op,$user);$first=$first?:$id;}
+                return $first;
+            }
+            $stocks=$this->query("SELECT cs.*,l.expiry_date,l.production_date,l.quantity_pieces lot_pieces FROM butchery_counter_stocks cs JOIN butchery_finished_lots l ON l.id=cs.finished_lot_id WHERE cs.counter_id=? AND l.site_id=? AND l.item_id=? AND cs.quantity_kg".($this->piecesReady()?'+COALESCE(cs.quantity_pieces,0)':'').">0 ORDER BY l.expiry_date DESC,l.production_date DESC,cs.id DESC FOR UPDATE",[$counter,$site,$item])->fetchAll();
+            if(!$stocks)throw new RuntimeException('Ce produit n’est pas au comptoir choisi.');
+            $counted=isset($stocks[0]['lot_pieces']);$this->checkUnit($counted,$pieces);
+            foreach($stocks as&$s){$s['free']=$counted?(int)$s['quantity_pieces']:(float)$s['quantity_kg'];}unset($s);
+            $parts=$this->allocateFlow($stocks,$counted?$pieces:$qty,$counted,'au comptoir');$first=0;
+            foreach($parts as$part){$s=$part['lot'];$take=$part['quantity'];$kg=$counted?self::share((float)$s['quantity_kg'],(int)$s['quantity_pieces'],(int)$take):$take;if($counted)$this->query('UPDATE butchery_counter_stocks SET quantity_pieces=quantity_pieces-? WHERE id=?',[(int)$take,$s['id']]);$after=round((float)$s['quantity_kg']-$kg,3);$this->query('UPDATE butchery_counter_stocks SET quantity_kg=? WHERE id=?',[$after,$s['id']]);$this->counterMove((int)$s['id'],$op,'return_cold',$kg,(float)$s['quantity_kg'],$after,$user,$counted?(int)$take:null);$first=$first?:(int)$s['id'];}
+            return $first;
+        });
+    }
+    private function checkUnit(bool $counted,?int $pieces): void
+    {
+        if($counted&&$pieces===null)throw new RuntimeException('Ce produit est suivi en pièces : indiquez le nombre de pièces.');
+        if(!$counted&&$pieces!==null)throw new RuntimeException('Ce produit est suivi au poids : indiquez la quantité en kg.');
+    }
+    /** Répartition sur des lots déjà triés (DLC) et verrouillés : pièces entières ou kilos. */
+    private function allocateFlow(array $lots,$quantity,bool $counted,string $where): array
+    {
+        try{return StockAllocationService::allocate($lots,$quantity,'free',$counted?'pièce(s) '.$where:'kg '.$where,$counted?0:3);}
+        catch(RuntimeException $e){throw new RuntimeException('Quantité disponible insuffisante. '.$e->getMessage().' Les lots à DLC dépassée ne sont pas proposés.');}
+    }
+    /** Vente au comptoir d'un produit (counter_id + item_id) : lots valides à la DLC la plus proche d'abord, une vente par lot. */
+    private function sellItem(array $data,array $user): int
+    {
+        $site=$this->butcher('create');$counter=$this->integer($data['counter_id']??'');$item=$this->integer($data['item_id']??'');$qty=$this->amount($data['quantity_kg']??'');$price=$this->amount($data['unit_price']??'',false,4);$customer=trim((string)($data['customer_name']??''))?:'Client comptoir';$customer=$this->text($customer,180,'Client');
+        return $this->operation('butchery_counter_sale',$site,$data,compact('counter','item','qty','price','customer'),$user,function($op)use($site,$counter,$item,$qty,$price,$customer,$user){
+            require_once __DIR__.'/StockAllocationService.php';
+            // Same lock order as the other operations: lots, counter, then counter stocks.
+            $lots=$this->query("SELECT * FROM butchery_finished_lots WHERE site_id=? AND item_id=? AND deleted_at IS NULL AND status IN ('available','reserved') AND expiry_date>=? ORDER BY expiry_date,production_date,id FOR UPDATE",[$site,$item,date('Y-m-d')])->fetchAll();
+            $this->counter($counter,$site);
+            if($lots&&isset($lots[0]['quantity_pieces']))throw new RuntimeException('Cet article est suivi en pièces : encaissez-le depuis la caisse.');
+            $byLot=[];foreach($lots as$l)$byLot[(int)$l['id']]=$l;
+            $stocks=$byLot?$this->query('SELECT * FROM butchery_counter_stocks WHERE counter_id=? AND finished_lot_id IN ('.implode(',',array_keys($byLot)).') AND quantity_kg>0 FOR UPDATE',[$counter])->fetchAll():[];
+            usort($stocks,static function($a,$b)use($byLot){$x=$byLot[(int)$a['finished_lot_id']];$y=$byLot[(int)$b['finished_lot_id']];return[$x['expiry_date'],$x['production_date'],(int)$x['id']]<=>[$y['expiry_date'],$y['production_date'],(int)$y['id']];});
+            foreach($stocks as&$s){$l=$byLot[(int)$s['finished_lot_id']];$s['free']=min((float)$s['quantity_kg'],round((float)$l['quantity_kg']-(float)$l['reserved_kg'],3));}unset($s);
+            if(!$stocks)throw new RuntimeException('Ce produit n’est pas disponible à ce comptoir (stock épuisé ou DLC dépassée).');
+            $first=0;
+            foreach($this->allocateFlow($stocks,$qty,false,'au comptoir')as$part){
+                $s=$part['lot'];$take=$part['quantity'];$l=$this->row('SELECT * FROM butchery_finished_lots WHERE id=?',[$s['finished_lot_id']]);
+                $this->query("INSERT INTO butchery_sales(site_id,sale_number,finished_lot_id,counter_stock_id,customer_name,quantity_kg,unit_price,sold_at,status,created_by) VALUES(?,?,?,?,?,?,?,CURRENT_TIMESTAMP,'validated',?)",[$site,$this->number('VTE'),$l['id'],$s['id'],$customer,$take,$price,$user['id']]);$sale=(int)$this->db->lastInsertId();$first=$first?:$sale;
+                $after=round((float)$s['quantity_kg']-$take,3);$this->query('UPDATE butchery_counter_stocks SET quantity_kg=? WHERE id=?',[$after,$s['id']]);$this->counterMove((int)$s['id'],$op,'sale',$take,(float)$s['quantity_kg'],$after,$user);
+                $total=round((float)$l['quantity_kg']-$take,3);$this->query("UPDATE butchery_finished_lots SET quantity_kg=?,status=IF(?=0,'depleted',status) WHERE id=?",[$total,$total,$l['id']]);$this->finishedMove($l['id'],$take,$l['quantity_kg'],$total,'sale_out','butchery_sales',$sale,$user);
+            }
+            return $first;
         });
     }
     public function posAvailable(): bool

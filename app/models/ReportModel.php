@@ -190,6 +190,63 @@ class ReportModel extends Model
         )->fetchAll();
     }
 
+    /** Fabrications d'aliment bétail validées sur la période (date de fin, à défaut de création). */
+    public function feedOrders(array $filters)
+    {
+        $params = $this->dateParams($filters);
+        $siteClause = Auth::siteClause('o.site_id', $params);
+        $hasForm = (bool) $this->query("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='pellet_recipe_versions' AND column_name='output_form'")->fetchColumn();
+        $form = $hasForm ? 'rv.output_form' : "'granule'";
+
+        return $this->query(
+            "SELECT o.id, o.order_number, COALESCE(o.ended_at, o.created_at) AS operation_at, r.code AS recipe_code, rv.version_number, {$form} AS output_form,
+                    COALESCE((SELECT SUM(wc.actual_quantity_kg) FROM pellet_order_waste_consumptions wc WHERE wc.pellet_order_id = o.id), 0) AS issues_kg,
+                    COALESCE((SELECT SUM(ac.actual_quantity_kg) FROM pellet_order_additive_consumptions ac WHERE ac.pellet_order_id = o.id), 0) AS additives_kg,
+                    o.output_quantity_kg, o.loss_quantity_kg, o.yield_percent, o.cost_total, o.cost_per_kg, v.name AS validator_name
+             FROM pellet_orders o
+             INNER JOIN pellet_recipe_versions rv ON rv.id = o.recipe_version_id
+             INNER JOIN pellet_recipes r ON r.id = rv.recipe_id
+             LEFT JOIN users v ON v.id = o.validated_by
+             WHERE o.deleted_at IS NULL AND o.status = 'validated'
+               AND DATE(COALESCE(o.ended_at, o.created_at)) BETWEEN :start_date AND :end_date" . $siteClause . "
+             ORDER BY operation_at DESC, o.id DESC",
+            $params
+        )->fetchAll();
+    }
+
+    /** Bilan matière de la période : grain chargé → farine + issues + écart, puis issues → aliment bétail. */
+    public function materialBalance(array $filters, array $feedOrders)
+    {
+        $params = $this->dateParams($filters);
+        $siteClause = Auth::siteClause('pb.site_id', $params);
+        $mill = $this->query(
+            "SELECT COUNT(*) AS batches, COALESCE(SUM(pb.actual_input_quantity_kg), 0) AS loaded_kg, COALESCE(SUM(pb.output_quantity_kg), 0) AS flour_kg, COALESCE(SUM(pb.waste_quantity_kg), 0) AS issues_kg
+             FROM production_batches pb
+             WHERE pb.deleted_at IS NULL AND pb.status = 'validated'
+               AND DATE(COALESCE(pb.ended_at, pb.started_at)) BETWEEN :start_date AND :end_date" . $siteClause,
+            $params
+        )->fetch();
+        $sum = function ($key) use ($feedOrders) { return array_sum(array_map(function ($row) use ($key) { return (float) $row[$key]; }, $feedOrders)); };
+        $loaded = (float) $mill['loaded_kg'];
+        $feedOutput = $sum('output_quantity_kg');
+        $feedCost = $sum('cost_total');
+
+        return [
+            'batches' => (int) $mill['batches'],
+            'loaded_kg' => $loaded,
+            'flour_kg' => (float) $mill['flour_kg'],
+            'issues_kg' => (float) $mill['issues_kg'],
+            'gap_kg' => round($loaded - (float) $mill['flour_kg'] - (float) $mill['issues_kg'], 3),
+            'feed_orders' => count($feedOrders),
+            'feed_issues_kg' => $sum('issues_kg'),
+            'feed_additives_kg' => $sum('additives_kg'),
+            'feed_output_kg' => $feedOutput,
+            'feed_loss_kg' => $sum('loss_quantity_kg'),
+            'feed_cost_total' => $feedCost,
+            'feed_cost_per_kg' => $feedOutput > 0 ? $feedCost / $feedOutput : 0,
+        ];
+    }
+
     public function packaging(array $filters)
     {
         $params = $this->dateParams($filters);
@@ -340,7 +397,7 @@ class ReportModel extends Model
             $riskText = 'Distribution superieure a l emballage de la periode.';
         } elseif ((float) $summary['waste_kg'] > 0 && (float) $summary['produced_kg'] > 0 && ($summary['waste_kg'] / max($summary['produced_kg'], 1)) > 0.2) {
             $riskLevel = 'warning';
-            $riskText = 'Niveau de dechets eleve par rapport a la production.';
+            $riskText = 'Niveau d’issues élevé par rapport a la production.';
         }
 
         return [

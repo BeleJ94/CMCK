@@ -12,13 +12,13 @@
 <section class="metric-grid">
     <article class="metric-card"><div class="metric-card-top"><span>Quantite traitee</span><span class="metric-icon tone-blue"><i class="bi bi-arrow-down-up"></i></span></div><strong><?= e(number_format((float) $batch['input_quantity_kg'], 0, ',', ' ')) ?> kg</strong></article>
     <article class="metric-card"><div class="metric-card-top"><span>Bon produit</span><span class="metric-icon tone-green"><i class="bi bi-box-seam"></i></span></div><strong><?= e(number_format((float) $batch['output_quantity_kg'], 0, ',', ' ')) ?> kg</strong></article>
-    <article class="metric-card"><div class="metric-card-top"><span>Dechets</span><span class="metric-icon tone-orange"><i class="bi bi-recycle"></i></span></div><strong><?= e(number_format((float) $batch['waste_quantity_kg'], 0, ',', ' ')) ?> kg</strong></article>
+    <article class="metric-card"><div class="metric-card-top"><span>Issues</span><span class="metric-icon tone-orange"><i class="bi bi-recycle"></i></span></div><strong><?= e(number_format((float) $batch['waste_quantity_kg'], 0, ',', ' ')) ?> kg</strong></article>
     <article class="metric-card"><div class="metric-card-top"><span>Rendement</span><span class="metric-icon tone-red"><i class="bi bi-speedometer2"></i></span></div><strong><?= e(number_format($yield, 1, ',', ' ')) ?>%</strong></article>
     <article class="metric-card"><div class="metric-card-top"><span>Écart matière</span><span class="metric-icon tone-orange"><i class="bi bi-exclamation-diamond"></i></span></div><strong><?=e(number_format((float)$batch['variance_quantity_kg'],3,',',' '))?> kg / <?=e(number_format((float)$batch['variance_percent'],3,',',' '))?>%</strong></article>
 </section>
 
 <?php if ($batch['status'] === 'pending'): ?>
-    <div class="app-alert app-alert-error"><i class="bi bi-hourglass-split"></i><span>Ce lot est encore en attente. La mise a jour des stocks farine et dechets sera effectuee a la validation.</span></div>
+    <div class="app-alert app-alert-error"><i class="bi bi-hourglass-split"></i><span>Ce lot est encore en attente. La mise a jour des stocks farine et issues sera effectuee a la validation.</span></div>
 <?php endif; ?>
 
 <section class="table-panel">
@@ -33,8 +33,8 @@
                 <tr><th>Produit stocke</th><td><?= e($batch['product_name']) ?></td></tr>
                 <tr><th>Quantite traitee</th><td><?= e(number_format((float) $batch['input_quantity_kg'], 3, ',', ' ')) ?> kg</td></tr>
                 <tr><th>Quantite bon produit</th><td><?= e(number_format((float) $batch['output_quantity_kg'], 3, ',', ' ')) ?> kg</td></tr>
-                <tr><th>Quantite dechets</th><td><?= e(number_format((float) $batch['waste_quantity_kg'], 3, ',', ' ')) ?> kg</td></tr>
-                <?php foreach($batch['waste_lines'] as$line):?><tr><th>Déchet — <?=e($line['name'])?></th><td><?=e(number_format((float)$line['quantity_kg'],3,',',' '))?> kg</td></tr><?php endforeach;?>
+                <tr><th>Quantité issues</th><td><?= e(number_format((float) $batch['waste_quantity_kg'], 3, ',', ' ')) ?> kg</td></tr>
+                <?php foreach($batch['waste_lines'] as$line):?><tr><th>Issue — <?=e($line['name'])?></th><td><?=e(number_format((float)$line['quantity_kg'],3,',',' '))?> kg</td></tr><?php endforeach;?>
                 <tr><th>Tolérance / justification</th><td><?=e($batch['variance_tolerance_percent'])?>% — <?=e($batch['variance_justification']?:'-')?></td></tr>
                 <tr><th>Rendement</th><td><?= e(number_format($yield, 2, ',', ' ')) ?>%</td></tr>
                 <tr><th>Date debut</th><td><?= e($batch['started_at'] ?: '-') ?></td></tr>

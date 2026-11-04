@@ -8,9 +8,11 @@ class DistributionController extends Controller
         require_once dirname(__DIR__) . '/services/CustomerDeliveryService.php';
         $deliveries = new CustomerDeliveryService();
 
+        $stocks = $model->availableStocks();
         $this->view('distributions.index', [
             'title' => 'Distribution · sorties clients',
-            'availableStocks' => $model->availableStocks(),
+            'availableStocks' => $stocks,
+            'availableProducts' => $model->availableProducts($stocks),
             'distributions' => $model->history(),
             'delivery' => $deliveries->directory(),
             'customers' => $model->activeCustomers(),
@@ -27,7 +29,7 @@ class DistributionController extends Controller
 
         $this->view('distributions.create', [
             'title' => 'Nouvelle distribution',
-            'availableStocks' => $model->availableStocks(),
+            'availableProducts' => $model->availableProducts(),
             'distribution' => $this->old($model),
             'errors' => flash('errors') ?: [],
             'error' => flash('error'),
@@ -124,7 +126,7 @@ class DistributionController extends Controller
     private function input()
     {
         return [
-            'finished_stock_id' => trim($_POST['finished_stock_id'] ?? ''),
+            'stock_key' => trim($_POST['stock_key'] ?? ''),
             'recipient_name' => trim($_POST['recipient_name'] ?? ''),
             'transporter' => trim($_POST['transporter'] ?? ''),
             'exit_voucher' => trim($_POST['exit_voucher'] ?? ''),
@@ -148,8 +150,8 @@ class DistributionController extends Controller
             }
         }
 
-        if ($data['finished_stock_id'] === '' || !ctype_digit((string) $data['finished_stock_id'])) {
-            $errors['finished_stock_id'] = 'Le stock produit fini est obligatoire.';
+        if (Distribution::parseStockKey($data['stock_key']) === null) {
+            $errors['stock_key'] = 'Choisissez le produit à sortir.';
         }
 
         if ($data['recipient_name'] === '') {
@@ -164,19 +166,19 @@ class DistributionController extends Controller
             $errors['distributed_at'] = 'La date de sortie est obligatoire.';
         }
 
-        if (empty($errors['finished_stock_id']) && empty($errors['quantity_bags'])) {
+        if (empty($errors['stock_key']) && empty($errors['quantity_bags'])) {
             $stock = null;
-            foreach ($model->availableStocks() as $item) {
-                if ((string) $item['id'] === (string) $data['finished_stock_id']) {
+            foreach ($model->availableProducts() as $item) {
+                if ($item['key'] === $data['stock_key']) {
                     $stock = $item;
                     break;
                 }
             }
 
             if (!$stock) {
-                $errors['finished_stock_id'] = 'Stock produit fini introuvable.';
-            } elseif ((int) $data['quantity_bags'] > (int) $stock['quantity_bags']) {
-                $errors['quantity_bags'] = 'Impossible de sortir plus que le stock disponible.';
+                $errors['stock_key'] = 'Plus aucun stock libre pour ce produit sur ce site.';
+            } elseif ((int) $data['quantity_bags'] > (int) $stock['free_bags']) {
+                $errors['quantity_bags'] = sprintf('Impossible de sortir plus que le stock libre : %s sac(s) disponibles.', number_format((int) $stock['free_bags'], 0, ',', ' '));
             }
         }
 
@@ -190,7 +192,7 @@ class DistributionController extends Controller
         unset($_SESSION['old_distribution']);
 
         return $old ?: [
-            'finished_stock_id' => '',
+            'stock_key' => '',
             'recipient_name' => '',
             'transporter' => '',
             'exit_voucher' => $model->nextVoucher(),

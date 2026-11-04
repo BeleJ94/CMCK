@@ -20,7 +20,7 @@ const base=process.env.DAGRIL_TEST_URL||'http://127.0.0.1:8099';
  await deliver.locator('label:has([name=source][value="source-1"])').click();assert.equal(await deliver.locator('[data-line-input]').inputValue(),'10');await p.keyboard.press('Escape');
  // Exit without an order: lot maximum, live weight, confirmation, refusal kept in the form.
  await p.locator('.ui-page-header').getByRole('button',{name:'Sortie sans commande'}).click();const modal=p.locator('#distribution-create'),f=modal.locator('form');
- await f.locator('[name=finished_stock_id]').selectOption('1');await f.locator('[name=quantity_bags]').fill('31');assert.equal(await f.locator('[name=quantity_bags]').evaluate(e=>e.checkValidity()),false);
+ await f.locator('[name=stock_key]').selectOption('1:1:1');await f.locator('[name=quantity_bags]').fill('31');assert.equal(await f.locator('[name=quantity_bags]').evaluate(e=>e.checkValidity()),false);
  await f.locator('[name=quantity_bags]').fill('2');await f.locator('[name=recipient_name]').fill('Client');assert((await f.locator('[data-distribution-summary]').textContent()).includes('Sortie : 50 kg'));
  await f.evaluate((el,url)=>el.action=url,base+'/distributions');
  await p.route('**/distributions',r=>r.request().method()==='POST'?r.fulfill({status:422,contentType:'application/json',body:JSON.stringify({success:false,message:'Erreur simulée'})}):r.continue());

@@ -46,6 +46,7 @@
                 <tr><th>Produit</th><td><?= e($distribution['product_name']) ?></td></tr>
                 <tr><th>Format</th><td><?= e($distribution['format_name']) ?></td></tr>
                 <tr><th>Nombre sacs</th><td><?= e(number_format((int) $distribution['quantity_bags'], 0, ',', ' ')) ?></td></tr>
+                <?php if (!empty($distribution['lots'])): ?><tr><th>Lots prélevés</th><td><?= e(implode(' · ', array_map(static function ($lot) { return 'Lot #' . $lot['finished_stock_id'] . (!empty($lot['stock_date']) ? ' du ' . date('d/m/Y', strtotime($lot['stock_date'])) : '') . ' : ' . number_format((int) $lot['quantity_bags'], 0, ',', ' ') . ' sac(s)'; }, $distribution['lots']))) ?></td></tr><?php endif; ?>
                 <tr><th>Quantite totale</th><td><?= e(number_format((float) $distribution['total_weight_kg'], 3, ',', ' ')) ?> kg</td></tr>
                 <tr><th>Agent</th><td><?= e($distribution['agent_name'] ?: '-') ?></td></tr>
                 <tr><th>Validateur</th><td><?= e($distribution['validator_name'] ?: '-') ?></td></tr>

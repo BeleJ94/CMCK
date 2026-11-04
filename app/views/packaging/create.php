@@ -3,7 +3,7 @@
     <div>
         <p class="section-label">Nouvelle operation</p>
         <h2>Creer un emballage</h2>
-        <p>Selectionnez un lot, un format sac et le poids total sera calcule automatiquement.</p>
+        <p>Sélectionnez la farine en vrac et un format de sac : le poids total est calculé et la farine est prélevée sur les lots les plus anciens.</p>
     </div>
     <a href="<?= e(base_url('packaging')) ?>" class="page-action"><i class="bi bi-arrow-left"></i><span>Retour</span></a>
 </section>
@@ -11,8 +11,8 @@
 <?php if (!empty($error)): ?><div class="app-alert app-alert-error"><i class="bi bi-exclamation-triangle"></i><?= e($error) ?></div><?php endif; ?>
 <?php if (!empty($errors)): ?><div class="app-alert app-alert-error"><i class="bi bi-exclamation-triangle"></i><span>Veuillez corriger les champs indiques.</span></div><?php endif; ?>
 
-<?php if (empty($availableBatches)): ?>
-    <div class="app-alert app-alert-error"><i class="bi bi-info-circle"></i><span>Aucun lot de production disponible pour emballage.</span></div>
+<?php if (empty($availableProducts)): ?>
+    <div class="app-alert app-alert-error"><i class="bi bi-info-circle"></i><span>Aucune farine en vrac disponible pour emballage.</span></div>
 <?php endif; ?>
 
 <section class="form-panel">
@@ -20,21 +20,22 @@
         <?= csrf_field() ?>
         <div class="form-grid">
             <label class="form-wide">
-                <span>Lot production</span>
-                <select name="production_batch_id" required data-packaging-batch <?= empty($availableBatches) ? 'disabled' : '' ?>>
-                    <option value="">Selectionner un lot</option>
-                    <?php foreach ($availableBatches as $batch): ?>
+                <span>Farine en vrac</span>
+                <select name="stock_key" required data-packaging-batch <?= empty($availableProducts) ? 'disabled' : '' ?>>
+                    <option value="">Sélectionner la farine</option>
+                    <?php foreach ($availableProducts as $stock): $key = Packaging::stockKey($stock['site_id'], $stock['product_id']); ?>
                         <option
-                            value="<?= e($batch['id']) ?>"
-                            data-product="<?= e($batch['product_name']) ?>"
-                            data-available="<?= e($batch['available_quantity_kg']) ?>"
-                            <?= (string) $packaging['production_batch_id'] === (string) $batch['id'] ? 'selected' : '' ?>
+                            value="<?= e($key) ?>"
+                            data-site="<?= e($stock['site_id']) ?>" data-code="<?= e($stock['product_code']) ?>" data-product="<?= e($stock['product_name']) ?>"
+                            data-available="<?= e($stock['available_quantity_kg']) ?>"
+                            <?= (string) $packaging['stock_key'] === $key ? 'selected' : '' ?>
                         >
-                            <?= e($batch['batch_number'] . ' - ' . $batch['product_name'] . ' - disponible ' . number_format((float) $batch['available_quantity_kg'], 0, ',', ' ') . ' kg') ?>
+                            <?= e($stock['product_name'] . ' · ' . $stock['site_code'] . ' — ' . number_format((float) $stock['available_quantity_kg'], 0, ',', ' ') . ' kg disponibles') ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <?php if (!empty($errors['production_batch_id'])): ?><small><?= e($errors['production_batch_id']) ?></small><?php endif; ?>
+                <small>Stock global en vrac. La farine est prélevée automatiquement sur les lots les plus anciens.</small>
+                <?php if (!empty($errors['stock_key'])): ?><small><?= e($errors['stock_key']) ?></small><?php endif; ?>
             </label>
             <label>
                 <span>Produit</span>
@@ -77,7 +78,7 @@
         </div>
         <div class="form-actions">
             <a href="<?= e(base_url('packaging')) ?>" class="btn-secondary"><i class="bi bi-arrow-left"></i><span>Annuler</span></a>
-            <button type="submit" class="btn-primary" <?= empty($availableBatches) ? 'disabled' : '' ?>><i class="bi bi-check2-circle"></i><span>Valider emballage</span></button>
+            <button type="submit" class="btn-primary" <?= empty($availableProducts) ? 'disabled' : '' ?>><i class="bi bi-check2-circle"></i><span>Valider emballage</span></button>
         </div>
     </form>
 </section>

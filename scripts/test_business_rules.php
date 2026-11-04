@@ -119,6 +119,7 @@ function cleanup(PDO $db, array $ids)
 
     if (!empty($ids['production_batches'])) {
         $batchPlaceholders = implode(',', array_fill(0, count($ids['production_batches']), '?'));
+        run_query($db, "DELETE FROM packaging_lines WHERE production_batch_id IN ({$batchPlaceholders})", array_values(array_unique($ids['production_batches'])));
         run_query($db, "DELETE FROM bulk_flour_stock_movements WHERE production_batch_id IN ({$batchPlaceholders})", array_values(array_unique($ids['production_batches'])));
         run_query($db, "DELETE FROM bulk_flour_stocks WHERE production_batch_id IN ({$batchPlaceholders})", array_values(array_unique($ids['production_batches'])));
         run_query($db, "DELETE FROM production_waste_lines WHERE production_batch_id IN ({$batchPlaceholders})", array_values(array_unique($ids['production_batches'])));
@@ -268,30 +269,22 @@ try {
     assert_near(((float) $batch['output_quantity_kg'] / (float) $batch['input_quantity_kg']) * 100, 80, 'Production calcule le rendement correctement');
     assert_near(scalar($db, 'SELECT quantity_kg FROM waste_stocks WHERE id = ?', [$wasteStockId]), 120, 'Dechets augmentent le stock dechets');
 
-    Auth::selectSite((string) $pellSiteId);
-    $wasteTotalBeforeProcessing = (new Waste())->totalAvailable();
-    $animalStockBefore = (float) scalar($db, "SELECT COALESCE((SELECT stock_after_kg FROM stock_movements WHERE product_id = ? ORDER BY movement_at DESC, id DESC LIMIT 1), 0)", [$animalFeedId]);
-    (new Waste())->processWaste([
-        'machine_id' => $wasteMachineId,
-        'input_quantity_kg' => 50,
-        'output_quantity_kg' => 40,
-        'processed_at' => date('Y-m-d H:i:s'),
-    ], $user);
-    $ids['waste_processings'] = array_merge($ids['waste_processings'], array_map('intval', run_query($db, 'SELECT id FROM waste_processings WHERE created_by = ? AND machine_id = ? ORDER BY id DESC', [$user['id'], $wasteMachineId])->fetchAll(PDO::FETCH_COLUMN)));
-    $ids['stock_movements'][] = (int) scalar($db, "SELECT id FROM stock_movements WHERE product_id = ? AND quantity_kg = 40 ORDER BY id DESC LIMIT 1", [$animalFeedId]);
-    assert_near($wasteTotalBeforeProcessing - (new Waste())->totalAvailable(), 50, 'Traitement dechets diminue le stock dechets');
-    $animalStockAfter = (float) scalar($db, "SELECT stock_after_kg FROM stock_movements WHERE product_id = ? ORDER BY movement_at DESC, id DESC LIMIT 1", [$animalFeedId]);
-    assert_near($animalStockAfter - $animalStockBefore, 40, 'Aliment betail augmente le stock fini');
+    // Les issues ne sont plus transformées par saisie directe : seule la fabrication d'aliment bétail (pelletisation) les consomme.
+    assert_true(!method_exists(new Waste(), 'processWaste') && !method_exists(new Waste(), 'sell'), 'Issues : transformation directe et vente en vrac fermées');
 
     Auth::selectSite((string) $minoSiteId);
     $finishedFlourBefore = (float) scalar($db, 'SELECT COALESCE(SUM(total_weight_kg), 0) FROM finished_stocks WHERE product_id = ? AND deleted_at IS NULL', [$flourProductId]);
-    (new Packaging())->createPackaging([
-        'production_batch_id' => $batchId,
+    // Le conditionnement prélève les lots les plus anciens : le lot de test est rendu prioritaire le temps de l'opération.
+    $endedAt = scalar($db, 'SELECT ended_at FROM production_batches WHERE id = ?', [$batchId]);
+    run_query($db, "UPDATE production_batches SET ended_at = '2000-01-01 00:00:00' WHERE id = ?", [$batchId]);
+    $packagingId = (new Packaging())->createPackaging([
+        'stock_key' => Packaging::stockKey($minoSiteId, $flourProductId),
         'bag_format_id' => $bagFormatId,
         'bags_count' => 10,
         'packaged_at' => date('Y-m-d H:i:s'),
     ], $user);
-    $packagingId = (int) scalar($db, 'SELECT id FROM packaging WHERE production_batch_id = ? ORDER BY id DESC LIMIT 1', [$batchId]);
+    run_query($db, 'UPDATE production_batches SET ended_at = ? WHERE id = ?', [$endedAt, $batchId]);
+    assert_true((int) scalar($db, 'SELECT COUNT(*) FROM packaging_lines WHERE packaging_id = ? AND production_batch_id = ?', [$packagingId, $batchId]) === 1, 'Emballage global : lot le plus ancien prélevé et tracé');
     $finishedStockId = (int) scalar($db, 'SELECT id FROM finished_stocks WHERE packaging_id = ?', [$packagingId]);
     $ids['packaging'][] = $packagingId;
     $ids['finished_stocks'][] = $finishedStockId;
@@ -364,9 +357,7 @@ try {
     assert_near(array_values($productionRows)[0]['yield_rate'], 80, 'Rapport production affiche le bon rendement');
 
     $wasteRows = $reports->waste(['start_date' => date('Y-m-d'), 'end_date' => date('Y-m-d'), 'supplier_id' => '', 'machine_id' => $wasteMachineId]);
-    // A processing operation may consume several FIFO stock lines.
-    assert_near(array_sum(array_column($wasteRows, 'input_quantity_kg')), 50, 'Rapport déchets : totalité du stock traité');
-    assert_near(array_sum(array_column($wasteRows, 'output_quantity_kg')), 40, 'Rapport déchets : totalité de la production');
+    assert_true(count($wasteRows) === 0, 'Rapport issues : aucun nouveau traitement direct');
 
     $packagingRows = $reports->packaging(['start_date' => date('Y-m-d'), 'end_date' => date('Y-m-d'), 'supplier_id' => '', 'machine_id' => '']);
     $testPackagingRows = array_filter($packagingRows, function ($row) {

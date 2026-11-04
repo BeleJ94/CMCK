@@ -8,6 +8,7 @@ $fail=static function($message){fwrite(STDERR,$message.PHP_EOL);exit(1);};
 $today=date('Y-m-d');
 $success='Livraison BL-2026-0003 enregistrée.';$error=null;$exitDone=null;$deliveryDone='3';
 $availableStocks=[['id'=>1,'site_code'=>'SRC','site_name'=>'Minoterie','stock_date'=>'2026-09-01 08:00:00','product_name'=>'Farine','format_name'=>'25 kg','quantity_bags'=>30,'total_weight_kg'=>750,'weight_kg'=>25]];
+$availableProducts=[['key'=>'1:1:1','site_id'=>1,'site_code'=>'SRC','site_name'=>'Minoterie','product_id'=>1,'bag_format_id'=>1,'product_name'=>'Farine','format_name'=>'25 kg','weight_kg'=>25.0,'free_bags'=>30,'lots'=>[['id'=>1,'date'=>'01/09/2026','bags'=>30]]]];
 $customers=[['id'=>4,'code'=>'CLI-0004','name'=>'Client <b>gras</b>','phone'=>null]];
 $distributions=[];for($i=1;$i<=6;$i++)$distributions[]=['id'=>$i,'site_code'=>'SRC','product_name'=>'Farine','format_name'=>'25 kg','quantity_bags'=>2,'total_weight_kg'=>50,'status'=>$i%2?'validated':'cancelled','distributed_at'=>$today.' 0'.$i.':00:00','recipient_name'=>'Client test','exit_voucher'=>'BS-TEST-'.$i,'official_document_number'=>null,'finished_stock_id'=>1,'transporter'=>'<script>unsafe</script>','agent_name'=>'Agent','validator_name'=>'Responsable','customer_id'=>null];
 $line=['id'=>11,'order_id'=>7,'product_name'=>'Farine','format_name'=>'Sac 50 kg','weight_kg'=>50,'unit_price_usd'=>35,'quantity_bags'=>60,'delivered_bags'=>20,'to_deliver'=>40];

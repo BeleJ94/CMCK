@@ -12,7 +12,7 @@ class PackagingController extends Controller
             'workshopStocks' => $model->workshopStocks(),
             'packaging' => $this->old(),
             'errors' => [],
-            'availableBatches' => $model->availableBatches(),
+            'availableProducts' => $model->availableProducts(),
             'history' => $model->history(),
             'success' => flash('success'),
             'error' => flash('error'),
@@ -25,7 +25,7 @@ class PackagingController extends Controller
 
         $this->view('packaging.create', [
             'title' => 'Nouvel emballage',
-            'availableBatches' => $model->availableBatches(),
+            'availableProducts' => $model->availableProducts(),
             'bagFormats' => $model->bagFormats(),
             'workshopStocks' => $model->workshopStocks(),
             'packaging' => $this->old(),
@@ -77,7 +77,7 @@ class PackagingController extends Controller
     private function input()
     {
         return [
-            'production_batch_id' => trim($_POST['production_batch_id'] ?? ''),
+            'stock_key' => trim($_POST['stock_key'] ?? ''),
             'bag_format_id' => trim($_POST['bag_format_id'] ?? ''),
             'packaging_item_id'=>trim($_POST['packaging_item_id']??''),
             'bags_count' => trim($_POST['bags_count'] ?? ''),
@@ -89,8 +89,8 @@ class PackagingController extends Controller
     {
         $errors = [];
 
-        if ($data['production_batch_id'] === '' || !ctype_digit((string) $data['production_batch_id'])) {
-            $errors['production_batch_id'] = 'Le lot production est obligatoire.';
+        if (Packaging::parseStockKey($data['stock_key']) === null) {
+            $errors['stock_key'] = 'Choisissez la farine en vrac à conditionner.';
         }
 
         if ($data['packaging_item_id'] === '' || !ctype_digit((string) $data['packaging_item_id'])) {
@@ -106,12 +106,12 @@ class PackagingController extends Controller
             $errors['packaged_at'] = 'Saisissez une date et une heure valides pour le conditionnement.';
         }
 
-        if (empty($errors['production_batch_id']) && empty($errors['packaging_item_id']) && empty($errors['bags_count'])) {
-            $batch = $model->findBatch($data['production_batch_id']);
+        if (empty($errors['stock_key']) && empty($errors['packaging_item_id']) && empty($errors['bags_count'])) {
+            $batch = $model->findAvailableProduct($data['stock_key']);
             $formats=$model->bagFormats();$format=null;foreach($formats as$f){if((string)$f['packaging_item_id']===(string)$data['packaging_item_id']){$format=$f;break;}}
 
             if (!$batch) {
-                $errors['production_batch_id'] = 'Lot production introuvable ou sans quantite disponible.';
+                $errors['stock_key'] = 'Aucune farine en vrac disponible pour ce produit sur ce site.';
             }
 
             if (!$format) {
@@ -121,7 +121,7 @@ class PackagingController extends Controller
             if ($batch && $format) {
                 $totalWeight = (float) $format['weight_kg'] * (int) $data['bags_count'];
                 if ($totalWeight > (float) $batch['available_quantity_kg']) {
-                    $errors['bags_count'] = 'Impossible d emballer plus que la quantite disponible.';
+                    $errors['bags_count'] = sprintf('Impossible d’emballer plus que la farine en vrac disponible (%s kg au total).', number_format((float) $batch['available_quantity_kg'], 0, ',', ' '));
                 }
             }
         }
@@ -136,7 +136,7 @@ class PackagingController extends Controller
         unset($_SESSION['old_packaging']);
 
         return $old ?: [
-            'production_batch_id' => '',
+            'stock_key' => '',
             'bag_format_id' => '',
             'packaging_item_id'=>'',
             'bags_count' => '',

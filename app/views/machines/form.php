@@ -2,7 +2,7 @@
 $isEdit = !empty($machine['id']);
 $action = $isEdit ? base_url('machines/' . $machine['id'] . '/update') : base_url('machines');
 $statusOptions = ['active', 'inactive', 'pending', 'validated', 'cancelled'];
-$typeOptions = ['main' => 'Machine principale', 'waste' => 'Machine dechets'];
+$typeOptions = ['main' => 'Machine principale', 'waste' => 'Machine issues'];
 ?>
 
 <?php if (!empty($errors)): ?>

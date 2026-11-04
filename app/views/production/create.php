@@ -3,7 +3,7 @@
     <div>
         <p class="section-label">Nouvelle operation</p>
         <h2>Saisir les résultats de production</h2>
-        <p>La farine, chaque type de déchet et la perte sont saisis ou calculés séparément.</p>
+        <p>Farine + issues = quantité chargée : les issues sont entièrement récupérées. Un écart au-delà de la tolérance doit être justifié.</p>
     </div>
     <a href="<?= e(base_url('production')) ?>" class="page-action"><i class="bi bi-arrow-left"></i><span>Retour</span></a>
 </section>

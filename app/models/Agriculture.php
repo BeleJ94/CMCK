@@ -44,6 +44,7 @@ class Agriculture extends Model
         unset($farmSite);
         return [
             'farm_sites'=>$farmSites,
+            'transport_products'=>$this->transportProducts(),
             'transport_destination'=>$this->row("SELECT id,code,name FROM sites WHERE code='SILO' AND status='active' AND deleted_at IS NULL LIMIT 1",[]),
             'seasons'=>$this->query("SELECT * FROM agricultural_seasons WHERE status='active' AND deleted_at IS NULL ORDER BY name")->fetchAll(),
             'varieties'=>$this->query("SELECT * FROM agricultural_varieties WHERE status='active' AND deleted_at IS NULL ORDER BY name")->fetchAll(),
@@ -98,10 +99,138 @@ class Agriculture extends Model
         return $this->query("SELECT h.*,c.code campaign_code,p.code plot_code,v.name variety_name,si.code site_code,si.name site_name,st.id stock_id,st.physical_quantity_kg,st.reserved_quantity_kg,st.status stock_status,EXISTS(SELECT 1 FROM agricultural_transports existing_transport WHERE existing_transport.stock_id=st.id AND existing_transport.status='draft' AND existing_transport.deleted_at IS NULL) has_draft_transport FROM agricultural_harvests h JOIN agricultural_campaign_plots cp ON cp.id=h.campaign_plot_id JOIN agricultural_campaigns c ON c.id=cp.campaign_id JOIN agricultural_plots p ON p.id=cp.plot_id JOIN agricultural_varieties v ON v.id=cp.variety_id JOIN sites si ON si.id=h.site_id LEFT JOIN agricultural_stocks st ON st.harvest_id=h.id WHERE h.deleted_at IS NULL{$scope} ORDER BY h.harvested_at DESC",$params)->fetchAll();
     }
 
+    public function hasTransportLines()
+    {
+        static $has = null;
+        if ($has === null) {
+            $has = (bool) $this->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='agricultural_transport_lines'")->fetchColumn();
+        }
+        return $has;
+    }
+
+    public static function transportKey($siteId, $productId, $varietyId)
+    {
+        return (int) $siteId . ':' . (int) $productId . ':' . (int) $varietyId;
+    }
+
+    public static function parseTransportKey($key)
+    {
+        if (!is_string($key) || !preg_match('/^(\d+):(\d+):(\d+)$/', $key, $m)) {
+            return null;
+        }
+        return ['site_id' => (int) $m[1], 'product_id' => (int) $m[2], 'variety_id' => (int) $m[3]];
+    }
+
+    /** Quantités déjà promises par des BT en brouillon (non encore réservées), par récolte. */
+    private function draftQuantities($excludeTransportId = 0)
+    {
+        $rows = $this->hasTransportLines()
+            ? $this->query("SELECT l.stock_id, SUM(l.quantity_kg) qty FROM agricultural_transport_lines l JOIN agricultural_transports t ON t.id=l.transport_id WHERE t.status='draft' AND t.deleted_at IS NULL AND t.id<>? GROUP BY l.stock_id", [$excludeTransportId])->fetchAll()
+            : $this->query("SELECT stock_id, SUM(quantity_kg) qty FROM agricultural_transports WHERE status='draft' AND deleted_at IS NULL AND id<>? GROUP BY stock_id", [$excludeTransportId])->fetchAll();
+        $map = [];
+        foreach ($rows as $row) { $map[(int) $row['stock_id']] = (float) $row['qty']; }
+        return $map;
+    }
+
+    /**
+     * Stock agricole à transporter, regroupé par ferme, produit et variété (somme des récoltes validées).
+     * Le disponible déduit les réservations et les BT en brouillon. Les récoltes sont listées de la plus
+     * ancienne à la plus récente, dans l'ordre où elles seront chargées.
+     */
+    public function transportProducts()
+    {
+        $params = [];
+        $scope = Auth::siteClause('st.site_id', $params);
+        $rows = $this->query(
+            "SELECT st.id, st.site_id, st.product_id, st.variety_id, st.physical_quantity_kg, st.reserved_quantity_kg,
+                    s.code site_code, s.name site_name, p.name product_name, v.name variety_name, h.harvest_number, h.harvested_at
+             FROM agricultural_stocks st
+             JOIN sites s ON s.id=st.site_id AND s.code IN ('FARM-MUT','FARM-DIK')
+             JOIN agricultural_harvests h ON h.id=st.harvest_id AND h.status='validated'
+             JOIN products p ON p.id=st.product_id
+             JOIN agricultural_varieties v ON v.id=st.variety_id
+             WHERE st.status IN ('available','reserved') AND st.physical_quantity_kg > st.reserved_quantity_kg{$scope}
+             ORDER BY h.harvested_at ASC, st.id ASC", $params
+        )->fetchAll();
+        $drafts = $this->draftQuantities();
+        $groups = [];
+        foreach ($rows as $row) {
+            if (!Auth::canAccessSite($row['site_id'])) { continue; }
+            $free = round((float) $row['physical_quantity_kg'] - (float) $row['reserved_quantity_kg'] - ($drafts[(int) $row['id']] ?? 0), 3);
+            if ($free <= 0) { continue; }
+            $key = self::transportKey($row['site_id'], $row['product_id'], $row['variety_id']);
+            if (!isset($groups[$key])) {
+                $groups[$key] = ['key' => $key, 'site_id' => (int) $row['site_id'], 'site_code' => $row['site_code'], 'site_name' => $row['site_name'], 'product_name' => $row['product_name'], 'variety_name' => $row['variety_name'], 'free_kg' => 0.0, 'lots' => []];
+            }
+            $groups[$key]['free_kg'] = round($groups[$key]['free_kg'] + $free, 3);
+            $groups[$key]['lots'][] = ['id' => (int) $row['id'], 'label' => $row['harvest_number'], 'date' => $row['harvested_at'] ? date('d/m/Y', strtotime($row['harvested_at'])) : '', 'kg' => $free];
+        }
+        uasort($groups, static function ($a, $b) { return [$a['site_name'], $a['product_name'], $a['variety_name']] <=> [$b['site_name'], $b['product_name'], $b['variety_name']]; });
+        return array_values($groups);
+    }
+
+    /** Récoltes d'un groupe verrouillées (plus anciennes d'abord), avec leur quantité libre. */
+    private function lockedTransportLots($siteId, $productId, $varietyId, $excludeTransportId = 0)
+    {
+        $lots = $this->query(
+            "SELECT st.*, h.harvest_number FROM agricultural_stocks st JOIN agricultural_harvests h ON h.id=st.harvest_id AND h.status='validated'
+             WHERE st.site_id=? AND st.product_id=? AND st.variety_id=? AND st.status IN ('available','reserved') AND st.physical_quantity_kg > st.reserved_quantity_kg
+             ORDER BY h.harvested_at ASC, st.id ASC FOR UPDATE",
+            [$siteId, $productId, $varietyId]
+        )->fetchAll();
+        $drafts = $this->draftQuantities($excludeTransportId);
+        foreach ($lots as &$lot) {
+            $lot['free_kg'] = round(max(0, (float) $lot['physical_quantity_kg'] - (float) $lot['reserved_quantity_kg'] - ($drafts[(int) $lot['id']] ?? 0)), 3);
+        }
+        unset($lot);
+        return $lots;
+    }
+
+    /** Lignes d'un BT (récolte + quantité) ; avant la migration 053, la récolte unique du BT. */
+    public function transportLines($transport)
+    {
+        if ($this->hasTransportLines()) {
+            $lines = $this->query('SELECT l.*, h.harvest_number FROM agricultural_transport_lines l JOIN agricultural_stocks st ON st.id=l.stock_id JOIN agricultural_harvests h ON h.id=st.harvest_id WHERE l.transport_id=? ORDER BY l.id', [$transport['id']])->fetchAll();
+            if ($lines) { return $lines; }
+        }
+        return [['transport_id' => $transport['id'], 'stock_id' => $transport['stock_id'], 'quantity_kg' => $transport['quantity_kg']]];
+    }
+
+    /**
+     * Avant réservation : si une récolte du BT n'a plus assez de quantité libre (réservée ou expédiée entre-temps),
+     * la quantité totale est répartie à nouveau sur les récoltes libres du même produit et de la même variété.
+     */
+    private function rebalanceTransport(array $transport)
+    {
+        $lines = $this->transportLines($transport);
+        $short = false;
+        foreach ($lines as $line) {
+            $stock = $this->row('SELECT * FROM agricultural_stocks WHERE id=? FOR UPDATE', [$line['stock_id']]);
+            if (!$stock || !in_array($stock['status'], ['available', 'reserved'], true) || (float) $stock['physical_quantity_kg'] - (float) $stock['reserved_quantity_kg'] + 0.0005 < (float) $line['quantity_kg']) { $short = true; break; }
+        }
+        if (!$short) { return $lines; }
+        if (!$this->hasTransportLines()) { throw new RuntimeException('Stock agricole disponible insuffisant.'); }
+        $lead = $this->row('SELECT * FROM agricultural_stocks WHERE id=?', [$transport['stock_id']]);
+        require_once dirname(__DIR__) . '/services/StockAllocationService.php';
+        try {
+            $allocation = StockAllocationService::allocate($this->lockedTransportLots($transport['source_site_id'], $lead['product_id'], $lead['variety_id'], $transport['id']), (float) $transport['quantity_kg'], 'free_kg', 'kg');
+        } catch (RuntimeException $exception) {
+            throw new RuntimeException('Stock agricole disponible insuffisant pour valider ce BT. ' . $exception->getMessage());
+        }
+        $this->query('DELETE FROM agricultural_transport_lines WHERE transport_id=?', [$transport['id']]);
+        foreach ($allocation as $part) {
+            $this->query('INSERT INTO agricultural_transport_lines(transport_id,stock_id,quantity_kg) VALUES(?,?,?)', [$transport['id'], $part['lot']['id'], $part['quantity']]);
+        }
+        $this->query('UPDATE agricultural_transports SET stock_id=? WHERE id=?', [$allocation[0]['lot']['id'], $transport['id']]);
+        return $this->transportLines($transport);
+    }
+
     public function transports()
     {
         $params=[];$scope=Auth::siteClause('t.source_site_id',$params);
-        return $this->query("SELECT t.*,d.document_number,h.harvest_number,s.physical_quantity_kg,s.reserved_quantity_kg FROM agricultural_transports t JOIN agricultural_stocks s ON s.id=t.stock_id JOIN agricultural_harvests h ON h.id=s.harvest_id LEFT JOIN documents d ON d.entity_type='agricultural_transports' AND d.entity_id=t.id AND d.document_type_id=(SELECT id FROM document_types WHERE code='BT' LIMIT 1) WHERE t.deleted_at IS NULL{$scope} ORDER BY t.id DESC",$params)->fetchAll();
+        $stockIds=$this->hasTransportLines()?"COALESCE((SELECT GROUP_CONCAT(l.stock_id ORDER BY l.id) FROM agricultural_transport_lines l WHERE l.transport_id=t.id),t.stock_id)":'t.stock_id';
+        $harvests=$this->hasTransportLines()?"COALESCE((SELECT GROUP_CONCAT(lh.harvest_number ORDER BY l.id SEPARATOR ', ') FROM agricultural_transport_lines l JOIN agricultural_stocks ls ON ls.id=l.stock_id JOIN agricultural_harvests lh ON lh.id=ls.harvest_id WHERE l.transport_id=t.id),h.harvest_number)":'h.harvest_number';
+        return $this->query("SELECT t.*,d.document_number,{$harvests} harvest_number,{$stockIds} stock_ids,s.physical_quantity_kg,s.reserved_quantity_kg FROM agricultural_transports t JOIN agricultural_stocks s ON s.id=t.stock_id JOIN agricultural_harvests h ON h.id=s.harvest_id LEFT JOIN documents d ON d.entity_type='agricultural_transports' AND d.entity_id=t.id AND d.document_type_id=(SELECT id FROM document_types WHERE code='BT' LIMIT 1) WHERE t.deleted_at IS NULL{$scope} ORDER BY t.id DESC",$params)->fetchAll();
     }
 
     public function createCampaign(array $data,array $user)
@@ -231,7 +360,7 @@ class Agriculture extends Model
                 if(!$stock||$stock['status']==='cancelled')throw new RuntimeException('Le stock associé est absent ou annulé. La correction ne peut pas être appliquée.');
                 $after=round((float)$stock['physical_quantity_kg']+$delta,3);
                 if($after<0||$after<(float)$stock['reserved_quantity_kg'])throw new RuntimeException('Ce poids net est trop faible : une partie de la récolte est déjà expédiée ou réservée. La correction doit préserver ces quantités.');
-                $draft=$this->row("SELECT COALESCE(SUM(quantity_kg),0) quantity FROM agricultural_transports WHERE stock_id=? AND status='draft' AND deleted_at IS NULL",[$stock['id']]);
+                $draft=['quantity'=>$this->draftQuantities()[(int)$stock['id']]??0];
                 if(round($after-(float)$stock['reserved_quantity_kg'],3)<(float)$draft['quantity'])throw new RuntimeException('La correction laisserait trop peu de stock pour les bons de transport en brouillon. Ajustez ces bons avant de réduire le poids.');
             }
             $values['net_weight_kg']=$net;$values['yield_tons_per_ha']=round($net/1000/(float)$cp['actual_area_ha'],4);$values['id']=$id;
@@ -248,29 +377,43 @@ class Agriculture extends Model
         $this->db->beginTransaction();try{$h=$this->row("SELECT h.*,cp.variety_id,v.product_id FROM agricultural_harvests h JOIN agricultural_campaign_plots cp ON cp.id=h.campaign_plot_id JOIN agricultural_varieties v ON v.id=cp.variety_id WHERE h.id=? FOR UPDATE",[$id]);if(!$h||$h['status']!=='submitted')throw new RuntimeException('Récolte non validable ou déjà validée.');Auth::requireSiteAccess($h['site_id']);Auth::requirePermission('agriculture','validate',$h['site_id']);$selfApproval=(int)$h['created_by']===(int)$user['id'];if($selfApproval&&!Auth::canSelfValidate($user['id'],'agriculture',(int)$h['site_id']))throw new RuntimeException('Le créateur ne peut pas valider la récolte.');$this->query("INSERT INTO agricultural_stocks(site_id,harvest_id,product_id,variety_id,physical_quantity_kg,reserved_quantity_kg,status) VALUES(:site,:harvest,:product,:variety,:qty,0,'available')",['site'=>$h['site_id'],'harvest'=>$h['id'],'product'=>$h['product_id'],'variety'=>$h['variety_id'],'qty'=>$h['net_weight_kg']]);$stock=(int)$this->db->lastInsertId();$this->movement($stock,'harvest_in',$h['net_weight_kg'],0,$h['net_weight_kg'],0,0,'agricultural_harvests',$id,$user);$this->query("UPDATE agricultural_harvests SET status='validated',validated_by=:user,validated_at=NOW() WHERE id=:id",['user'=>$user['id'],'id'=>$id]);$message=$selfApproval?'Validation de sa propre récolte et entrée atomique en stock agricole.':'Validation récolte et entrée atomique en stock agricole.';$this->logActivity('validate_harvest','agriculture','agricultural_harvests',$id,$message,$h,['stock_id'=>$stock,'self_validated'=>$selfApproval,'administrative_override'=>$selfApproval&&Auth::canSelfValidate($user['id'],null,(int)$h['site_id'])],$user);$this->db->commit();return$stock;}catch(Exception$e){$this->db->rollBack();throw$e;}
     }
 
+    /**
+     * Crée un BT en brouillon. Parcours normal : ferme + produit + variété (stock_key) et une quantité ;
+     * la quantité est répartie sur les récoltes libres les plus anciennes, une ligne par récolte.
+     * Une récolte explicite (stock_id) reste acceptée. Rien n'est réservé avant la validation.
+     */
     public function createTransport(array $data,array $user)
     {
         $destination=$this->siteId('SILO');
+        $qty=round((float)($data['quantity_kg']??0),3);
+        if($qty<=0)throw new RuntimeException('Saisissez une quantité positive à transporter.');
         $this->db->beginTransaction();
         try {
-            $stock=$this->row("SELECT * FROM agricultural_stocks WHERE id=? AND status IN ('available','reserved') FOR UPDATE",[$data['stock_id']??0]);
-            if(!$stock)throw new RuntimeException('Sélectionnez un stock agricole disponible.');
-            $site=$this->farmSite($stock['site_id']);
-            // The stock lock serializes concurrent creations, including unreserved drafts.
-            $existing=$this->row("SELECT t.transport_number,d.document_number FROM agricultural_transports t LEFT JOIN documents d ON d.entity_type='agricultural_transports' AND d.entity_id=t.id AND d.document_type_id=(SELECT id FROM document_types WHERE code='BT' LIMIT 1) AND d.deleted_at IS NULL WHERE t.stock_id=? AND t.status='draft' AND t.deleted_at IS NULL LIMIT 1 FOR UPDATE",[$stock['id']]);
-            if($existing){
-                $reference=$existing['document_number']?:$existing['transport_number'];
-                throw new RuntimeException('Ce stock possède déjà le BT en brouillon '.$reference.'. Consultez ce bon dans Agriculture → Transports ou sélectionnez un autre stock.');
+            require_once dirname(__DIR__).'/services/StockAllocationService.php';
+            $group=self::parseTransportKey($data['stock_key']??'');
+            if($group){
+                if(!$this->hasTransportLines())throw new RuntimeException('Le transport par quantité globale nécessite la migration 053 (agricultural_transport_lines).');
+                $site=$this->farmSite($group['site_id']);
+                $lots=$this->lockedTransportLots($site,$group['product_id'],$group['variety_id']);
+                if(!$lots)throw new RuntimeException('Aucun stock agricole disponible pour ce produit sur cette ferme.');
+            }else{
+                $stock=$this->row("SELECT st.*,h.harvest_number FROM agricultural_stocks st LEFT JOIN agricultural_harvests h ON h.id=st.harvest_id WHERE st.id=? AND st.status IN ('available','reserved') FOR UPDATE",[$data['stock_id']??0]);
+                if(!$stock)throw new RuntimeException('Sélectionnez un stock agricole disponible.');
+                $site=$this->farmSite($stock['site_id']);
+                $drafts=$this->draftQuantities();
+                $stock['free_kg']=round((float)$stock['physical_quantity_kg']-(float)$stock['reserved_quantity_kg']-($drafts[(int)$stock['id']]??0),3);
+                $lots=[$stock];
             }
-            $qty=(float)($data['quantity_kg']??0);
-            $available=(float)$stock['physical_quantity_kg']-(float)$stock['reserved_quantity_kg'];
-            if($qty<=0||$qty>$available)throw new RuntimeException('Stock agricole disponible insuffisant.');
+            try{$allocation=StockAllocationService::allocate($lots,$qty,'free_kg','kg');}
+            catch(RuntimeException $exception){throw new RuntimeException('Stock agricole disponible insuffisant. '.$exception->getMessage().' Les BT en brouillon sont déduits.');}
             $route=$this->transportRoute($site,$destination,$data['route_notes']??'');
             $number='BT-AG-'.date('YmdHis').'-'.random_int(100,999);
-            $this->query("INSERT INTO agricultural_transports(stock_id,source_site_id,destination_site_id,transport_number,quantity_kg,status,truck_plate,driver_name,route_description,created_by) VALUES(:stock,:source,:destination,:number,:qty,'draft',:truck,:driver,:route,:user)",['stock'=>$stock['id'],'source'=>$site,'destination'=>$destination,'number'=>$number,'qty'=>$qty,'truck'=>strtoupper(trim($data['truck_plate'])),'driver'=>trim($data['driver_name']),'route'=>$route,'user'=>$user['id']]);
+            $this->query("INSERT INTO agricultural_transports(stock_id,source_site_id,destination_site_id,transport_number,quantity_kg,status,truck_plate,driver_name,route_description,created_by) VALUES(:stock,:source,:destination,:number,:qty,'draft',:truck,:driver,:route,:user)",['stock'=>$allocation[0]['lot']['id'],'source'=>$site,'destination'=>$destination,'number'=>$number,'qty'=>$qty,'truck'=>strtoupper(trim($data['truck_plate']??'')),'driver'=>trim($data['driver_name']??''),'route'=>$route,'user'=>$user['id']]);
             $id=(int)$this->db->lastInsertId();
+            if($this->hasTransportLines()){foreach($allocation as$part)$this->query('INSERT INTO agricultural_transport_lines(transport_id,stock_id,quantity_kg) VALUES(?,?,?)',[$id,$part['lot']['id'],$part['quantity']]);}
             require_once dirname(__DIR__).'/services/DocumentService.php';
             (new DocumentService($this->db))->register('BT',$site,'agricultural_transports',$id,'draft',date('Y-m-d H:i:s'),$user);
+            $this->logActivity('create_farm_transport','agriculture','agricultural_transports',$id,'Création du BT agricole en brouillon.',null,['quantity_kg'=>$qty,'lots'=>array_map(static function($p){return['stock_id'=>(int)$p['lot']['id'],'harvest'=>$p['lot']['harvest_number']??null,'quantity_kg'=>$p['quantity']];},$allocation)],$user);
             $this->db->commit();
             return $id;
         }catch(Exception$e){
@@ -297,7 +440,29 @@ class Agriculture extends Model
 
     public function approveTransport($id,array $user)
     {
-        $this->db->beginTransaction();try{$t=$this->row('SELECT * FROM agricultural_transports WHERE id=? FOR UPDATE',[$id]);if(!$t||$t['status']!=='draft')throw new RuntimeException('BT non validable ou déjà validé.');Auth::requireSiteAccess($t['source_site_id']);Auth::requirePermission('agriculture','validate',$t['source_site_id']);$selfApproval=(int)$t['created_by']===(int)$user['id'];if($selfApproval&&!Auth::canSelfValidate($user['id'],'agriculture',(int)$t['source_site_id']))throw new RuntimeException('Le créateur ne peut pas valider le BT.');$s=$this->row('SELECT * FROM agricultural_stocks WHERE id=? FOR UPDATE',[$t['stock_id']]);$available=(float)$s['physical_quantity_kg']-(float)$s['reserved_quantity_kg'];if($available<(float)$t['quantity_kg'])throw new RuntimeException('Stock agricole disponible insuffisant.');$rb=(float)$s['reserved_quantity_kg'];$ra=$rb+(float)$t['quantity_kg'];$this->query("UPDATE agricultural_stocks SET reserved_quantity_kg=:reserved,status='reserved' WHERE id=:id",['reserved'=>$ra,'id'=>$s['id']]);$this->movement($s['id'],'reserve',$t['quantity_kg'],$s['physical_quantity_kg'],$s['physical_quantity_kg'],$rb,$ra,'agricultural_transports',$id,$user);$this->query("UPDATE agricultural_transports SET status='approved',approved_by=:user WHERE id=:id",['user'=>$user['id'],'id'=>$id]);$this->approveDocument($id,$user);$message=$selfApproval?'Validation de son propre BT et réservation atomique du stock agricole.':'Validation du BT et réservation atomique du stock agricole.';$this->logActivity('approve_farm_transport','agriculture','agricultural_transports',$id,$message,$t,['status'=>'approved','reserved_quantity_kg'=>$ra,'self_validated'=>$selfApproval,'administrative_override'=>$selfApproval&&Auth::canSelfValidate($user['id'],null,(int)$t['source_site_id'])],$user);$this->db->commit();}catch(Exception$e){$this->db->rollBack();throw$e;}
+        $this->db->beginTransaction();
+        try{
+            $t=$this->row('SELECT * FROM agricultural_transports WHERE id=? FOR UPDATE',[$id]);
+            if(!$t||$t['status']!=='draft')throw new RuntimeException('BT non validable ou déjà validé.');
+            Auth::requireSiteAccess($t['source_site_id']);Auth::requirePermission('agriculture','validate',$t['source_site_id']);
+            $selfApproval=(int)$t['created_by']===(int)$user['id'];
+            if($selfApproval&&!Auth::canSelfValidate($user['id'],'agriculture',(int)$t['source_site_id']))throw new RuntimeException('Le créateur ne peut pas valider le BT.');
+            $reserved=[];
+            foreach($this->rebalanceTransport($t)as$line){
+                $s=$this->row('SELECT * FROM agricultural_stocks WHERE id=? FOR UPDATE',[$line['stock_id']]);
+                $qty=(float)$line['quantity_kg'];
+                if(!$s||(float)$s['physical_quantity_kg']-(float)$s['reserved_quantity_kg']+0.0005<$qty)throw new RuntimeException('Stock agricole disponible insuffisant.');
+                $rb=(float)$s['reserved_quantity_kg'];$ra=round($rb+$qty,3);
+                $this->query("UPDATE agricultural_stocks SET reserved_quantity_kg=:reserved,status='reserved' WHERE id=:id",['reserved'=>$ra,'id'=>$s['id']]);
+                $this->movement($s['id'],'reserve',$qty,$s['physical_quantity_kg'],$s['physical_quantity_kg'],$rb,$ra,'agricultural_transports',$id,$user);
+                $reserved[]=['stock_id'=>(int)$s['id'],'quantity_kg'=>$qty];
+            }
+            $this->query("UPDATE agricultural_transports SET status='approved',approved_by=:user WHERE id=:id",['user'=>$user['id'],'id'=>$id]);
+            $this->approveDocument($id,$user);
+            $message=$selfApproval?'Validation de son propre BT et réservation atomique du stock agricole.':'Validation du BT et réservation atomique du stock agricole.';
+            $this->logActivity('approve_farm_transport','agriculture','agricultural_transports',$id,$message,$t,['status'=>'approved','reserved'=>$reserved,'self_validated'=>$selfApproval,'administrative_override'=>$selfApproval&&Auth::canSelfValidate($user['id'],null,(int)$t['source_site_id'])],$user);
+            $this->db->commit();
+        }catch(Exception$e){$this->db->rollBack();throw$e;}
     }
 
     public function dispatchTransport($id, array $user)
@@ -309,25 +474,32 @@ class Agriculture extends Model
                 throw new RuntimeException('BT non expédiable ou déjà expédié.');
             }
             Auth::requireSiteAccess($transport['source_site_id']);
-            $stock = $this->row('SELECT * FROM agricultural_stocks WHERE id=? FOR UPDATE', [$transport['stock_id']]);
-            $quantity = (float) $transport['quantity_kg'];
-            if (!$stock || (int) $stock['site_id'] !== (int) $transport['source_site_id'] || $quantity <= 0
-                || (float) $stock['physical_quantity_kg'] < $quantity || (float) $stock['reserved_quantity_kg'] < $quantity) {
-                throw new RuntimeException('Stock réservé incohérent.');
+            $lines = $this->transportLines($transport);
+            $stocks = [];
+            foreach ($lines as $line) {
+                $stock = $this->row('SELECT * FROM agricultural_stocks WHERE id=? FOR UPDATE', [$line['stock_id']]);
+                $quantity = (float) $line['quantity_kg'];
+                if (!$stock || (int) $stock['site_id'] !== (int) $transport['source_site_id'] || $quantity <= 0
+                    || (float) $stock['physical_quantity_kg'] + 0.0005 < $quantity || (float) $stock['reserved_quantity_kg'] + 0.0005 < $quantity) {
+                    throw new RuntimeException('Stock réservé incohérent.');
+                }
+                $stocks[] = [$stock, $quantity];
             }
             // The parent BT lock and its approved status serialize dispatch attempts.
             // Bridge creation and stock movements use this same transaction.
-            $bridgeId = $this->createWeighbridgeTransport($transport, $stock, $user);
-            $physicalAfter = (float) $stock['physical_quantity_kg'] - $quantity;
-            $reservedAfter = (float) $stock['reserved_quantity_kg'] - $quantity;
-            $this->query("UPDATE agricultural_stocks SET physical_quantity_kg=:physical,reserved_quantity_kg=:reserved,status=IF(:reserved2>0,'reserved',IF(:physical2>0,'available','in_transit')) WHERE id=:id", [
-                'physical' => $physicalAfter, 'reserved' => $reservedAfter, 'reserved2' => $reservedAfter, 'physical2' => $physicalAfter, 'id' => $stock['id'],
-            ]);
-            $this->movement($stock['id'], 'transport_out', $quantity, $stock['physical_quantity_kg'], $physicalAfter, $stock['reserved_quantity_kg'], $reservedAfter, 'agricultural_transports', $id, $user);
+            $bridgeId = $this->createWeighbridgeTransport($transport, $stocks[0][0], $user);
+            foreach ($stocks as [$stock, $quantity]) {
+                $physicalAfter = round((float) $stock['physical_quantity_kg'] - $quantity, 3);
+                $reservedAfter = round((float) $stock['reserved_quantity_kg'] - $quantity, 3);
+                $this->query("UPDATE agricultural_stocks SET physical_quantity_kg=:physical,reserved_quantity_kg=:reserved,status=IF(:reserved2>0,'reserved',IF(:physical2>0,'available','in_transit')) WHERE id=:id", [
+                    'physical' => $physicalAfter, 'reserved' => $reservedAfter, 'reserved2' => $reservedAfter, 'physical2' => $physicalAfter, 'id' => $stock['id'],
+                ]);
+                $this->movement($stock['id'], 'transport_out', $quantity, $stock['physical_quantity_kg'], $physicalAfter, $stock['reserved_quantity_kg'], $reservedAfter, 'agricultural_transports', $id, $user);
+            }
             $this->query("UPDATE agricultural_transports SET status='in_transit',dispatched_by=:user,dispatched_at=NOW() WHERE id=:id", ['user' => $user['id'], 'id' => $id]);
             $this->logActivity('dispatch_farm_transport', 'agriculture', 'agricultural_transports', $id,
                 'Sortie du stock agricole et mise à disposition du BT au pont-bascule.', $transport,
-                ['status' => 'in_transit', 'weighbridge_transport_id' => $bridgeId], $user);
+                ['status' => 'in_transit', 'weighbridge_transport_id' => $bridgeId, 'lots' => count($stocks)], $user);
             $this->db->commit();
             return $bridgeId;
         } catch (Exception $exception) {

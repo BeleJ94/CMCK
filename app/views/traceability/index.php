@@ -1,5 +1,5 @@
 <?php
-$chainLabels=['agriculture'=>'Agriculture','mill'=>'Minoterie','waste'=>'Déchets et valorisation','butchery'=>'Élevage et boucherie'];
+$chainLabels=['agriculture'=>'Agriculture','mill'=>'Minoterie','waste'=>'Issues et aliment bétail','butchery'=>'Élevage et boucherie'];
 $states=['draft'=>'Brouillon','preparation'=>'En préparation','submitted'=>'À valider','pending'=>'En attente','validated'=>'Validé','approved'=>'Approuvé','active'=>'Actif','in_transit'=>'En transit','received'=>'Reçu','completed'=>'Terminé','closed'=>'Clôturé','cancelled'=>'Annulé','rejected'=>'Refusé','return_pending'=>'Retour à traiter','returned'=>'Retourné','available'=>'Disponible','reserved'=>'Réservé','depleted'=>'Épuisé','in_progress'=>'En cours','open'=>'Ouvert','resolved'=>'Résolu'];
 $date=static function($v){return $v?date('d/m/Y H:i',strtotime($v)):'—';};
 $rows=$dossier??$results;$siteCount=count(array_unique(array_column($rows,'site_code')));$docs=[];$issues=[];$corrections=[];

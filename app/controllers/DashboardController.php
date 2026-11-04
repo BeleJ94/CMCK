@@ -57,7 +57,7 @@ class DashboardController extends Controller
             ['label' => 'Stock produits finis', 'value' => $this->kg($stock['finished_stock']), 'icon' => 'bi-boxes', 'tone' => 'blue', 'hint' => number_format((int) $stock['finished_bags'], 0, ',', ' ') . ' sacs disponibles'],
             ['label' => 'Production du jour', 'value' => $this->kg($today['flour_produced']), 'icon' => 'bi-box-seam', 'tone' => 'green', 'trend' => $dashboard['trends']['flour_produced']],
             ['label' => 'Rendement moyen du jour', 'value' => $this->percent($today['average_yield']), 'icon' => 'bi-activity', 'tone' => 'green', 'trend' => $dashboard['trends']['average_yield']],
-            ['label' => 'Dechets generes', 'value' => $this->kg($today['waste_generated']), 'icon' => 'bi-recycle', 'tone' => 'red', 'hint' => 'Stock dechets ' . $this->kg($stock['waste_stock'])],
+            ['label' => 'Issues générées', 'value' => $this->kg($today['waste_generated']), 'icon' => 'bi-recycle', 'tone' => 'red', 'hint' => 'Stock d’issues ' . $this->kg($stock['waste_stock'])],
             ['label' => 'Distribution du jour', 'value' => $this->kg($today['distributed_products']), 'icon' => 'bi-send-check', 'tone' => 'blue', 'trend' => $dashboard['trends']['distributed_products']],
             ['label' => 'Alertes ouvertes', 'value' => (int) $alerts['total'], 'icon' => 'bi-exclamation-triangle', 'tone' => (int) $alerts['danger'] > 0 ? 'red' : ((int) $alerts['warning'] > 0 ? 'orange' : 'green'), 'hint' => (int) $alerts['danger'] . ' danger / ' . (int) $alerts['warning'] . ' warning'],
         ];
@@ -95,7 +95,7 @@ class DashboardController extends Controller
         $this->page('Production', 'Suivi des alimentations machines et lots produits.', [
             ['label' => 'Machines actives', 'value' => '3', 'icon' => 'bi-gear-wide-connected', 'tone' => 'blue'],
             ['label' => 'Lots termines', 'value' => '3', 'icon' => 'bi-check2-circle', 'tone' => 'green'],
-            ['label' => 'Dechets traites', 'value' => '1 520 kg', 'icon' => 'bi-recycle', 'tone' => 'orange'],
+            ['label' => 'Issues traitées', 'value' => '1 520 kg', 'icon' => 'bi-recycle', 'tone' => 'orange'],
         ]);
     }
 
@@ -176,11 +176,11 @@ class DashboardController extends Controller
             ],
             'agent-production' => [
                 'title' => 'Accueil production',
-                'subtitle' => 'Encoder les resultats de production et dechets.',
+                'subtitle' => 'Encoder les résultats de production : farine et issues.',
                 'icon' => 'bi-gear-wide-connected',
                 'actions' => [
                     ['label' => 'Encoder production', 'hint' => 'Valider un lot apres traitement.', 'path' => 'production/create', 'icon' => 'bi-check2-circle', 'tone' => 'green'],
-                    ['label' => 'Encoder dechets', 'hint' => 'Transformer les dechets en aliment betail.', 'path' => 'waste/process', 'icon' => 'bi-recycle', 'tone' => 'orange'],
+                    ['label' => 'Fabriquer aliment bétail', 'hint' => 'Transformer les issues en aliment bétail.', 'path' => 'pelletization?new=1', 'icon' => 'bi-circle-square', 'tone' => 'orange'],
                     ['label' => 'Rendement du jour', 'hint' => 'Voir les lots et les rendements.', 'path' => 'production', 'icon' => 'bi-speedometer2', 'tone' => 'blue'],
                 ],
             ],

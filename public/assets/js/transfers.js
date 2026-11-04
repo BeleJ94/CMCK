@@ -110,7 +110,7 @@ var fmt=function(n){return Number(n).toLocaleString('fr-FR',{maximumFractionDigi
 });
 (root||document).querySelectorAll('[data-transfer-create-form]').forEach(function(form){
  if(form.dataset.ready)return;form.dataset.ready='true';
- var source=form.elements.source_site_id,dest=form.elements.destination_site_id,type=form.elements.transfer_type,lot=form.elements.finished_stock_id,qty=form.elements.quantity_bags,submit=form.querySelector('[type=submit]'),error=form.querySelector('[data-transfer-error]');
+ var source=form.elements.source_site_id,dest=form.elements.destination_site_id,type=form.elements.transfer_type,lot=form.elements.stock_key||form.elements.finished_stock_id,qty=form.elements.quantity_bags,submit=form.querySelector('[type=submit]'),error=form.querySelector('[data-transfer-error]');
  var kind=form.querySelector('[data-stock-kind-filter]'),balanceBox=form.querySelector('[data-stock-balances]'),balances=balanceBox?JSON.parse(balanceBox.dataset.stockBalances):[];
  function syncBalances(){
   if(!kind)return;
@@ -128,15 +128,16 @@ var fmt=function(n){return Number(n).toLocaleString('fr-FR',{maximumFractionDigi
   Array.from(dest.options).forEach(function(o){o.disabled=!!o.value&&type.value==='inter_site'&&o.value===source.value;});
   if(dest.selectedOptions[0]&&dest.selectedOptions[0].disabled)dest.value='';
   lot.disabled=!source.value||!count;
-  var help=form.querySelector('[data-transfer-help]');help.hidden=!source.value||count>0;help.textContent='Aucun lot disponible sur ce site.';
-  lot.options[0].textContent=source.value?'Choisir un lot…':'Choisir d’abord le départ…';
+  var help=form.querySelector('[data-transfer-help]');help.hidden=!source.value||count>0;help.textContent='Aucun stock disponible sur ce site.';
+  lot.options[0].textContent=source.value?'Choisir un produit…':'Choisir d’abord le départ…';
   var o=lot.selectedOptions[0],valid=o&&o.value&&!o.disabled,available=valid?Number(o.dataset.available):0;
   form.querySelector('[data-transfer-preview]').hidden=!valid;qty.disabled=!valid;submit.disabled=!valid||form.dataset.busy==='true';
   qty.setCustomValidity('');
   if(valid){qty.max=available;var n=Number(qty.value||0);if(n>available)qty.setCustomValidity('La quantité dépasse les '+available+' sacs disponibles.');
    var values={available:available+' sacs',balance:qty.value?(available-n)+' sacs (prévision)':'—'};
+   var lotsBox=form.querySelector('[data-transfer-lots]');if(lotsBox){var list=lotsBox.querySelector('[data-transfer-lots-list]'),lots=[];try{lots=JSON.parse(o.dataset.lots||'[]');}catch(e){}var left=n<=available?n:0;list.replaceChildren();lots.forEach(function(l){if(left<=0)return;var take=Math.min(Number(l.bags)||0,left);if(take<=0)return;left-=take;var li=document.createElement('li'),strong=document.createElement('strong'),small=document.createElement('small');strong.textContent='Lot #'+l.id+(l.date?' du '+l.date:'')+' : '+take.toLocaleString('fr-FR')+' sac(s)';small.textContent=take<Number(l.bags)?'il restera '+(Number(l.bags)-take).toLocaleString('fr-FR')+' sac(s)':'lot entièrement envoyé';li.append(strong,small);list.appendChild(li);});lotsBox.hidden=!list.children.length;}
    Object.keys(values).forEach(function(k){form.querySelector('[data-transfer-'+k+']').textContent=values[k];});
-  }else qty.removeAttribute('max');
+  }else{qty.removeAttribute('max');var box=form.querySelector('[data-transfer-lots]');if(box)box.hidden=true;}
  }
  form.addEventListener('change',function(e){if(e.target===source||e.target===lot||e.target===kind)qty.value='';sync();});form.addEventListener('input',sync);
  form.addEventListener('reset',function(){setTimeout(function(){error.hidden=true;form.querySelectorAll('details').forEach(function(d){d.open=d.hasAttribute('data-site-balances');});sync();},0);});sync();

@@ -306,7 +306,7 @@ class Auth
                 ['label' => 'Pesée sortie', 'path' => 'weighings/exit', 'icon' => 'bi-box-arrow-up-right', 'roles' => ['agent-pont-bascule'], 'badge' => 'pending_weighings'],
                 ['label' => 'Alimenter machine', 'path' => 'machine-feeds/create', 'icon' => 'bi-arrow-down-up', 'roles' => ['agent-silo']],
                 ['label' => 'Encoder production', 'path' => 'production/create', 'icon' => 'bi-check2-circle', 'roles' => ['agent-production'], 'badge' => 'pending_batches'],
-                ['label' => 'Encoder déchets', 'path' => 'waste/process', 'icon' => 'bi-recycle', 'roles' => ['agent-production']],
+                ['label' => 'Fabriquer aliment bétail', 'path' => 'pelletization?new=1', 'icon' => 'bi-circle-square', 'roles' => ['agent-production']],
                 ['label' => 'Nouvel emballage', 'path' => 'packaging/create', 'icon' => 'bi-plus-circle', 'roles' => ['agent-emballage']],
                 ['label' => 'Nouvelle sortie', 'path' => 'distributions/create', 'icon' => 'bi-plus-circle', 'roles' => ['agent-distribution']],
             ]],
@@ -333,8 +333,8 @@ class Auth
                 ['label' => 'Alimentation', 'path' => 'machine-feeds', 'icon' => 'bi-arrow-down-up', 'roles' => ['administrateur', 'direction', 'agent-silo', 'agent-production']],
                 ['label' => 'Machines ROOF', 'path' => 'machines', 'icon' => 'bi-gear-wide-connected', 'roles' => ['administrateur', 'direction', 'agent-production']],
                 ['label' => 'Production', 'path' => 'production', 'icon' => 'bi-gear-wide-connected', 'roles' => ['administrateur', 'direction', 'agent-production'], 'badge' => 'pending_batches'],
-                ['label' => 'Déchets & coproduits', 'path' => 'waste', 'icon' => 'bi-recycle', 'roles' => ['administrateur', 'direction', 'agent-production']],
-                ['label' => 'Pelletisation', 'path' => 'pelletization', 'icon' => 'bi-circle-square', 'roles' => ['administrateur', 'direction', 'agent-production']],
+                ['label' => 'Issues de meunerie', 'path' => 'waste', 'icon' => 'bi-recycle', 'roles' => ['administrateur', 'direction', 'agent-production']],
+                ['label' => 'Aliment bétail', 'path' => 'pelletization', 'icon' => 'bi-circle-square', 'roles' => ['administrateur', 'direction', 'agent-production']],
             ]],
             ['label' => 'Conditionnement & stocks', 'icon' => 'bi-boxes', 'items' => [
                 ['label' => 'Emballages vides', 'path' => 'empty-packaging', 'icon' => 'bi-bag', 'roles' => ['administrateur', 'direction', 'agent-emballage']],
@@ -419,10 +419,10 @@ class Auth
     private static function menuPermission($path)
     {
         if ($path === 'silo-administration') { return ['silos', 'administer']; }
-        $first = explode('/', trim($path, '/'))[0];
+        $first = explode('/', trim(strtok($path, '?'), '/'))[0];
         $map = ['dashboard'=>'dashboard','direction'=>'dashboard','terrain'=>'dashboard','reports'=>'reports','analytics'=>'analytics','traceability'=>'traceability','cancellations'=>'cancellations','documents'=>'documents','transfers'=>'transfers','agriculture'=>'agriculture','livestock'=>'livestock','butchery'=>'butchery','budgets'=>'budgets','fuel-logistics'=>'fuel-logistics','suppliers'=>'suppliers','trucks'=>'trucks','weighings'=>'weighings','silos'=>'silos','machines'=>'machines','machine-feeds'=>'machine-feeds','production'=>'production','waste'=>'waste','pelletization'=>'pelletization','packaging'=>'packaging','empty-packaging'=>'empty-packaging','finished-stocks'=>'finished-stocks','distributions'=>'distributions','customers'=>'distributions','sales'=>'distributions','alerts'=>'alerts','activity-logs'=>'activity-logs','sites'=>'sites','users'=>'users','access-control'=>'rbac'];
         if (!isset($map[$first])) { return null; }
-        $action = $path === 'livestock/facilities' ? 'administer' : (in_array($path, ['weighings/entry','machine-feeds/create','production/create','waste/process','packaging/create','distributions/create'], true) ? 'create' : 'read');
+        $action = $path === 'livestock/facilities' ? 'administer' : (in_array($path, ['weighings/entry','machine-feeds/create','production/create','packaging/create','distributions/create'], true) ? 'create' : 'read');
         if (in_array($first, ['sites','users','access-control'], true)) { $action='administer'; }
         return [$map[$first],$action];
     }

@@ -58,7 +58,7 @@
                 <div class="auth-module-grid" aria-label="Domaines fonctionnels disponibles">
                     <article><i class="bi bi-flower1"></i><span><strong>Gestion agricole</strong><small>Campagnes, parcelles, récoltes</small></span></article>
                     <article><i class="bi bi-box-arrow-in-down"></i><span><strong>Approvisionnements</strong><small>Transport, pesée, silos</small></span></article>
-                    <article><i class="bi bi-gear-wide-connected"></i><span><strong>Production</strong><small>ROOF, déchets, pelletisation</small></span></article>
+                    <article><i class="bi bi-gear-wide-connected"></i><span><strong>Production</strong><small>ROOF, issues, aliment bétail</small></span></article>
                     <article><i class="bi bi-boxes"></i><span><strong>Stocks & emballage</strong><small>Vrac, sacs, produits finis</small></span></article>
                     <article><i class="bi bi-heart-pulse"></i><span><strong>Élevage & boucherie</strong><small>Lots, sanitaire, transformation</small></span></article>
                     <article><i class="bi bi-truck"></i><span><strong>Distribution & logistique</strong><small>Transferts, carburant, missions</small></span></article>

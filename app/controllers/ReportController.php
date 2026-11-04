@@ -54,7 +54,7 @@ class ReportController extends Controller
         $type = $this->reportType($_GET['type'] ?? 'production', ['production', 'waste', 'yield'], 'production');
         $titles = [
             'production' => 'Rapport journalier production',
-            'waste' => 'Rapport dechets',
+            'waste' => 'Bilan issues et aliment bétail',
             'yield' => 'Rapport rendement machine',
         ];
 
@@ -66,9 +66,12 @@ class ReportController extends Controller
             $rows = $model->production($filters);
         }
 
+        $feedOrders = $type === 'waste' ? $model->feedOrders($filters) : [];
         $this->render('reports.production', [
             'title' => $titles[$type],
             'type' => $type,
+            'feedOrders' => $feedOrders,
+            'balance' => $type === 'waste' ? $model->materialBalance($filters, $feedOrders) : null,
             'filters' => $filters,
             'references' => $model->referenceData(),
             'rows' => $rows,
@@ -183,8 +186,8 @@ class ReportController extends Controller
         return [
             ['label' => 'Receptions matieres premieres', 'count' => $summary['reception_count'], 'quantity' => $summary['received_kg']],
             ['label' => 'Production validee', 'count' => $summary['production_count'], 'quantity' => $summary['produced_kg']],
-            ['label' => 'Dechets generes', 'count' => $summary['production_count'], 'quantity' => $summary['waste_kg']],
-            ['label' => 'Dechets traites', 'count' => $summary['waste_count'], 'quantity' => $summary['waste_processed_kg']],
+            ['label' => 'Issues générées', 'count' => $summary['production_count'], 'quantity' => $summary['waste_kg']],
+            ['label' => 'Issues traitées', 'count' => $summary['waste_count'], 'quantity' => $summary['waste_processed_kg']],
             ['label' => 'Emballage produits finis', 'count' => $summary['packaging_count'], 'quantity' => $summary['packaged_kg']],
             ['label' => 'Distribution', 'count' => $summary['distribution_count'], 'quantity' => $summary['distributed_kg']],
         ];

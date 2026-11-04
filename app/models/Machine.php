@@ -24,11 +24,11 @@ class Machine extends Model
         }
         unset($m);
         $waste=$this->query("SELECT wp.* FROM waste_processings wp JOIN machines ON machines.id=wp.machine_id WHERE machines.deleted_at IS NULL AND wp.deleted_at IS NULL AND wp.status<>'cancelled'{$scope} ORDER BY wp.processed_at DESC,wp.id DESC",$params)->fetchAll();
-        foreach($waste as$w){if(!isset($rows[$w['machine_id']])||$rows[$w['machine_id']]['machine_type']!=='waste')continue;$m=&$rows[$w['machine_id']];if($w['status']==='pending'){$m['open_count']++;$m['open_quantity_kg']+=(float)$w['input_quantity_kg'];$m['open_operations'][]=['date'=>$w['processed_at'],'reference'=>'Traitement #'.$w['id'],'source'=>'Déchets','quantity'=>$w['input_quantity_kg'],'status'=>$w['status']];}
+        foreach($waste as$w){if(!isset($rows[$w['machine_id']])||$rows[$w['machine_id']]['machine_type']!=='waste')continue;$m=&$rows[$w['machine_id']];if($w['status']==='pending'){$m['open_count']++;$m['open_quantity_kg']+=(float)$w['input_quantity_kg'];$m['open_operations'][]=['date'=>$w['processed_at'],'reference'=>'Traitement #'.$w['id'],'source'=>'Issues','quantity'=>$w['input_quantity_kg'],'status'=>$w['status']];}
             $day=substr($w['processed_at'],0,10);if(($from&&$day<$from)||($to&&$day>$to))continue;
             $m['fed_quantity_kg']+=(float)$w['input_quantity_kg'];$m['batches_count']++;
             if($w['status']==='validated'){$m['output_quantity_kg']+=(float)$w['output_quantity_kg'];$m['validated_input_kg']+=(float)$w['input_quantity_kg'];}
-            if(count($m['history'])<10)$m['history'][]=['date'=>$w['processed_at'],'reference'=>'Traitement #'.$w['id'],'source'=>'Déchets','quantity'=>$w['input_quantity_kg'],'status'=>$w['status']];
+            if(count($m['history'])<10)$m['history'][]=['date'=>$w['processed_at'],'reference'=>'Traitement #'.$w['id'],'source'=>'Issues','quantity'=>$w['input_quantity_kg'],'status'=>$w['status']];
         }
         unset($m);foreach($rows as&$m){if($m['validated_input_kg']>0)$m['yield_rate']=100*$m['output_quantity_kg']/$m['validated_input_kg'];}unset($m);
         return array_values($rows);

@@ -17,7 +17,7 @@ class ProductionController extends Controller
   if($format==='excel'){
    require_once dirname(__DIR__).'/services/SpreadsheetExportService.php';
    $sheet=[['DAGRIL · Production farine'],['Exporté le '.date('d/m/Y H:i').' · Périmètre des sites autorisés'],[$summary],[], $service->headers()];
-   $sheet=array_merge($sheet,$rows);$sheet[]=['Synthèse : '.$totals['lots'].' lots, dont '.$totals['validated'].' validés · Chargé : '.$totals['loaded'].' kg · Farine validée : '.$totals['flour'].' kg · Déchets validés : '.$totals['waste'].' kg'];
+   $sheet=array_merge($sheet,$rows);$sheet[]=['Synthèse : '.$totals['lots'].' lots, dont '.$totals['validated'].' validés · Chargé : '.$totals['loaded'].' kg · Farine validée : '.$totals['flour'].' kg · Issues validées : '.$totals['waste'].' kg'];
    $content=(new SpreadsheetExportService())->build($sheet,[21,21,38,30,22,24,18,18,18,18,25]);header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');header('Content-Disposition: attachment; filename="'.$filename.'.xlsx"');echo $content;return;
   }
   $html=$this->renderViewToString('production.export',['rows'=>$rows,'headers'=>$service->headers(),'summary'=>$summary,'totals'=>$totals]);(new PdfService())->stream('Production farine',$html,$filename.'.pdf','landscape');
@@ -28,8 +28,8 @@ class ProductionController extends Controller
   $m=$this->model('ProductionBatch');$id=$_POST['production_batch_id']??'';$b=$m->findDetailed($id);if(!$b)throw new RuntimeException('Lot introuvable sur votre périmètre.');Auth::requirePermission('production','update',$b['site_id']);
   if(empty($_POST['version']))throw new RuntimeException('Actualisez la liste avant de saisir les résultats.');
   $m->submitResults(['production_batch_id'=>$id,'version'=>$_POST['version'],'output_quantity_kg'=>$_POST['output_quantity_kg']??'','waste_lines'=>is_array($_POST['waste_lines']??null)?$_POST['waste_lines']:[],'variance_tolerance_percent'=>$m->tolerance($b['site_id']),'variance_justification'=>trim($_POST['variance_justification']??''),'correction_reason'=>trim($_POST['correction_reason']??''),'ended_at'=>$_POST['ended_at']??''],Auth::user());
- },'Résultats enregistrés. Le lot attend sa validation ; aucun stock de farine ou de déchets n’a encore été créé.');}
- public function validateBatch($id){$this->run(function()use($id){if(empty($_POST['version']))throw new RuntimeException('Actualisez la liste avant de valider.');$this->model('ProductionBatch')->validateProduction(['production_batch_id'=>$id,'version'=>$_POST['version']],Auth::user());},'Production validée. La farine en vrac et les déchets sont disponibles.');}
+ },'Résultats enregistrés. Le lot attend sa validation ; aucun stock de farine ou d’issues n’a encore été créé.');}
+ public function validateBatch($id){$this->run(function()use($id){if(empty($_POST['version']))throw new RuntimeException('Actualisez la liste avant de valider.');$this->model('ProductionBatch')->validateProduction(['production_batch_id'=>$id,'version'=>$_POST['version']],Auth::user());},'Production validée. La farine en vrac et les issues sont disponibles.');}
  public function updateTolerance(){ $this->run(function(){Auth::requirePermission('production','administer');$this->model('ProductionBatch')->updateTolerance($_POST['tolerance_percent']??'',Auth::user());},'Tolérance mise à jour.'); }
  private function run(callable $action,$message){
   $ajax=strtolower($_SERVER['HTTP_X_REQUESTED_WITH']??'')==='xmlhttprequest';

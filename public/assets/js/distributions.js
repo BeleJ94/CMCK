@@ -81,18 +81,27 @@ function initDelivery(form){
 
 // Exit without an order: a registered client fills the recipient, the lot sets the maximum.
 function initExit(form){
- var lot=form.elements.finished_stock_id,qty=form.elements.quantity_bags,customer=form.elements.customer_id,recipient=form.elements.recipient_name,error=form.querySelector('[data-distribution-error]'),out=form.querySelector('[data-distribution-summary]'),fill=form.querySelector('[data-exit-fill]'),button=form.querySelector('[type=submit]');
- var picked=function(){var o=lot.selectedOptions[0];return o&&o.value?o:null;};
+ var product=form.elements.stock_key||form.elements.finished_stock_id,qty=form.elements.quantity_bags,customer=form.elements.customer_id,recipient=form.elements.recipient_name,error=form.querySelector('[data-distribution-error]'),out=form.querySelector('[data-distribution-summary]'),fill=form.querySelector('[data-exit-fill]'),button=form.querySelector('[type=submit]');
+ var lotsBox=form.querySelector('[data-exit-lots]'),lotsList=form.querySelector('[data-exit-lots-list]');
+ var picked=function(){var o=product.selectedOptions[0];return o&&o.value?o:null;};
+ // Same rule as the server: oldest free lots first, whole bags.
+ function plan(o,n){var lots=[];try{lots=JSON.parse(o.dataset.lots||'[]');}catch(e){}var left=n,parts=[];lots.forEach(function(l){if(left<=0)return;var take=Math.min(Number(l.bags)||0,left);if(take>0){parts.push({label:'Lot #'+l.id+(l.date?' du '+l.date:''),bags:take,rest:Number(l.bags)-take});left-=take;}});return parts;}
  function who(){var c=customer&&customer.value?customer.selectedOptions[0]:null;var box=form.querySelector('[data-exit-recipient]');box.hidden=!!c;recipient.required=!c;recipient.disabled=!!c;return c?c.textContent.split(' · ')[0]:recipient.value.trim();}
  function sync(){var o=picked();qty.disabled=!o;fill.disabled=!o;button.disabled=!o||form.dataset.busy==='true';out.hidden=!o;
-  if(o){qty.max=o.dataset.bags;var n=Number(qty.value||0);out.textContent='Libre : '+fmt(o.dataset.bags)+' sacs · Sortie : '+fmt(n*Number(o.dataset.weight))+' kg'+(n&&n<Number(o.dataset.bags)?' · il restera '+fmt(Number(o.dataset.bags)-n)+' sac(s) sur le lot':'');}else qty.removeAttribute('max');}
- lot.addEventListener('change',function(){qty.value='';sync();});qty.addEventListener('input',sync);
+  if(lotsBox)lotsBox.hidden=true;qty.setCustomValidity('');
+  if(!o){qty.removeAttribute('max');return;}
+  var free=Number(o.dataset.bags),n=Number(qty.value||0),weight=Number(o.dataset.weight);qty.max=free;
+  if(n>free)qty.setCustomValidity('Il n’y a que '+fmt(free)+' sac(s) libres pour ce produit.');
+  out.textContent='Libre : '+fmt(free)+' sac(s)'+(n?' · Sortie : '+fmt(n)+' sac(s) · '+fmt(n*weight)+' kg':'')+(n&&n<free?' · il restera '+fmt(free-n)+' sac(s)':'')+(n>free?' · quantité trop élevée':'');
+  if(lotsBox&&n>0&&n<=free){var parts=plan(o,n);lotsList.replaceChildren();parts.forEach(function(p){var li=document.createElement('li'),strong=document.createElement('strong'),small=document.createElement('small');strong.textContent=p.label+' : '+fmt(p.bags)+' sac(s)';small.textContent=p.rest>0?'il restera '+fmt(p.rest)+' sac(s) sur ce lot':'lot entièrement sorti';li.append(strong,small);lotsList.appendChild(li);});lotsBox.hidden=!parts.length;}
+ }
+ product.addEventListener('change',function(){qty.value='';sync();if(picked())qty.focus();});qty.addEventListener('input',sync);
  if(customer)customer.addEventListener('change',who);
  fill.addEventListener('click',function(){var o=picked();if(o){qty.value=o.dataset.bags;sync();}});
  bindSubmit(form,error,{sync:function(){who();sync();},
-  check:function(){return picked()?'':'Choisissez le lot à sortir.';},
-  confirm:function(){var o=picked(),n=Number(qty.value),transporter=form.elements.transporter.value.trim();
-   return {title:'Confirmer la sortie',ok:'Confirmer la sortie',lead:who()+' · depuis '+o.dataset.site,lines:[[o.dataset.label+' · '+fmt(n)+' sac(s)',o.dataset.lot]],
+  check:function(){var o=picked();if(!o)return 'Choisissez le produit à sortir.';if(Number(qty.value||0)>Number(o.dataset.bags))return 'Il n’y a que '+fmt(o.dataset.bags)+' sac(s) libres pour ce produit.';return '';},
+  confirm:function(){var o=picked(),n=Number(qty.value),transporter=form.elements.transporter.value.trim(),parts=plan(o,n);
+   return {title:'Confirmer la sortie',ok:'Confirmer la sortie',lead:who()+' · depuis '+o.dataset.site,lines:[[o.dataset.label+' · '+fmt(n)+' sac(s)',parts.map(function(p){return p.label+' : '+fmt(p.bags);}).join(' · ')]],
     total:'Total : '+fmt(n)+' sac(s) · '+fmt(n*Number(o.dataset.weight))+' kg',note:(transporter?'Transport : '+transporter+'. ':'')+'La sortie est validée et déduite du stock immédiatement ; un bon de sortie est émis.'};}});
  who();sync();
 }

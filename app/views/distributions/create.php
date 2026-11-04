@@ -10,31 +10,32 @@
 
 <?php if (!empty($error)): ?><div class="app-alert app-alert-error"><i class="bi bi-exclamation-triangle"></i><?= e($error) ?></div><?php endif; ?>
 <?php if (!empty($errors)): ?><div class="app-alert app-alert-error"><i class="bi bi-exclamation-triangle"></i><span>Veuillez corriger les champs indiques.</span></div><?php endif; ?>
-<?php if (empty($availableStocks)): ?><div class="app-alert app-alert-error"><i class="bi bi-info-circle"></i><span>Aucun stock produit fini disponible pour distribution.</span></div><?php endif; ?>
+<?php if (empty($availableProducts)): ?><div class="app-alert app-alert-error"><i class="bi bi-info-circle"></i><span>Aucun stock produit fini disponible pour distribution.</span></div><?php endif; ?>
 
 <section class="form-panel">
     <form method="post" action="<?= e(base_url('distributions')) ?>" class="enterprise-form" data-validate data-distribution-form>
         <?= csrf_field() ?>
         <div class="form-grid">
             <label class="form-wide">
-                <span>Stock produit fini</span>
-                <select name="finished_stock_id" required data-distribution-stock <?= empty($availableStocks) ? 'disabled' : '' ?>>
-                    <option value="">Selectionner le produit et format</option>
-                    <?php foreach ($availableStocks as $stock): ?>
+                <span>Produit</span>
+                <select name="stock_key" required data-distribution-stock <?= empty($availableProducts) ? 'disabled' : '' ?>>
+                    <option value="">Sélectionner le produit et le format</option>
+                    <?php foreach ($availableProducts as $product): ?>
                         <option
-                            value="<?= e($stock['id']) ?>"
-                            data-product="<?= e($stock['product_name']) ?>"
-                            data-format="<?= e($stock['format_name']) ?>"
-                            data-weight="<?= e($stock['weight_kg']) ?>"
-                            data-bags="<?= e($stock['quantity_bags']) ?>"
-                            data-kg="<?= e($stock['total_weight_kg']) ?>"
-                            <?= (string) $distribution['finished_stock_id'] === (string) $stock['id'] ? 'selected' : '' ?>
+                            value="<?= e($product['key']) ?>"
+                            data-product="<?= e($product['product_name']) ?>"
+                            data-format="<?= e($product['format_name']) ?>"
+                            data-weight="<?= e($product['weight_kg']) ?>"
+                            data-bags="<?= e($product['free_bags']) ?>"
+                            data-kg="<?= e($product['free_bags'] * $product['weight_kg']) ?>"
+                            <?= (string) ($distribution['stock_key'] ?? '') === $product['key'] ? 'selected' : '' ?>
                         >
-                            <?= e($stock['product_name'] . ' - ' . $stock['format_name'] . ' - ' . number_format((int) $stock['quantity_bags'], 0, ',', ' ') . ' sacs') ?>
+                            <?= e($product['site_code'] . ' — ' . $product['product_name'] . ' - ' . $product['format_name'] . ' - ' . number_format((int) $product['free_bags'], 0, ',', ' ') . ' sacs libres') ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <?php if (!empty($errors['finished_stock_id'])): ?><small><?= e($errors['finished_stock_id']) ?></small><?php endif; ?>
+                <small>Les sacs sont prélevés automatiquement sur les lots les plus anciens.</small>
+                <?php if (!empty($errors['stock_key'])): ?><small><?= e($errors['stock_key']) ?></small><?php endif; ?>
             </label>
             <label>
                 <span>Produit</span>
@@ -82,7 +83,7 @@
         </div>
         <div class="form-actions">
             <a href="<?= e(base_url('distributions')) ?>" class="btn-secondary"><i class="bi bi-arrow-left"></i><span>Annuler</span></a>
-            <button type="submit" class="btn-primary" <?= empty($availableStocks) ? 'disabled' : '' ?>><i class="bi bi-check2-circle"></i><span>Creer sortie stock</span></button>
+            <button type="submit" class="btn-primary" <?= empty($availableProducts) ? 'disabled' : '' ?>><i class="bi bi-check2-circle"></i><span>Creer sortie stock</span></button>
         </div>
     </form>
 </section>

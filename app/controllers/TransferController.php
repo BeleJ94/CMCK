@@ -13,7 +13,7 @@ class TransferController extends Controller
   $ajax=($_SERVER['HTTP_X_REQUESTED_WITH']??'')==='XMLHttpRequest';
   try {
    $this->csrf();
-   $id=$this->service()->create(['transfer_type'=>$_POST['transfer_type']??'inter_site','source_site_id'=>(int)($_POST['source_site_id']??0),'destination_site_id'=>(int)($_POST['destination_site_id']??0),'notes'=>trim($_POST['notes']??''),'items'=>[['finished_stock_id'=>(int)($_POST['finished_stock_id']??0),'quantity_bags'=>(int)($_POST['quantity_bags']??0)]]],Auth::user());
+   $id=$this->service()->create(['transfer_type'=>$_POST['transfer_type']??'inter_site','source_site_id'=>(int)($_POST['source_site_id']??0),'destination_site_id'=>(int)($_POST['destination_site_id']??0),'notes'=>trim($_POST['notes']??''),'items'=>[$this->stockItem()]],Auth::user());
    flash('success','Demande créée. Vous pouvez maintenant la soumettre pour validation.');
    if($ajax){header('Content-Type: application/json');echo json_encode(['success'=>true,'ok'=>true,'redirect'=>base_url('transfers/'.$id),'redirect_url'=>base_url('transfers/'.$id)]);return;}
    redirect('transfers/'.$id);
@@ -36,5 +36,7 @@ class TransferController extends Controller
   }
   flash($ok?'success':'error',$message);redirect('transfers/'.$id);
  }
+ /** Ligne demandée : produit + format (stock global). La répartition sur les lots est faite par le service. */
+ private function stockItem(){$key=(string)($_POST['stock_key']??'');if(!preg_match('/^(\d+):(\d+)$/',$key,$m)){throw new RuntimeException('Choisissez le produit à transférer.');}return['product_id'=>(int)$m[1],'bag_format_id'=>(int)$m[2],'quantity_bags'=>(int)($_POST['quantity_bags']??0)];}
  private function act($id,$action){$this->csrf();try{$this->service()->{$action}((int)$id,Auth::user());flash('success','Action enregistrée.');}catch(Exception$e){flash('error',$e->getMessage());}redirect('transfers/'.$id);}private function service(){require_once dirname(__DIR__).'/services/TransferService.php';return new TransferService();}private function csrf(){if(!verify_csrf($_POST['_token']??'')){throw new RuntimeException('Jeton CSRF invalide.');}}
 }

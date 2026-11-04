@@ -18,7 +18,7 @@ class ProductionExportService
         foreach($batches as$b){$todo=in_array($b['status'],['pending','in_progress'],true);$input=(float)$b['actual_input_quantity_kg'];$rows[]=[date('d/m/Y H:i',strtotime($b['started_at'])),$b['ended_at']?date('d/m/Y H:i',strtotime($b['ended_at'])):'—',$b['batch_number'],$b['bss_number']?:'—',$b['machine_name'],$b['silo_name'],$input,$todo?'—':(float)$b['output_quantity_kg'],$todo?'—':(float)$b['waste_quantity_kg'],$todo||$input<=0?'—':round(100*(float)$b['output_quantity_kg']/$input,1),self::STATES[$b['status']]??$b['status']];}
         return $rows;
     }
-    public function headers(): array {return ['Début','Fin','Lot','BSS','Machine','Silo','Chargé (kg)','Farine (kg)','Déchets (kg)','Rendement (%)','Étape'];}
+    public function headers(): array {return ['Début','Fin','Lot','BSS','Machine','Silo','Chargé (kg)','Farine (kg)','Issues (kg)','Rendement (%)','Étape'];}
     public function totals(array $batches): array
     {
         $validated=array_filter($batches,fn($b)=>$b['status']==='validated');

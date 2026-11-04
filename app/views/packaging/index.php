@@ -1,7 +1,7 @@
 <?php
 $availableTotal = array_sum(array_map(function ($batch) {
     return (float) $batch['available_quantity_kg'];
-}, $availableBatches));
+}, $availableProducts));
 $packagedTotal = array_sum(array_map(function ($row) {
     return in_array($row['status'], ['validated', 'active'], true) ? (float) $row['total_weight_kg'] : 0;
 }, $history));
@@ -27,43 +27,40 @@ $bagsTotal = array_sum(array_map(function ($row) {
 
 <section class="metric-grid pack-metrics">
     <article class="metric-card"><div class="metric-card-top"><span>Disponible à emballer</span><span class="metric-icon tone-blue"><i class="bi bi-box"></i></span></div><strong><?= e(number_format($availableTotal, 0, ',', ' ')) ?> kg</strong></article>
-    <article class="metric-card"><div class="metric-card-top"><span>Lots disponibles</span><span class="metric-icon tone-orange"><i class="bi bi-list-check"></i></span></div><strong><?= e(count($availableBatches)) ?></strong></article>
+    <article class="metric-card"><div class="metric-card-top"><span>Lots en vrac</span><span class="metric-icon tone-orange"><i class="bi bi-list-check"></i></span></div><strong><?= e(array_sum(array_map(function ($s) { return (int) $s['lots_count']; }, $availableProducts))) ?></strong></article>
     <article class="metric-card"><div class="metric-card-top"><span>Poids conditionné (historique)</span><span class="metric-icon tone-green"><i class="bi bi-check2-circle"></i></span></div><strong><?= e(number_format($packagedTotal, 0, ',', ' ')) ?> kg</strong></article>
     <article class="metric-card"><div class="metric-card-top"><span>Sacs produits</span><span class="metric-icon tone-red"><i class="bi bi-bag-check"></i></span></div><strong><?= e(number_format($bagsTotal, 0, ',', ' ')) ?></strong></article>
 </section>
 
-<nav class="pellet-tabs" aria-label="Conditionnement"><button type="button" data-pack-tab="available" aria-pressed="true"><i class="bi bi-box-seam"></i> Lots disponibles</button><button type="button" data-pack-tab="history" aria-pressed="false"><i class="bi bi-clock-history"></i> Historique</button></nav>
+<nav class="pellet-tabs" aria-label="Conditionnement"><button type="button" data-pack-tab="available" aria-pressed="true"><i class="bi bi-box-seam"></i> Farine disponible</button><button type="button" data-pack-tab="history" aria-pressed="false"><i class="bi bi-clock-history"></i> Historique</button></nav>
 <section class="table-panel" data-pack-space="available">
-    <div class="panel-heading"><span class="panel-icon"><i class="bi bi-table"></i></span><div><h3>Lots disponibles</h3><p>Choisissez un lot pour démarrer son conditionnement.</p></div></div>
+    <div class="panel-heading"><span class="panel-icon"><i class="bi bi-table"></i></span><div><h3>Farine en vrac disponible</h3><p>Stock global par produit et par site. Le conditionnement prélève automatiquement les lots les plus anciens.</p></div></div>
     <div class="table-responsive">
         <table id="packagingAvailableTable" class="enterprise-table">
             <thead>
                 <tr>
-                    <th>Lot</th>
                     <th>Produit</th>
-                    <th>Machine</th>
-                    <th>Poids produit</th>
-                    <th>Conditionné</th>
+                    <th>Site</th>
+                    <th>Lots en vrac</th>
+                    <th>Plus ancien lot</th>
                     <th>Disponible</th><th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($availableBatches as $batch): ?>
+                <?php foreach ($availableProducts as $stock): ?>
                     <tr>
-                        <td><strong><?= e($batch['batch_number']) ?></strong></td>
-                        <td><?= e($batch['product_name']) ?></td>
-                        <td><?= e($batch['machine_name']) ?></td>
-                        <td><?= e(number_format((float) $batch['output_quantity_kg'], 0, ',', ' ')) ?> kg</td>
-                        <td><?= e(number_format((float) $batch['packaged_quantity_kg'], 0, ',', ' ')) ?> kg</td>
-                        <td><strong><?= e(number_format((float) $batch['available_quantity_kg'], 0, ',', ' ')) ?> kg</strong></td>
-                        <td><?php if(Auth::can('packaging','create')): ?><button type="button" class="btn-secondary" data-workspace-modal-open="packagingEditor" data-pack-lot="<?=e($batch['id'])?>"><i class="bi bi-bag-plus"></i> Conditionner</button><?php else: ?>—<?php endif; ?></td>
+                        <td><strong><?= e($stock['product_name']) ?></strong></td>
+                        <td><?= e($stock['site_code']) ?></td>
+                        <td><?= e((int) $stock['lots_count']) ?></td>
+                        <td><?= e($stock['oldest_at'] ? date('d/m/Y', strtotime($stock['oldest_at'])) : '—') ?></td>
+                        <td><strong><?= e(number_format((float) $stock['available_quantity_kg'], 0, ',', ' ')) ?> kg</strong></td>
+                        <td><?php if(Auth::can('packaging','create')): ?><button type="button" class="btn-secondary" data-workspace-modal-open="packagingEditor" data-pack-lot="<?=e(Packaging::stockKey($stock['site_id'], $stock['product_id']))?>"><i class="bi bi-bag-plus"></i> Conditionner</button><?php endif; ?></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
     </div>
 </section>
-
 <section class="table-panel" data-pack-space="history" hidden>
     <div class="panel-heading"><span class="panel-icon"><i class="bi bi-table"></i></span><div><h3>Historique emballage</h3><p>Recherchez un lot, un produit, une date ou un agent.</p></div></div>
     <div class="table-responsive">

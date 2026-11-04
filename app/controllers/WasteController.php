@@ -7,10 +7,9 @@ class WasteController extends Controller
         $model = $this->model('Waste');
 
         $this->view('waste.index', [
-            'title' => 'Déchets et coproduits',
+            'title' => 'Issues de meunerie',
             'availableStock' => $model->totalAvailable(),
             'stockLines' => $model->stockLines(),
-            'machines' => $model->wasteMachines(),
             'history' => $model->history(),
             'success' => flash('success'),
             'error' => flash('error'),
@@ -29,7 +28,7 @@ class WasteController extends Controller
         $states=['usable'=>'Stocks utilisables',''=>'Tous les stocks','available'=>'Disponible','buffer'=>'En tampon','empty'=>'Épuisé / indisponible'];
         $summary='Recherche : '.($filters['search']?:'Toutes').' · Type : '.($filters['type']?:'Tous').' · Site : '.($filters['site']?:'Tous les sites autorisés').' · Situation : '.($states[$filters['state']]??'Non reconnue');
         header('Cache-Control: private, no-store');
-        $filename='dagril-stocks-dechets-'.date('Ymd-His');
+        $filename='dagril-stocks-issues-'.date('Ymd-His');
         if ($format==='excel') {
             $content=$service->xlsx($lines,$summary);
             header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -38,58 +37,23 @@ class WasteController extends Controller
             return;
         }
         $html=$this->renderViewToString('waste.export',['lines'=>$lines,'summary'=>$summary,'service'=>$service]);
-        (new PdfService())->stream('Déchets et coproduits', $html, $filename.'.pdf', 'landscape');
+        (new PdfService())->stream('Issues de meunerie', $html, $filename.'.pdf', 'landscape');
     }
 
+    /**
+     * L'ancienne saisie directe « traitement déchets » est fermée : les issues de meunerie
+     * ne sont transformées que par un ordre de fabrication d'aliment bétail (pelletisation),
+     * qui gère recette, additifs, coût, validation et ensachage.
+     */
     public function process()
     {
-        $model = $this->model('Waste');
-
-        $this->view('waste.process', [
-            'title' => 'Traitement dechets',
-            'availableStock' => $model->totalAvailable(),
-            'machines' => $model->wasteMachines(),
-            'processing' => $this->old(),
-            'errors' => flash('errors') ?: [],
-            'error' => flash('error'),
-        ], 'layouts.main');
+        flash('success', 'La transformation des issues se fait désormais par un ordre de fabrication d’aliment bétail.');
+        redirect('pelletization');
     }
 
     public function store()
     {
-        if (strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest') {
-            $this->stockAction(function () {
-                Auth::requireCurrentSite();
-                $model = $this->model('Waste');
-                $data = $this->input();
-                $errors = $this->validate($data, $model);
-                if ($errors) throw new RuntimeException(implode(' ', array_values($errors)));
-                $model->processWaste($data, Auth::user());
-            }, 'Traitement validé. Les stocks de déchets et d’aliment pour bétail sont actualisés.');
-            return;
-        }
-
-        $this->ensureCsrf('waste/process');
-
-        $model = $this->model('Waste');
-        $data = $this->input();
-        $errors = $this->validate($data, $model);
-
-        if (!empty($errors)) {
-            flash('errors', $errors);
-            $_SESSION['old_waste_processing'] = $data;
-            redirect('waste/process');
-        }
-
-        try {
-            $model->processWaste($data, Auth::user());
-            flash('success', 'Traitement dechets valide avec succes.');
-            redirect('waste/history');
-        } catch (Exception $exception) {
-            flash('error', $exception->getMessage());
-            $_SESSION['old_waste_processing'] = $data;
-            redirect('waste/process');
-        }
+        $this->refuse('La saisie directe est fermée. Créez un ordre de fabrication d’aliment bétail.', 'pelletization');
     }
 
     public function history()
@@ -97,7 +61,7 @@ class WasteController extends Controller
         $model = $this->model('Waste');
 
         $this->view('waste.history', [
-            'title' => 'Historique dechets',
+            'title' => 'Anciens traitements des issues',
             'availableStock' => $model->totalAvailable(),
             'history' => $model->history(),
             'success' => flash('success'),
@@ -112,15 +76,17 @@ class WasteController extends Controller
 
     public function sell()
     {
-        $this->stockAction(function () {
-            $quantity = $_POST['quantity_kg'] ?? '';
-            $price = $_POST['unit_price'] ?? '';
-            $customer = trim($_POST['customer_name'] ?? '');
-            if (!is_numeric($quantity) || !is_finite((float)$quantity) || (float)$quantity < 0.001) throw new RuntimeException('Saisissez une quantité positive, au minimum 0,001 kg.');
-            if (!is_numeric($price) || !is_finite((float)$price) || (float)$price < 0) throw new RuntimeException('Saisissez un prix unitaire positif ou nul.');
-            if ($customer === '' || mb_strlen($customer) > 190) throw new RuntimeException('Renseignez le nom du client (190 caractères maximum).');
-            $this->model('Waste')->sell(['waste_stock_id'=>$_POST['waste_stock_id']??'', 'quantity_kg'=>$quantity, 'customer_name'=>$customer, 'unit_price'=>$price], Auth::user());
-        }, 'Vente brute enregistrée.');
+        $this->refuse('Les issues de meunerie ne se vendent pas en vrac : elles sont réservées à la fabrication d’aliment bétail.', 'waste');
+    }
+
+    private function refuse(string $message, string $redirect)
+    {
+        if (strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest') {
+            $this->json(['ok' => false, 'message' => $message], 410);
+            return;
+        }
+        flash('error', $message);
+        redirect($redirect);
     }
 
     private function stockAction(callable $action, string $message)
@@ -136,69 +102,5 @@ class WasteController extends Controller
             flash('error', $e->getMessage());
         }
         redirect('waste');
-    }
-
-    private function input()
-    {
-        return [
-            'machine_id' => trim($_POST['machine_id'] ?? ''),
-            'input_quantity_kg' => trim($_POST['input_quantity_kg'] ?? ''),
-            'output_quantity_kg' => trim($_POST['output_quantity_kg'] ?? ''),
-            'processed_at' => trim($_POST['processed_at'] ?? ''),
-        ];
-    }
-
-    private function validate(array $data, Waste $model)
-    {
-        $errors = [];
-        $available = $model->totalAvailable();
-
-        if ($data['machine_id'] === '' || !ctype_digit((string) $data['machine_id'])) {
-            $errors['machine_id'] = 'La machine dechets est obligatoire.';
-        }
-
-        if ($data['input_quantity_kg'] === '' || !is_numeric($data['input_quantity_kg']) || (float) $data['input_quantity_kg'] <= 0) {
-            $errors['input_quantity_kg'] = 'La quantite dechets traitee est obligatoire et positive.';
-        } elseif ((float) $data['input_quantity_kg'] > $available) {
-            $errors['input_quantity_kg'] = 'Impossible de traiter plus que le stock dechets disponible.';
-        }
-
-        if ($data['output_quantity_kg'] === '' || !is_numeric($data['output_quantity_kg']) || (float) $data['output_quantity_kg'] < 0) {
-            $errors['output_quantity_kg'] = 'La quantite aliment betail produite est obligatoire et positive.';
-        }
-
-        if (empty($errors['input_quantity_kg']) && empty($errors['output_quantity_kg'])) {
-            if ((float) $data['output_quantity_kg'] > (float) $data['input_quantity_kg']) {
-                $errors['output_quantity_kg'] = 'L aliment betail produit ne peut pas depasser la quantite dechets traitee.';
-            }
-        }
-
-        if ($data['processed_at'] === '') {
-            $errors['processed_at'] = 'La date de traitement est obligatoire.';
-        }
-
-        return $errors;
-    }
-
-    private function old()
-    {
-        Auth::start();
-        $old = $_SESSION['old_waste_processing'] ?? null;
-        unset($_SESSION['old_waste_processing']);
-
-        return $old ?: [
-            'machine_id' => '',
-            'input_quantity_kg' => '',
-            'output_quantity_kg' => '',
-            'processed_at' => date('Y-m-d\TH:i'),
-        ];
-    }
-
-    private function ensureCsrf($redirect)
-    {
-        if (!verify_csrf($_POST['_token'] ?? '')) {
-            flash('error', 'Session expiree. Veuillez reessayer.');
-            redirect($redirect);
-        }
     }
 }

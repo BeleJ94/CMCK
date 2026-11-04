@@ -216,7 +216,7 @@
 
             if (inputQuantity) {
                 if (input > available) {
-                    inputQuantity.setCustomValidity('La quantite traitee depasse le stock dechets disponible.');
+                    inputQuantity.setCustomValidity('La quantite traitee depasse le stock d’issues disponible.');
                 } else {
                     inputQuantity.setCustomValidity('');
                 }
@@ -1023,7 +1023,7 @@
         var form=qs('form',modal);if(form){form.reset();var page=qs('[data-agriculture-section]');var returnField=form.elements._return_to;if(page&&returnField&&page.dataset.agricultureSection!=='overview')returnField.value='agriculture/'+page.dataset.agricultureSection;}
         if(id==='harvestModal')prepareHarvestEditor(modal,trigger);
         updateHarvestPlanSummary(qs('[data-harvest-plan]',modal));
-        var depotStock=trigger&&trigger.getAttribute('data-depot-stock');if(depotStock){var stockField=qs('[data-farm-transport-stock]',modal);if(stockField)stockField.value=depotStock;}
+        var depotStock=trigger&&trigger.getAttribute('data-depot-stock');if(depotStock){var stockField=qs('[data-farm-transport-stock]',modal);if(stockField){stockField.value=depotStock;stockField.dispatchEvent(new Event('change',{bubbles:true}));}}
         enhanceFarmTransportRoutes(modal);
         var campaignSite=qs('[data-campaign-site]',modal);if(campaignSite)syncCampaignSuggestedCode(campaignSite);
         var plotSite=qs('[data-plot-site]',modal);if(plotSite)syncPlotSuggestedCode(plotSite);
@@ -1176,15 +1176,40 @@
             var form = select.form;
             var route = form && qs('[data-farm-transport-route]', form);
             if (!route) return;
+            var qty = qs('[data-farm-transport-qty]', form), fill = qs('[data-farm-transport-fill]', form), free = qs('[data-farm-transport-free]', form), lotsBox = qs('[data-farm-transport-lots]', form);
+            var kgText = function (n) { return Number(n).toLocaleString('fr-FR', {maximumFractionDigits: 3}) + ' kg'; };
+            function syncLots() {
+                var option = select.options[select.selectedIndex], available = option && option.value ? Number(option.getAttribute('data-free') || 0) : 0, n = qty ? Number(qty.value || 0) : 0;
+                if (fill) fill.disabled = !available;
+                if (qty) { if (available) qty.max = available; else qty.removeAttribute('max'); qty.setCustomValidity(available && n > available ? 'Il n’y a que ' + kgText(available) + ' disponibles pour ce produit.' : ''); }
+                if (free) free.textContent = available ? 'Disponible : ' + kgText(available) + (n > 0 && n <= available ? ' · il restera ' + kgText(Math.round((available - n) * 1000) / 1000) : '') : '';
+                if (!lotsBox) return;
+                var list = qs('[data-farm-transport-lots-list]', lotsBox), lots = [];
+                try { lots = JSON.parse(option && option.getAttribute('data-lots') || '[]'); } catch (e) { lots = []; }
+                var left = n > 0 && n <= available ? n : 0;
+                list.replaceChildren();
+                lots.forEach(function (lot) {
+                    if (left <= 0) return;
+                    var take = Math.min(Number(lot.kg) || 0, left); if (take <= 0) return; left = Math.round((left - take) * 1000) / 1000;
+                    var li = document.createElement('li'), strong = document.createElement('strong'), small = document.createElement('small');
+                    strong.textContent = lot.label + (lot.date ? ' du ' + lot.date : '') + ' : ' + kgText(take);
+                    small.textContent = take < Number(lot.kg) ? 'il restera ' + kgText(Math.round((Number(lot.kg) - take) * 1000) / 1000) : 'récolte entièrement chargée';
+                    li.append(strong, small); list.appendChild(li);
+                });
+                lotsBox.hidden = !list.children.length;
+            }
             function syncRoute() {
                 var option = select.options[select.selectedIndex];
                 var origin = option ? option.getAttribute('data-route-origin') : '';
                 var destination = route.getAttribute('data-route-destination');
                 route.value = origin && destination ? origin + ' → ' + destination : '';
+                syncLots();
             }
             if (!select.dataset.routeReady) {
                 select.dataset.routeReady = 'true';
-                select.addEventListener('change', syncRoute);
+                select.addEventListener('change', function () { if (qty) qty.value = ''; syncRoute(); });
+                if (qty) qty.addEventListener('input', syncLots);
+                if (fill) fill.addEventListener('click', function () { var option = select.options[select.selectedIndex]; if (option && option.value && qty) { qty.value = option.getAttribute('data-free'); syncLots(); } });
                 form.addEventListener('reset', function () { window.setTimeout(syncRoute, 0); });
             }
             syncRoute();
@@ -1326,7 +1351,7 @@
             var outputQuantity = numericValue(wasteOutput);
             var wasteYield = form.querySelector('[data-waste-yield]');
             if (wasteYield) wasteYield.value = (inputQuantity > 0 ? (outputQuantity / inputQuantity) * 100 : 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' %';
-            if (wasteInput) wasteInput.setCustomValidity(inputQuantity > available ? 'La quantité traitée dépasse le stock de déchets disponible.' : '');
+            if (wasteInput) wasteInput.setCustomValidity(inputQuantity > available ? 'La quantité traitée dépasse le stock d’issues disponible.' : '');
             if (wasteOutput) wasteOutput.setCustomValidity(inputQuantity > 0 && outputQuantity > inputQuantity ? 'La quantité produite ne peut pas dépasser la quantité traitée.' : '');
         }
 

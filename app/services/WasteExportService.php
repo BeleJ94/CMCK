@@ -19,7 +19,7 @@ class WasteExportService
 
     public function searchText(array $l): string
     {
-        return implode(' ', [$l['batch_number'] ?: 'Stock de déchets', $l['product_name'], ($l['waste_type_name'] ?: 'Non précisé'), 'Qualité : '.($l['quality_grade'] ?: 'Non précisée'), $l['site_code'], number_format((float)$l['quantity_kg'],3,',',' ').' kg', $this->status($l), date('d/m/Y H:i',strtotime($l['created_at']))]);
+        return implode(' ', [$l['batch_number'] ?: 'Stock d’issues', $l['product_name'], ($l['waste_type_name'] ?: 'Non précisé'), 'Qualité : '.($l['quality_grade'] ?: 'Non précisée'), $l['site_code'], number_format((float)$l['quantity_kg'],3,',',' ').' kg', $this->status($l), date('d/m/Y H:i',strtotime($l['created_at']))]);
     }
 
     public function status(array $l): string
@@ -31,8 +31,8 @@ class WasteExportService
     public function xlsx(array $lines, string $summary): string
     {
         $xml = function ($s) { return htmlspecialchars(preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', (string)$s), ENT_XML1 | ENT_QUOTES, 'UTF-8'); };
-        $rows = [['DAGRIL · Déchets et coproduits'], ['Exporté le '.date('d/m/Y H:i')], [$summary], [], ['Origine','Produit','Type / qualité','Site','Disponible (kg)','Situation','Créé le']];
-        foreach ($lines as $l) $rows[] = [$l['batch_number'] ?: 'Stock de déchets', $l['product_name'], ($l['waste_type_name'] ?: 'Non précisé').' / '.($l['quality_grade'] ?: 'Non précisée'), $l['site_code'], (float)$l['quantity_kg'], $this->status($l), date('d/m/Y H:i',strtotime($l['created_at']))];
+        $rows = [['DAGRIL · Issues de meunerie'], ['Exporté le '.date('d/m/Y H:i')], [$summary], [], ['Origine','Produit','Type / qualité','Site','Disponible (kg)','Situation','Créé le']];
+        foreach ($lines as $l) $rows[] = [$l['batch_number'] ?: 'Stock d’issues', $l['product_name'], ($l['waste_type_name'] ?: 'Non précisé').' / '.($l['quality_grade'] ?: 'Non précisée'), $l['site_code'], (float)$l['quantity_kg'], $this->status($l), date('d/m/Y H:i',strtotime($l['created_at']))];
         $last = count($rows);
         $rows[] = ['Total · '.count($lines).' stock(s)', '', '', '', array_sum(array_column($lines,'quantity_kg'))];
         require_once __DIR__.'/SpreadsheetExportService.php';

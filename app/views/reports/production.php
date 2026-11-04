@@ -23,12 +23,56 @@ $yield = $totalInput > 0 ? ($totalOutput / $totalInput) * 100 : 0;
     </div>
 </section>
 
+<?php if ($type === 'waste' && $balance): $kgf = function ($v) { return number_format((float) $v, 0, ',', ' ') . ' kg'; }; $pcf = function ($v) use ($balance) { return $balance['loaded_kg'] > 0 ? number_format(100 * $v / $balance['loaded_kg'], 1, ',', ' ') . ' %' : '—'; }; $forms = ['granule' => 'Granulé', 'farine' => 'Farine']; ?>
+<section class="table-panel">
+    <div class="panel-heading"><span class="panel-icon"><i class="bi bi-diagram-3"></i></span><div><h3>Bilan matière de la période</h3><p>Lots de production et fabrications d’aliment bétail validés. Les issues transformées peuvent provenir de lots antérieurs.</p></div></div>
+    <section class="metric-grid">
+        <article class="metric-card"><div class="metric-card-top"><span>Grain chargé (<?= e($balance['batches']) ?> lots)</span><span class="metric-icon tone-blue"><i class="bi bi-arrow-down"></i></span></div><strong><?= e($kgf($balance['loaded_kg'])) ?></strong></article>
+        <article class="metric-card"><div class="metric-card-top"><span>Farine · <?= e($pcf($balance['flour_kg'])) ?></span><span class="metric-icon tone-green"><i class="bi bi-basket"></i></span></div><strong><?= e($kgf($balance['flour_kg'])) ?></strong></article>
+        <article class="metric-card"><div class="metric-card-top"><span>Issues récupérées · <?= e($pcf($balance['issues_kg'])) ?></span><span class="metric-icon tone-orange"><i class="bi bi-recycle"></i></span></div><strong><?= e($kgf($balance['issues_kg'])) ?></strong></article>
+        <article class="metric-card"><div class="metric-card-top"><span>Écart non expliqué · <?= e($pcf($balance['gap_kg'])) ?></span><span class="metric-icon tone-red"><i class="bi bi-exclamation-triangle"></i></span></div><strong><?= e($kgf($balance['gap_kg'])) ?></strong></article>
+    </section>
+    <section class="metric-grid">
+        <article class="metric-card"><div class="metric-card-top"><span>Issues transformées (<?= e($balance['feed_orders']) ?> OF)</span><span class="metric-icon tone-orange"><i class="bi bi-arrow-repeat"></i></span></div><strong><?= e($kgf($balance['feed_issues_kg'])) ?></strong></article>
+        <article class="metric-card"><div class="metric-card-top"><span>Additifs</span><span class="metric-icon tone-blue"><i class="bi bi-droplet"></i></span></div><strong><?= e($kgf($balance['feed_additives_kg'])) ?></strong></article>
+        <article class="metric-card"><div class="metric-card-top"><span>Aliment bétail produit</span><span class="metric-icon tone-green"><i class="bi bi-circle-square"></i></span></div><strong><?= e($kgf($balance['feed_output_kg'])) ?></strong></article>
+        <article class="metric-card"><div class="metric-card-top"><span>Pertes de fabrication · coût moyen</span><span class="metric-icon tone-red"><i class="bi bi-cash-coin"></i></span></div><strong><?= e($kgf($balance['feed_loss_kg'])) ?> · <?= e(number_format($balance['feed_cost_per_kg'], 2, ',', ' ')) ?> /kg</strong></article>
+    </section>
+</section>
+<section class="table-panel">
+    <div class="panel-heading"><span class="panel-icon"><i class="bi bi-circle-square"></i></span><div><h3>Fabrications d’aliment bétail</h3><p>Ordres de fabrication validés sur la période.</p></div></div>
+    <div class="table-responsive">
+        <table class="enterprise-table">
+            <thead><tr><th>Date</th><th>OF</th><th>Recette</th><th>Forme</th><th>Issues</th><th>Additifs</th><th>Produit</th><th>Pertes</th><th>Rendement</th><th>Coût /kg</th><th>Validé par</th></tr></thead>
+            <tbody>
+                <?php foreach ($feedOrders as $order): ?>
+                    <tr>
+                        <td><?= e($order['operation_at']) ?></td>
+                        <td><strong><?= e($order['order_number']) ?></strong></td>
+                        <td><?= e($order['recipe_code'] . ' v' . $order['version_number']) ?></td>
+                        <td><?= e($forms[$order['output_form']] ?? 'Granulé') ?></td>
+                        <td><?= e($kgf($order['issues_kg'])) ?></td>
+                        <td><?= e($kgf($order['additives_kg'])) ?></td>
+                        <td><?= e($kgf($order['output_quantity_kg'])) ?></td>
+                        <td><?= e($kgf($order['loss_quantity_kg'])) ?></td>
+                        <td><?= e(number_format((float) $order['yield_percent'], 1, ',', ' ')) ?>%</td>
+                        <td><?= e(number_format((float) $order['cost_per_kg'], 2, ',', ' ')) ?></td>
+                        <td><?= e($order['validator_name'] ?: '-') ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                <?php if (!$feedOrders): ?><tr><td colspan="11">Aucune fabrication d’aliment bétail validée sur la période.</td></tr><?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</section>
+<?php else: ?>
 <section class="metric-grid">
     <article class="metric-card"><div class="metric-card-top"><span>Entree</span><span class="metric-icon tone-blue"><i class="bi bi-arrow-down"></i></span></div><strong><?= e(number_format($totalInput, 0, ',', ' ')) ?> kg</strong></article>
     <article class="metric-card"><div class="metric-card-top"><span>Sortie</span><span class="metric-icon tone-green"><i class="bi bi-arrow-up"></i></span></div><strong><?= e(number_format($totalOutput, 0, ',', ' ')) ?> kg</strong></article>
-    <article class="metric-card"><div class="metric-card-top"><span>Dechets</span><span class="metric-icon tone-red"><i class="bi bi-recycle"></i></span></div><strong><?= e(number_format($totalWaste, 0, ',', ' ')) ?> kg</strong></article>
+    <article class="metric-card"><div class="metric-card-top"><span>Issues</span><span class="metric-icon tone-red"><i class="bi bi-recycle"></i></span></div><strong><?= e(number_format($totalWaste, 0, ',', ' ')) ?> kg</strong></article>
     <article class="metric-card"><div class="metric-card-top"><span>Rendement</span><span class="metric-icon tone-orange"><i class="bi bi-speedometer2"></i></span></div><strong><?= e(number_format($yield, 1, ',', ' ')) ?>%</strong></article>
 </section>
+<?php endif; ?>
 
 <section class="table-panel print-hidden">
     <div class="panel-heading"><span class="panel-icon"><i class="bi bi-funnel"></i></span><div><h3>Filtres</h3><p>Periode et machine.</p></div></div>
@@ -49,17 +93,17 @@ $yield = $totalInput > 0 ? ($totalOutput / $totalInput) * 100 : 0;
 </section>
 
 <section class="table-panel">
-    <div class="panel-heading"><span class="panel-icon"><i class="bi bi-table"></i></span><div><h3><?= e($title) ?></h3><p>Details operationnels.</p></div></div>
+    <div class="panel-heading"><span class="panel-icon"><i class="bi bi-table"></i></span><div><h3><?= e($type === 'waste' ? 'Anciens traitements directs des issues' : $title) ?></h3><p><?= e($type === 'waste' ? 'Historique antérieur à l’unification, en lecture seule.' : 'Details operationnels.') ?></p></div></div>
     <div class="table-responsive">
         <table class="enterprise-table">
             <thead>
                 <tr>
                     <?php if ($type === 'waste'): ?>
-                        <th>Date</th><th>Machine</th><th>Lot source</th><th>Dechets traites</th><th>Aliment betail</th><th>Rendement</th><th>Agent</th>
+                        <th>Date</th><th>Machine</th><th>Lot source</th><th>Issues traitées</th><th>Aliment bétail</th><th>Rendement</th><th>Agent</th>
                     <?php elseif ($type === 'yield'): ?>
-                        <th>Machine</th><th>Lots</th><th>Entree</th><th>Sortie</th><th>Dechets</th><th>Rendement</th>
+                        <th>Machine</th><th>Lots</th><th>Entree</th><th>Sortie</th><th>Issues</th><th>Rendement</th>
                     <?php else: ?>
-                        <th>Date debut</th><th>Date fin</th><th>Lot</th><th>Machine</th><th>Produit</th><th>Traite</th><th>Bon produit</th><th>Dechets</th><th>Rendement</th><th>Statut</th>
+                        <th>Date debut</th><th>Date fin</th><th>Lot</th><th>Machine</th><th>Produit</th><th>Traite</th><th>Bon produit</th><th>Issues</th><th>Rendement</th><th>Statut</th>
                     <?php endif; ?>
                 </tr>
             </thead>

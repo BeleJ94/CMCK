@@ -22,7 +22,7 @@ require_once dirname(__DIR__) . '/app/models/WeighbridgeTransport.php';
 require_once dirname(__DIR__) . '/app/models/Weighing.php';
 $db = Database::getInstance()->connection();
 // No source records are copied. Temporary tables disappear on disconnect.
-foreach (['sites','products','suppliers','users','agricultural_stocks','agricultural_transports','agricultural_stock_movements','weighbridge_transports','trucks','activity_logs','documents','document_types','weighings','silos','silo_movements','document_numbering_rules','document_number_counters','document_status_history','workflow_definitions','workflow_instances','workflow_transitions'] as $table) {
+foreach (['sites','products','suppliers','users','agricultural_stocks','agricultural_transports','agricultural_transport_lines','agricultural_stock_movements','weighbridge_transports','trucks','activity_logs','documents','document_types','weighings','silos','silo_movements','document_numbering_rules','document_number_counters','document_status_history','workflow_definitions','workflow_instances','workflow_transitions'] as $table) {
     $definition = $db->query("SHOW CREATE TABLE `$table`")->fetch(PDO::FETCH_NUM)[1];
     $definition = preg_replace('/^CREATE TABLE/', 'CREATE TEMPORARY TABLE', $definition);
     $definition = preg_replace('/^\s*CONSTRAINT .*FOREIGN KEY.*\n/m', '', $definition);
@@ -113,11 +113,14 @@ bridge_check((int)bridge_scalar('SELECT destination_site_id FROM agricultural_tr
 bridge_check(bridge_scalar('SELECT status FROM agricultural_transports WHERE id=?',[$id])==='draft','création du BT en brouillon');
 bridge_check((int)bridge_scalar("SELECT COUNT(*) FROM documents WHERE entity_type='agricultural_transports' AND entity_id=?",[$id])===1,'document officiel créé avec le trajet automatique');
 $expectedReference=bridge_scalar("SELECT document_number FROM documents WHERE entity_type='agricultural_transports' AND entity_id=?",[$id]);
+// Plusieurs BT en brouillon sont possibles : chacun est déduit du disponible (10 000 kg - 100 kg - 100 kg).
+$second=$ag->createTransport($data,$actor);
+bridge_check((int)bridge_scalar('SELECT COUNT(*) FROM agricultural_transports WHERE stock_id=20')===2&&$second!==$id,'second brouillon accepté sur le solde libre');
 $message='';
-try{$ag->createTransport($data,$actor);}catch(RuntimeException $e){$message=$e->getMessage();}
-bridge_check(strpos($message,'Ce stock possède déjà le BT en brouillon '.$expectedReference)!==false,'second brouillon refusé avec référence lisible');
-bridge_check((int)bridge_scalar('SELECT COUNT(*) FROM agricultural_transports WHERE stock_id=20')===1,'nouvelle tentative sans duplication du BT');
-bridge_check((float)bridge_scalar('SELECT reserved_quantity_kg FROM agricultural_stocks WHERE id=20')===0.0&&!$db->inTransaction(),'refus du doublon sans réservation ni transaction ouverte');
+try{$ag->createTransport(array_replace($data,['quantity_kg'=>9801]),$actor);}catch(RuntimeException $e){$message=$e->getMessage();}
+bridge_check(strpos($message,'brouillon')!==false&&strpos($message,'9 800')!==false,'brouillon au-delà du solde libre refusé, avec le disponible restant');
+bridge_check((int)bridge_scalar('SELECT COUNT(*) FROM agricultural_transports WHERE stock_id=20')===2,'refus sans duplication du BT');
+bridge_check((float)bridge_scalar('SELECT reserved_quantity_kg FROM agricultural_stocks WHERE id=20')===0.0&&!$db->inTransaction(),'brouillons sans réservation ni transaction ouverte');
 $data['stock_id']=21;$data['route_notes']='  via accès nord  ';
 $db->exec("UPDATE agricultural_stocks SET site_id=4 WHERE id=21");
 Auth::$allowed=[4];Auth::$site=4;
